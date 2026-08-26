@@ -41,7 +41,7 @@ export const initializeUseCase = async () => {
 import { branchedWire } from '@domain-first/wire'
 
 export const envBranchedWire = branchedWire(() => {
-    return process.env.NODE_ENV as 'test' | 'development' | 'production'
+    return process.env.NODE_ENV ?? 'development' as 'test' | 'development' | 'production'
 });
 `
         );

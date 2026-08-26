@@ -1,7 +1,7 @@
 {
     "name": "@domain-first/project-structure",
     "description": "Build and manage your project structure with CLI",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "type": "module",
     "exports": {
         ".": {

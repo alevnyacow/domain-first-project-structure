@@ -70,7 +70,7 @@ export class ${endpointNaming.ClassName} {
 
     get handle() {
         return this.endpointGenerator(this.logic, {
-            route: { method: '${method}', path: ['${controller}'${path.length ? `, ${path.map((x) => `'${x}'`).join(', ')}` : ''}] },
+            route: { method: '${method}', path: ['${boundedContextFolder.name}-${controller}'${path.length ? `, ${path.map((x) => `'${x}'`).join(', ')}` : ''}] },
             tags: ['${boundedContextFolder.name}: ${controller}'],
         })
     }
