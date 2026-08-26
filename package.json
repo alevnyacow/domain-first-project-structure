@@ -1,8 +1,13 @@
 {
     "name": "@domain-first/project-structure",
-    "description": "Build and manage your project structure with CLI",
+    "description": "Build and manage your Domain-First project structure with CLI",
     "version": "0.0.2",
     "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/alevnyacow/domain-first-project-structure.git"
+    },
+    "license": "MIT",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -21,6 +26,13 @@
     "publishConfig": {
         "access": "public"
     },
+    "keywords": [
+        "domain-first",
+        "cli",
+        "scaffold",
+        "scaffolder",
+        "terminal"
+    ],
     "scripts": {
         "build": "rslib",
         "check": "biome check --write",
@@ -39,7 +51,11 @@
         "@rslib/core": "^0.23.2",
         "@rstest/adapter-rslib": "^0.10.6",
         "@rstest/core": "^0.10.6",
+        "@semantic-release/changelog": "^6.0.3",
+        "@semantic-release/git": "^10.0.1",
+        "@semantic-release/npm": "^13.1.5",
         "@types/node": "^24.13.3",
+        "semantic-release": "^25.0.9",
         "typescript": "^6.0.3"
     },
     "dependencies": {
