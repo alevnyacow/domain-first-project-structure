@@ -1,0 +1,103 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+    "vcs": {
+        "enabled": false,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "files": {
+        "ignoreUnknown": true,
+        "includes": ["src/**", "!**/generated-prisma"]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "lineWidth": 80,
+        "indentWidth": 4
+    },
+    "linter": {
+        "enabled": true,
+        "domains": {
+            "next": "all",
+            "project": "all"
+        },
+        "rules": {
+            "a11y": {
+                "noRedundantAlt": "off",
+                "noLabelWithoutControl": "off",
+                "noStaticElementInteractions": "off",
+                "useKeyWithClickEvents": "off"
+            },
+            "recommended": true,
+            "performance": {
+                "noImgElement": "off"
+            },
+            "complexity": {
+                "noBannedTypes": "off"
+            },
+            "correctness": {
+                "noUndeclaredDependencies": "off",
+                "noUnresolvedImports": "off",
+                "useImportExtensions": "off",
+                "noEmptyPattern": "off",
+                "useExhaustiveDependencies": "off",
+                "noUnusedImports": {
+                    "level": "error",
+                    "fix": "safe"
+                },
+                "noUnusedVariables": {
+                    "level": "error"
+                },
+                "noUnusedFunctionParameters": {
+                    "level": "error"
+                }
+            },
+            "suspicious": {
+                "noExplicitAny": "off"
+            },
+            "style": {
+                "noNonNullAssertion": "off",
+                "useTemplate": {
+                    "level": "error",
+                    "fix": "safe"
+                }
+            }
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "enabled": true,
+            "quoteStyle": "single",
+            "trailingCommas": "none",
+            "semicolons": "always"
+        },
+        "parser": {
+            "unsafeParameterDecoratorsEnabled": true
+        }
+    },
+    "html": {
+        "formatter": {
+            "enabled": true
+        }
+    },
+    "css": {
+        "formatter": {
+            "enabled": true
+        }
+    },
+    "json": {
+        "formatter": {
+            "enabled": true
+        }
+    },
+    "assist": {
+        "enabled": true,
+        "actions": {
+            "source": {
+                "organizeImports": "on",
+                "useSortedAttributes": "on",
+                "useSortedProperties": "on"
+            }
+        }
+    }
+}

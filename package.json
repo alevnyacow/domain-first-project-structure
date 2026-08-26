@@ -1,0 +1,49 @@
+{
+    "name": "@domain-first/project-structure",
+    "description": "Build and manage your project structure with CLI",
+    "version": "0.0.1",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "bin": {
+        "df-ps": "./dist/index.js"
+    },
+    "main": "./dist/index.cjs",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "rslib",
+        "check": "biome check --write",
+        "dev": "rslib --watch",
+        "format": "biome format --write",
+        "test": "rstest",
+        "test:watch": "rstest --watch"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.15",
+        "@domain-first/errors": "^4.0.4",
+        "@domain-first/handlers": "^4.0.4",
+        "@domain-first/handlers-rest": "^5.1.0",
+        "@domain-first/types": "^5.0.8",
+        "@domain-first/wire": "^1.0.18",
+        "@rslib/core": "^0.23.2",
+        "@rstest/adapter-rslib": "^0.10.6",
+        "@rstest/core": "^0.10.6",
+        "@types/node": "^24.13.3",
+        "typescript": "^6.0.3"
+    },
+    "dependencies": {
+        "@inquirer/prompts": "^8.5.2",
+        "zod": "^4.4.3"
+    }
+}
