@@ -1,7 +1,7 @@
 {
     "name": "@domain-first/project-structure",
     "description": "Build and manage your Domain-First project structure with CLI",
-    "version": "0.0.2",
+    "version": "1.0.0",
     "type": "module",
     "repository": {
         "type": "git",
