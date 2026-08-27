@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.0.1...v1.0.2) (2026-08-27)
+
+
+### Bug Fixes
+
+* no presentation actions for shared layer, no inner folders for application ([2ed16d0](https://github.com/alevnyacow/domain-first-project-structure/commit/2ed16d06273d3dfa1053bbd3d4f44a851e3d4531))
+
 ## [1.0.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.0.0...v1.0.1) (2026-08-27)
 
 
