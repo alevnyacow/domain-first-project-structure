@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.0.0...v1.0.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* `logic` is private in scaffolded endpoint files ([f6c4faa](https://github.com/alevnyacow/domain-first-project-structure/commit/f6c4faa3d8b5f630e9620734fa71cbbfc97e899c))
+
 # 1.0.0 (2026-08-26)
 
 
