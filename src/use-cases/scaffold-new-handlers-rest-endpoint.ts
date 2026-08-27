@@ -64,7 +64,7 @@ import { EndpointGenerator } from '@domain-first/handlers-rest'
 export class ${endpointNaming.ClassName} {
     constructor(private readonly endpointGenerator: EndpointGenerator) {}
 
-    get logic() {
+    private get logic() {
         return () => {}
     }
 
