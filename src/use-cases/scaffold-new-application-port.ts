@@ -12,8 +12,7 @@ export const scaffoldNewApplicationPort = async (
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
         'application',
-        'ports',
-        naming.fileName
+        'ports'
     ]);
 
     const infraFolder = boundedContextFolder.subitem([
@@ -103,7 +102,7 @@ export const wire${currentNaming.ClassName} = wireClass(
         wiringFolder.createFile(
             `wire-${naming.fileName}.ts`,
             `
-import { envBranchedWire } from '../../../../../${boundedContextFolder.name === 'shared' ? '' : '../'}shared/wiring/env-branched-wire'
+import { envBranchedWire } from '../../../../${boundedContextFolder.name === 'shared' ? '' : '../'}shared/wiring/env-branched-wire'
 ${implementationTypes
     .map((x) => {
         return {
@@ -113,7 +112,7 @@ ${implementationTypes
     })
     .map(
         ({ naming: { ClassName, fileName }, implementation }) =>
-            `import { wire${ClassName} } from '../../../infrastructure/application-ports/${implementation}/wire-${fileName}'`
+            `import { wire${ClassName} } from '../../infrastructure/application-ports/${implementation}/wire-${fileName}'`
     )
     .join('\n')}
 

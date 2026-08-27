@@ -74,7 +74,9 @@ const main = async () => {
 
             const layer = await select({
                 message: 'Layer:',
-                choices: ['Domain', 'Application', 'Presentation']
+                choices: specificContext
+                    ? ['Domain', 'Application', 'Presentation']
+                    : ['Domain', 'Application']
             });
 
             if (layer === 'Domain') {
