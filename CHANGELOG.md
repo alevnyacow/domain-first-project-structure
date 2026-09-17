@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.1...v1.1.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* passed urls as array ([048b616](https://github.com/alevnyacow/domain-first-project-structure/commit/048b616ad386b232e9ae42f56e20dce5fb6403dc))
+
 ## [1.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.0...v1.1.1) (2026-09-17)
 
 
