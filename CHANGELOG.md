@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.0...v1.1.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* `context/endpoint` url in endpoints instead of `context-endpoint` ([b486b22](https://github.com/alevnyacow/domain-first-project-structure/commit/b486b22ffae70046f36935346d884919e0b7fc37))
+
 # [1.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.0.2...v1.1.0) (2026-09-17)
 
 
