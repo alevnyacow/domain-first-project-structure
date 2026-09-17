@@ -182,7 +182,7 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
         queriesFolder.createFile(
             `${naming.fileName}-query.ts`,
             `
-import { defineHandler, type Handler } from '@domain-first/handlers'
+import { defineHandler } from '@domain-first/handlers'
 
 export class ${naming.ClassName}Query {
     static inputSchema = {}

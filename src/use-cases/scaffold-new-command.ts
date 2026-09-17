@@ -185,7 +185,7 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
         commandsFolder.createFile(
             `${naming.fileName}-command.ts`,
             `
-import { defineHandler, type Handler } from '@domain-first/handlers'
+import { defineHandler } from '@domain-first/handlers'
 
 export class ${naming.ClassName}Command {
     static inputSchema = {}
