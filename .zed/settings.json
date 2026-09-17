@@ -1,4 +1,12 @@
 {
+    "lsp": {
+        "biome": {
+            "binary": {
+                "path": "./node_modules/.bin/biome",
+                "arguments": ["lsp-proxy"],
+            },
+        },
+    },
     "format_on_save": "on",
     "languages": {
         "JavaScript": {

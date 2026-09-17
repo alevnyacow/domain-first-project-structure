@@ -42,7 +42,7 @@
         "test:watch": "rstest --watch"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.15",
+        "@biomejs/biome": "2.4.2",
         "@domain-first/errors": "^4.0.4",
         "@domain-first/handlers": "^4.0.4",
         "@domain-first/handlers-rest": "^5.1.0",
