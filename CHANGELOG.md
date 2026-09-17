@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.2...v1.1.3) (2026-09-17)
+
+
+### Bug Fixes
+
+* removed `type Handler` ([491717d](https://github.com/alevnyacow/domain-first-project-structure/commit/491717d9974bd3d9400c32f61aea2cc6ea4152b7))
+
 ## [1.1.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.1...v1.1.2) (2026-09-17)
 
 
