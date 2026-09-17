@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.0.2...v1.1.0) (2026-09-17)
+
+
+### Features
+
+* orchestrator queries and commands ([a264d29](https://github.com/alevnyacow/domain-first-project-structure/commit/a264d29ae8394aa6261e511b5cfc2ba5cb1261f0))
+
 ## [1.0.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.0.1...v1.0.2) (2026-08-27)
 
 
