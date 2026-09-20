@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.3...v1.2.0) (2026-09-20)
+
+
+### Features
+
+* react modules scaffolding ([e0efa54](https://github.com/alevnyacow/domain-first-project-structure/commit/e0efa5471512fa6d89d53f2a2e9f066e8b6e32e0))
+
 ## [1.1.3](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.2...v1.1.3) (2026-09-17)
 
 
