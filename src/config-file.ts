@@ -16,7 +16,8 @@ const configSchema = z.object({
             '@domain-first/handlers-rest'
         ])
     ),
-    defaultPersistenceLayerImplementation: z.string()
+    defaultPersistenceLayerImplementation: z.string(),
+    useReact: z.boolean()
 });
 
 export class ConfigFile {

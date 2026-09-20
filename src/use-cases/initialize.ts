@@ -1,4 +1,4 @@
-import { checkbox, input } from '@inquirer/prompts';
+import { checkbox, confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { Folder } from '../file-system';
 import { ProjectRoot } from '../project-root';
@@ -24,10 +24,13 @@ export const initializeUseCase = async () => {
         message: 'Default persistence layer implementation:'
     });
 
+    const useReact = await confirm({ message: 'Use React' });
+
     ConfigFile.write({
         rootFolder: rootFolderName,
         domainFirstPackages,
-        defaultPersistenceLayerImplementation
+        defaultPersistenceLayerImplementation,
+        useReact
     });
 
     const { path } = new ProjectRoot();

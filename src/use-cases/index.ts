@@ -8,3 +8,4 @@ export * from './scaffold-new-error';
 export * from './scaffold-new-handlers-rest-endpoint';
 export * from './scaffold-new-query';
 export * from './scaffold-new-use-case';
+export * from './scaffold-react-widget';

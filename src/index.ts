@@ -14,7 +14,8 @@ import {
     scaffoldNewErrorUseCase,
     scaffoldNewHandlersRestEndpoint,
     scaffoldNewQuery,
-    scaffoldNewUseCase
+    scaffoldNewUseCase,
+    scaffoldReactWidget
 } from './use-cases';
 
 const main = async () => {
@@ -42,9 +43,15 @@ const main = async () => {
 
     const options = [
         ...currentBoundedContextOptions,
+        ConfigFile.Instance.data.useReact
+            ? {
+                  name: 'Scaffold React module',
+                  action: 'Scaffold React module'
+              }
+            : undefined,
         { name: 'Shared Layer', action: 'Scaffold in bounded context' },
         scaffoldNewBoundedContext
-    ];
+    ].filter((x) => !!x);
 
     const result = await select({
         message: '@domain-first/project-structure',
@@ -54,6 +61,27 @@ const main = async () => {
     const { action, name } = options.find((x) => x.name === result)!;
 
     switch (action) {
+        case 'Scaffold React module': {
+            const action = await select({
+                message: 'Module: ',
+                choices: ['New widget']
+            });
+            switch (action) {
+                case 'New widget': {
+                    await scaffoldReactWidget(
+                        new Folder(rootPath).subitem([
+                            ConfigFile.Instance.data.rootFolder,
+                            'presentation',
+                            'react'
+                        ])
+                    );
+                    return;
+                }
+                default: {
+                    return;
+                }
+            }
+        }
         case 'Scaffold new bounded context': {
             await scaffoldNewBoundedContextUseCase();
             return;
