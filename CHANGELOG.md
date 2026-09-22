@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.3.1...v2.4.0) (2026-09-22)
+
+
+### Features
+
+* command unit-tests, fixed orchestrated command wiring folder ([f8211c7](https://github.com/alevnyacow/domain-first-project-structure/commit/f8211c765cab2f9eee47dcd714192d965125e808))
+
 ## [2.3.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.3.0...v2.3.1) (2026-09-22)
 
 
