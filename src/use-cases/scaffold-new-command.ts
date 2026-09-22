@@ -15,6 +15,10 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     ]);
 
     const commandName = await input({ message: 'Name: ' });
+    let scaffoldUnitTests: boolean | undefined;
+    if (ConfigFile.Instance.data.testingLibrary) {
+        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
+    }
     const naming = new UnknownFormatNaming(commandName);
     const commandType = await select({
         choices: [
@@ -26,6 +30,31 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
 
     const isOrchestrator =
         commandType === 'Orchestrator (no infrastructure implementation)';
+
+    if (scaffoldUnitTests) {
+        commandsFolder
+            .subitem([isOrchestrator ? 'orchestration' : 'execution'])
+            .createFile(
+                `${naming.fileName}-command.spec.ts`,
+                `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
+import { wire${naming.ClassName}Command } from '../../../wiring/commands/wire-${naming.fileName}-command'
+
+let ${naming.variableName}Command: ${naming.ClassName}Command
+
+beforeEach(() => {
+    ${naming.variableName}Command = wire${naming.ClassName}Command()
+})
+
+describe('${naming.withSpaces} command', () => {
+    test('can be wired', () => {
+        expect(${naming.variableName}Command).toBeDefined()
+    })
+})
+                `
+            );
+    }
 
     if (!isOrchestrator) {
         const implementationType = await input({
@@ -205,16 +234,14 @@ export class ${naming.ClassName}Command {
             '@domain-first/wire'
         )
     ) {
-        boundedContextFolder
-            .subitem(['wiring', 'application', 'commands'])
-            .createFile(
-                `wire-${naming.fileName}-command.ts`,
-                `
+        boundedContextFolder.subitem(['wiring', 'commands']).createFile(
+            `wire-${naming.fileName}-command.ts`,
+            `
 import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}Command } from '../../../application/commands/orchestration/${naming.fileName}-command'
+import { ${naming.ClassName}Command } from '../../application/commands/orchestration/${naming.fileName}-command'
 
 export const wire${naming.ClassName}Command = wireClass(${naming.ClassName}Command, [])
 `.trim()
-            );
+        );
     }
 };
