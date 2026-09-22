@@ -52,7 +52,7 @@ describe('${naming.withSpaces} command', () => {
         expect(${naming.variableName}Command).toBeDefined()
     })
 })
-                `
+                `.trim()
             );
     }
 

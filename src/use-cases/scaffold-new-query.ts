@@ -16,6 +16,11 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
 
     const queryName = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(queryName);
+    let scaffoldUnitTests: boolean | undefined;
+    if (ConfigFile.Instance.data.testingLibrary) {
+        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
+    }
+
     const queryType = await select({
         choices: [
             'Execution (with infrastructure implementation)',
@@ -26,6 +31,31 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
 
     const isOrchestrator =
         queryType === 'Orchestrator (no infrastructure implementation)';
+
+    if (scaffoldUnitTests) {
+        queriesFolder
+            .subitem([isOrchestrator ? 'orchestration' : 'execution'])
+            .createFile(
+                `${naming.fileName}-query.spec.ts`,
+                `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { type ${naming.ClassName}Query } from './${naming.fileName}-query'
+import { wire${naming.ClassName}Query } from '../../../wiring/queries/wire-${naming.fileName}-query'
+
+let ${naming.variableName}Query: ${naming.ClassName}Query
+
+beforeEach(() => {
+    ${naming.variableName}Query = wire${naming.ClassName}Query()
+})
+
+describe('${naming.withSpaces} query', () => {
+    test('can be wired', () => {
+        expect(${naming.variableName}Query).toBeDefined()
+    })
+})
+                `.trim()
+            );
+    }
 
     if (!isOrchestrator) {
         const implementationType = await input({
@@ -205,16 +235,14 @@ export class ${naming.ClassName}Query {
             '@domain-first/wire'
         )
     ) {
-        boundedContextFolder
-            .subitem(['wiring', 'application', 'queries'])
-            .createFile(
-                `wire-${naming.fileName}-query.ts`,
-                `
+        boundedContextFolder.subitem(['wiring', 'queries']).createFile(
+            `wire-${naming.fileName}-query.ts`,
+            `
 import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}Query } from '../../../application/queries/orchestration/${naming.fileName}-query'
+import { ${naming.ClassName}Query } from '../../application/queries/orchestration/${naming.fileName}-query'
 
 export const wire${naming.ClassName}Query = wireClass(${naming.ClassName}Query, [])
 `.trim()
-            );
+        );
     }
 };
