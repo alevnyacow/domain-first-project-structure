@@ -12,6 +12,14 @@ export const scaffoldNewAggregateUseCase = async (
 
     const aggregateNaming = new UnknownFormatNaming(aggregateName);
 
+    let scaffoldUnitTests: boolean | undefined;
+
+    if (ConfigFile.Instance.data.testingLibrary) {
+        scaffoldUnitTests = await confirm({
+            message: 'Scaffold unit-tests'
+        });
+    }
+
     const withRepository = await confirm({
         message: 'With Repository'
     });
@@ -47,6 +55,28 @@ export class ${aggregateNaming.ClassName} extends domainType() {
         `export * from './${aggregateNaming.fileName}.aggregate-root'`
     );
 
+    if (scaffoldUnitTests) {
+        aggregatesFolder.createFile(
+            `${aggregateNaming.fileName}.aggregate-root.spec.ts`,
+            `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { ${aggregateNaming.ClassName} } from './${aggregateNaming.fileName}.aggregate-root'
+
+let ${aggregateNaming.variableName}: ${aggregateNaming.ClassName}
+
+beforeEach(() => {
+    ${aggregateNaming.variableName} = new ${aggregateNaming.ClassName}()
+})
+
+describe('${aggregateNaming.withSpaces}', () => {
+    test('can be instantiated via constructor', () => {
+        expect(${aggregateNaming.variableName}).toBeDefined()
+    })
+})
+            `
+        );
+    }
+
     if (withRepository) {
         /**
          * Domain logic
@@ -59,6 +89,32 @@ export class ${aggregateNaming.ClassName} extends domainType() {
         barrelFile.addLine(
             `export * from './${aggregateNaming.fileName}-repository'`
         );
+
+        /**
+         * Tests (if needed)
+         */
+        if (scaffoldUnitTests) {
+            aggregatesFolder.createFile(
+                `${aggregateNaming.fileName}-repository.spec.ts`,
+                `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { wire${aggregateNaming.ClassName}Repository } from '../../../wiring/repositories/wire-${aggregateNaming.fileName}-repository'
+import type { ${aggregateNaming.ClassName}Repository } from './${aggregateNaming.fileName}-repository'
+
+let ${aggregateNaming.variableName}Repository: ${aggregateNaming.ClassName}Repository
+
+beforeEach(() => {
+    ${aggregateNaming.variableName}Repository = wire${aggregateNaming.ClassName}Repository()
+})
+
+describe('${aggregateNaming.withSpaces} repository', () => {
+    test('can be wired', () => {
+        expect(${aggregateNaming.variableName}Repository).toBeDefined()
+    })
+})
+                `.trim()
+            );
+        }
 
         /**
          * Infrastructure prompts

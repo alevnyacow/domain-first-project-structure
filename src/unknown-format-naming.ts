@@ -38,4 +38,8 @@ export class UnknownFormatNaming {
     get ClassName() {
         return this.PascalCase;
     }
+
+    get withSpaces() {
+        return this.fileName.replaceAll('-', ' ');
+    }
 }

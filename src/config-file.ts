@@ -17,7 +17,8 @@ const configSchema = z.object({
         ])
     ),
     defaultPersistenceLayerImplementation: z.string(),
-    useReact: z.boolean()
+    useReact: z.boolean(),
+    testingLibrary: z.string().optional()
 });
 
 export class ConfigFile {

@@ -26,11 +26,22 @@ export const initializeUseCase = async () => {
 
     const useReact = await confirm({ message: 'Use React' });
 
+    let testingLibrary: string | undefined;
+
+    const withTests = await confirm({ message: 'Scaffold unit tests' });
+    if (withTests) {
+        testingLibrary = await input({
+            message: 'Unit testing library:',
+            default: 'vitest'
+        });
+    }
+
     ConfigFile.write({
         rootFolder: rootFolderName,
         domainFirstPackages,
         defaultPersistenceLayerImplementation,
-        useReact
+        useReact,
+        testingLibrary
     });
 
     const { path } = new ProjectRoot();
