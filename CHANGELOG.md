@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.1.0...v2.2.0) (2026-09-22)
+
+
+### Features
+
+* unit tests library, unit tests for aggregate ([c3ac8d3](https://github.com/alevnyacow/domain-first-project-structure/commit/c3ac8d3ca71dd7bf38620e0300c925a4fe04be5b))
+
 # [2.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.0.1...v2.1.0) (2026-09-22)
 
 
