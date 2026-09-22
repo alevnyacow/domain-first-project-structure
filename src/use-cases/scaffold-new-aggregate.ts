@@ -111,32 +111,8 @@ export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implement
 
                         `.trim()
                 );
-
-            if (
-                ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/wire'
-                )
-            ) {
-                const wiringFolder = boundedContextFolder.subitem([
-                    'wiring',
-                    'infrastructure',
-                    'repositories',
-                    naming.fileName
-                ]);
-                wiringFolder.createFile(
-                    `wire-${naming.fileName}-${aggregateNaming.fileName}-repository.ts`,
-                    `
-import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}${aggregateNaming.ClassName}Repository } from '../../../../infrastructure/repositories/${naming.fileName}/${naming.fileName}-${aggregateNaming.fileName}-repository'
-
-export const wire${naming.ClassName}${aggregateNaming.ClassName}Repository = wireClass(
-    ${naming.ClassName}${aggregateNaming.ClassName}Repository,
-    []
-)
-    `.trim()
-                );
-            }
         }
+
         if (
             ConfigFile.Instance.data.domainFirstPackages.includes(
                 '@domain-first/wire'
@@ -149,27 +125,33 @@ export const wire${naming.ClassName}${aggregateNaming.ClassName}Repository = wir
                 testImplementationType
             );
 
-            boundedContextFolder
-                .subitem(['wiring', 'domain', 'repositories'])
-                .createFile(
-                    `wire-${aggregateNaming.fileName}-repository.ts`,
-                    `
-import { envBranchedWire } from '../../../../../shared/wiring/env-branched-wire'
+            boundedContextFolder.subitem(['wiring', 'repositories']).createFile(
+                `wire-${aggregateNaming.fileName}-repository.ts`,
+                `
+import { wireClass } from '@domain-first/wire'
+import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
+${implementationTypes
+    .map((x) => new UnknownFormatNaming(x))
+    .map(({ ClassName, fileName }) => {
+        return `import { ${ClassName}${aggregateNaming.ClassName}Repository } from '../../infrastructure/repositories/${fileName}/${fileName}-${aggregateNaming.fileName}-repository'`;
+    })
+    .join('\n')}
+
 ${implementationTypes
     .map((x) => new UnknownFormatNaming(x))
     .map(
-        ({ ClassName, fileName }) =>
-            `import { wire${ClassName}${aggregateNaming.ClassName}Repository } from '../../infrastructure/repositories/${fileName}/wire-${fileName}-${aggregateNaming.fileName}-repository'`
+        ({ ClassName }) =>
+            `const wire${ClassName}Implementation = wireClass(${ClassName}${aggregateNaming.ClassName}Repository, [])`
     )
-    .join('\n')}
+    .join('\n\n')}
 
 export const wire${aggregateNaming.ClassName}Repository = envBranchedWire({
-    test: wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}${aggregateNaming.ClassName}Repository,
-    development: wire${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository,
-    production: wire${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository
+    test: wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}Implementation,
+    development: wire${implementationNaming.ClassName}Implementation,
+    production: wire${implementationNaming.ClassName}Implementation
 })
-`.trim()
-                );
+    `.trim()
+            );
         }
     }
 };

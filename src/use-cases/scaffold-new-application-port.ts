@@ -9,17 +9,7 @@ export const scaffoldNewApplicationPort = async (
     const name = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
-    const wiringFolder = boundedContextFolder.subitem([
-        'wiring',
-        'application',
-        'ports'
-    ]);
-
-    const infraFolder = boundedContextFolder.subitem([
-        'wiring',
-        'infrastructure',
-        'application-ports'
-    ]);
+    const wiringFolder = boundedContextFolder.subitem(['wiring', 'ports']);
 
     const applicationPortsFolder = boundedContextFolder.subitem([
         'application',
@@ -73,25 +63,6 @@ export class ${currentNaming.ClassName} extends ${naming.ClassName} {
 }
             `
         );
-
-        if (
-            ConfigFile.Instance.data.domainFirstPackages.includes(
-                '@domain-first/wire'
-            )
-        ) {
-            infraFolder.subitem([implementation]).createFile(
-                `wire-${currentNaming.fileName}.ts`,
-                `
-import { wireClass } from '@domain-first/wire'
-import { ${currentNaming.ClassName} } from '../../../../infrastructure/application-adapters/${implementation}/${currentNaming.fileName}'
-
-export const wire${currentNaming.ClassName} = wireClass(
-    ${currentNaming.ClassName},
-    []
-)
-`.trim()
-            );
-        }
     }
 
     if (
@@ -102,7 +73,8 @@ export const wire${currentNaming.ClassName} = wireClass(
         wiringFolder.createFile(
             `wire-${naming.fileName}.ts`,
             `
-import { envBranchedWire } from '../../../../${boundedContextFolder.name === 'shared' ? '' : '../'}shared/wiring/env-branched-wire'
+import { wireClass } from '@domain-first/wire'
+import { envBranchedWire } from '../../../${boundedContextFolder.name === 'shared' ? '' : '../'}shared/wiring/env-branched-wire'
 ${implementationTypes
     .map((x) => {
         return {
@@ -112,14 +84,27 @@ ${implementationTypes
     })
     .map(
         ({ naming: { ClassName, fileName }, implementation }) =>
-            `import { wire${ClassName} } from '../../infrastructure/application-ports/${implementation}/wire-${fileName}'`
+            `import { ${ClassName} } from '../../infrastructure/application-adapters/${implementation}/${fileName}'`
     )
     .join('\n')}
 
+${implementationTypes
+    .map((x) => {
+        return {
+            naming: new UnknownFormatNaming(`${x}-${naming.fileName}`),
+            implementation: x
+        };
+    })
+    .map(
+        ({ naming: { ClassName }, implementation }) =>
+            `const wire${new UnknownFormatNaming(implementation).ClassName}Implementation = wireClass(${ClassName}, [])`
+    )
+    .join('\n\n')}
+
 export const wire${naming.ClassName} = envBranchedWire({
-    test: wire${new UnknownFormatNaming(`${implementationTypes.at(-1)!}-${naming.fileName}`).ClassName},
-    development: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-${naming.fileName}`).ClassName},
-    production: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-${naming.fileName}`).ClassName}
+    test: wire${new UnknownFormatNaming(`${implementationTypes.at(-1)!}-implementation`).ClassName},
+    development: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName},
+    production: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName}
 })
 
                 `.trim()

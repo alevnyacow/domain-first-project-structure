@@ -29,7 +29,7 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
         currentErrorFolder
             .file('index.ts')
             .addLine(
-                `export const ${naming.ClassName}Error = ${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${naming.fileName}')`,
+                `export const ${naming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Error = ${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${naming.fileName}')`,
                 '\n\n'
             );
         return;
@@ -46,13 +46,13 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
             `
 import { errorNamespace } from '@domain-first/errors'
 
-const ${ClassName}Errors = errorNamespace('${boundedContextFolder.name}').subnamespace('${fileName}')
+export const ${ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors = errorNamespace('${boundedContextFolder.name}').subnamespace('${fileName}')
 `
         );
 
         currentErrorFolder
             .file('index.ts')
-            .addLine(`export * from './${fileName}'`);
+            .addLine(`export * from './${fileName}'`, '\n\n');
 
         return;
     }
@@ -60,6 +60,8 @@ const ${ClassName}Errors = errorNamespace('${boundedContextFolder.name}').subnam
     const namespace = selectedVariant.substring(
         'New error in namespace '.length
     );
+
+    const namespaceNaming = new UnknownFormatNaming(namespace);
 
     const errorName = await input({
         message: 'Error name:'
@@ -70,7 +72,7 @@ const ${ClassName}Errors = errorNamespace('${boundedContextFolder.name}').subnam
     currentErrorFolder
         .file(`${namespace}.ts`)
         .addLine(
-            `export const ${ClassName}Error = ${new UnknownFormatNaming(namespace).ClassName}Errors.define('${fileName}')`,
+            `export const ${ClassName}${namespaceNaming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Error = ${namespaceNaming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${fileName}')`,
             '\n\n'
         );
 };

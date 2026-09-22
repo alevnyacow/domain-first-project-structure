@@ -1,4 +1,4 @@
-import { confirm, input } from '@inquirer/prompts';
+import { confirm, input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
@@ -16,9 +16,16 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
 
     const queryName = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(queryName);
-    const isOrchestrator = await confirm({
-        message: 'Is an orchestrator query (no infrastructure implementations)?'
+    const queryType = await select({
+        choices: [
+            'Execution (with infrastructure implementation)',
+            'Orchestrator (no infrastructure implementation)'
+        ],
+        message: 'Query type'
     });
+
+    const isOrchestrator =
+        queryType === 'Orchestrator (no infrastructure implementation)';
 
     if (!isOrchestrator) {
         const implementationType = await input({
@@ -56,54 +63,33 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
                 )
                     ? /** Implementation with @domain-first/handlers */
                       `
-    import { defineHandler } from '@domain-first/handlers'
-    import { ${naming.ClassName}Query } from '../../../application/queries/${naming.fileName}-query'
+import { defineHandler } from '@domain-first/handlers'
+import { ${naming.ClassName}Query } from '../../../application/queries/execution/${naming.fileName}-query'
 
-    export class ${formatNaming.ClassName}${naming.ClassName}Query implements ${naming.ClassName}Query {
-        constructor() {}
-
-        handle = defineHandler({
-            inputSchema: ${naming.ClassName}Query.inputSchema,
-            outputSchema: ${naming.ClassName}Query.outputSchema,
-            handler: async (input) => {
-                return {}
-            }
-        })
+export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.ClassName}Query {
+    constructor() {
+        super()
     }
+
+    handle = defineHandler({
+        inputSchema: ${naming.ClassName}Query.inputSchema,
+        outputSchema: ${naming.ClassName}Query.outputSchema,
+        handler: async (input) => {
+            return {}
+        }
+    })
+}
         `.trim()
                     : /** Implementation without @domain-first/handlers */ `
-    import { ${naming.ClassName}Query } from '../../../domain/queries/${naming.fileName}-query'
+import { ${naming.ClassName}Query } from '../../../domain/queries/${naming.fileName}-query'
 
-    export class ${formatNaming.ClassName}${naming.ClassName}Query implements ${naming.ClassName}Query {
-
+export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.ClassName}Query {
+    constructor() {
+        super()
     }
+}
     `.trim()
             );
-
-            if (
-                ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/wire'
-                )
-            ) {
-                const wiringFolder = boundedContextFolder.subitem([
-                    'wiring',
-                    'infrastructure',
-                    'queries',
-                    formatNaming.fileName
-                ]);
-                wiringFolder.createFile(
-                    `wire-${formatNaming.fileName}-${naming.fileName}-query.ts`,
-                    `
-    import { wireClass } from '@domain-first/wire'
-    import { ${formatNaming.ClassName}${naming.ClassName}Query } from '../../../../infrastructure/queries/${formatNaming.fileName}/${formatNaming.fileName}-${naming.fileName}-query'
-
-    export const wire${formatNaming.ClassName}${naming.ClassName}Query = wireClass(
-        ${formatNaming.ClassName}${naming.ClassName}Query,
-        []
-    )
-    `.trim()
-                );
-            }
         }
 
         if (
@@ -111,26 +97,26 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
                 '@domain-first/handlers'
             )
         ) {
-            queriesFolder.createFile(
+            queriesFolder.subitem(['execution']).createFile(
                 `${naming.fileName}-query.ts`,
                 `
-    import type { Handler } from '@domain-first/handlers'
+import type { Handler } from '@domain-first/handlers'
 
-    export abstract class ${naming.ClassName}Query {
-        static inputSchema = {}
-        static outputSchema = {}
+export abstract class ${naming.ClassName}Query {
+    static inputSchema = {}
+    static outputSchema = {}
 
-        abstract handle: Handler<typeof ${naming.ClassName}Query.inputSchema, typeof ${naming.ClassName}Query.outputSchema>
-    }
+    abstract handle: Handler<typeof ${naming.ClassName}Query.inputSchema, typeof ${naming.ClassName}Query.outputSchema>
+}
                     `.trim()
             );
         } else {
             queriesFolder.createFile(
                 `${naming.fileName}-query.ts`,
                 `
-    export abstract class ${naming.ClassName}Query {
+export abstract class ${naming.ClassName}Query {
 
-    }`.trim()
+}`.trim()
             );
         }
 
@@ -146,27 +132,33 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
                 testImplementationType
             );
 
-            boundedContextFolder
-                .subitem(['wiring', 'application', 'queries'])
-                .createFile(
-                    `wire-${naming.fileName}-query.ts`,
-                    `
-    import { envBranchedWire } from '../../../../../shared/wiring/env-branched-wire'
-    ${implementationTypes
-        .map((x) => new UnknownFormatNaming(x))
-        .map(
-            ({ ClassName, fileName }) =>
-                `import { wire${ClassName}${naming.ClassName}Query } from '../../infrastructure/queries/${fileName}/wire-${fileName}-${naming.fileName}-query'`
-        )
-        .join('\n')}
-
-    export const wire${naming.ClassName}Query = envBranchedWire({
-        test: wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}${naming.ClassName}Query,
-        development: wire${implementationNaming.ClassName}${naming.ClassName}Query,
-        production: wire${implementationNaming.ClassName}${naming.ClassName}Query
+            boundedContextFolder.subitem(['wiring', 'queries']).createFile(
+                `wire-${naming.fileName}-query.ts`,
+                `
+import { wireClass } from '@domain-first/wire'
+import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
+${implementationTypes
+    .map((x) => new UnknownFormatNaming(x))
+    .map(({ ClassName, fileName }) => {
+        return `import { ${ClassName}${naming.ClassName}Query } from '../../infrastructure/queries/${fileName}/${fileName}-${naming.fileName}-query'`;
     })
+    .join('\n')}
+
+${implementationTypes
+    .map((x) => new UnknownFormatNaming(x))
+    .map(
+        ({ ClassName }) =>
+            `const wire${ClassName}Implementation = wireClass(${ClassName}${naming.ClassName}Query, [])` //from '../../infrastructure/queries/${fileName}/wire-${fileName}-${naming.fileName}-query'`
+    )
+    .join('\n\n')}
+
+export const wire${naming.ClassName}Query = envBranchedWire({
+    test: wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}Implementation,
+    development: wire${implementationNaming.ClassName}Implementation,
+    production: wire${implementationNaming.ClassName}Implementation
+})
     `.trim()
-                );
+            );
         }
         return;
     }
@@ -179,7 +171,7 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
             '@domain-first/handlers'
         )
     ) {
-        queriesFolder.createFile(
+        queriesFolder.subitem(['orchestration']).createFile(
             `${naming.fileName}-query.ts`,
             `
 import { defineHandler } from '@domain-first/handlers'
@@ -199,7 +191,7 @@ export class ${naming.ClassName}Query {
                 `.trim()
         );
     } else {
-        queriesFolder.createFile(
+        queriesFolder.subitem(['orchestration']).createFile(
             `${naming.fileName}-query.ts`,
             `
 export class ${naming.ClassName}Query {
@@ -219,7 +211,7 @@ export class ${naming.ClassName}Query {
                 `wire-${naming.fileName}-query.ts`,
                 `
 import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}Query } from '../../../application/queries/${naming.fileName}-query'
+import { ${naming.ClassName}Query } from '../../../application/queries/orchestration/${naming.fileName}-query'
 
 export const wire${naming.ClassName}Query = wireClass(${naming.ClassName}Query, [])
 `.trim()

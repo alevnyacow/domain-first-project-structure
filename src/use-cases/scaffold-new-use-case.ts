@@ -51,13 +51,11 @@ export class ${naming.ClassName}UseCase {
             '@domain-first/wire'
         )
     ) {
-        boundedContextFolder
-            .subitem(['wiring', 'application', 'use-cases'])
-            .createFile(
-                `wire-${naming.fileName}-use-case.ts`,
-                `
+        boundedContextFolder.subitem(['wiring', 'use-cases']).createFile(
+            `wire-${naming.fileName}-use-case.ts`,
+            `
 import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}UseCase } from '../../../application/use-cases/${naming.fileName}-use-case'
+import { ${naming.ClassName}UseCase } from '../../application/use-cases/${naming.fileName}-use-case'
 
 export const wire${naming.ClassName}UseCase = wireClass(
     ${naming.ClassName}UseCase,
@@ -65,6 +63,6 @@ export const wire${naming.ClassName}UseCase = wireClass(
 )
 
 `.trim()
-            );
+        );
     }
 };

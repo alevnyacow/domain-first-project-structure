@@ -31,6 +31,32 @@ export const scaffoldNewHandlersRestEndpoint = async (
                 .subitem(['wiring', 'presentation', 'rest'])
                 .file('index.ts')
                 .addLine(`export * from './${controller}'`);
+
+            const sharedRestFolder = boundedContextFolder.subitem([
+                '..',
+                '..',
+                'presentation',
+                'rest'
+            ]);
+
+            sharedRestFolder
+                .file('wires.ts')
+                .addLine(
+                    `export * from '../../bounded-contexts/${boundedContextFolder.name}/wiring/presentation/rest/${controller}'`
+                );
+
+            if (!sharedRestFolder.file('index.ts').exists) {
+                sharedRestFolder.createFile(
+                    'index.ts',
+                    `
+import * as wires from './wires'
+
+const restWires = Object.values(wires)
+
+export const restHandlers = restWires.map(x => x().handle)
+`.trim()
+                );
+            }
         }
     }
 
@@ -48,6 +74,7 @@ export const scaffoldNewHandlersRestEndpoint = async (
         .filter((x) => !!x);
 
     const controllerFolder = restPresentationFolder.subitem([controller]);
+    const endpointFolder = controllerFolder.subitem(path);
 
     const nameBase = `${controller}-${path.length ? `${path.join('-')}-` : ''}${method}-endpoint`;
 
@@ -56,8 +83,8 @@ export const scaffoldNewHandlersRestEndpoint = async (
     /**
      * Endpoint class.
      */
-    controllerFolder.createFile(
-        `${endpointNaming.fileName}.ts`,
+    endpointFolder.createFile(
+        `${method.toUpperCase()}.ts`,
         `
 import { EndpointGenerator } from '@domain-first/handlers-rest'
 
@@ -74,7 +101,6 @@ export class ${endpointNaming.ClassName} {
             tags: ['${boundedContextFolder.name}: ${controller}'],
         })
     }
-
 }
         `.trim()
     );
@@ -100,7 +126,7 @@ export class ${endpointNaming.ClassName} {
             `${wireNaming.fileName}.ts`,
             `
 import { wireClass } from '@domain-first/wire'
-import { ${endpointNaming.ClassName} } from '../../../../presentation/rest/${controller}/${endpointNaming.fileName}'
+import { ${endpointNaming.ClassName} } from '../../../../presentation/rest/${controller}/${path.length ? `${path.join('/')}/` : ''}${method.toUpperCase()}'
 
 export const wire${endpointNaming.ClassName} = wireClass(
     ${endpointNaming.ClassName},
