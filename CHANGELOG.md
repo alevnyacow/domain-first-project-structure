@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.0.0...v2.0.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* removed unused `logic` fiels ([676faa0](https://github.com/alevnyacow/domain-first-project-structure/commit/676faa078c59bdcbdf01985eb4903882735883cc))
+
 # [2.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.2.0...v2.0.0) (2026-09-22)
 
 
