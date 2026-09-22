@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.2.0...v2.0.0) (2026-09-22)
+
+
+### Features
+
+* simplified wiring files, simplified API, all rest handlers already ([eac0507](https://github.com/alevnyacow/domain-first-project-structure/commit/eac05075eb7ea47cda063c46655640183f27a940))
+
+
+### BREAKING CHANGES
+
+* new contracts, new structure
+
 # [1.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v1.1.3...v1.2.0) (2026-09-20)
 
 
