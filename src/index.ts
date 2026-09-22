@@ -15,6 +15,7 @@ import {
     scaffoldNewHandlersRestEndpoint,
     scaffoldNewQuery,
     scaffoldNewUseCase,
+    scaffoldReactPage,
     scaffoldReactWidget
 } from './use-cases';
 
@@ -62,19 +63,22 @@ const main = async () => {
 
     switch (action) {
         case 'Scaffold React module': {
+            const reactFolder = new Folder(rootPath).subitem([
+                ConfigFile.Instance.data.rootFolder,
+                'presentation',
+                'react'
+            ]);
             const action = await select({
                 message: 'Module: ',
-                choices: ['New widget']
+                choices: ['New widget', 'New page']
             });
             switch (action) {
                 case 'New widget': {
-                    await scaffoldReactWidget(
-                        new Folder(rootPath).subitem([
-                            ConfigFile.Instance.data.rootFolder,
-                            'presentation',
-                            'react'
-                        ])
-                    );
+                    await scaffoldReactWidget(reactFolder);
+                    return;
+                }
+                case 'New page': {
+                    await scaffoldReactPage(reactFolder);
                     return;
                 }
                 default: {
