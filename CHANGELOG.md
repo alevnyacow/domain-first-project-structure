@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.4.0...v2.5.0) (2026-09-22)
+
+
+### Features
+
+* unit-tests for queries, trim in command unit-tests file ([aa1a675](https://github.com/alevnyacow/domain-first-project-structure/commit/aa1a6751a834cb311725137954bef7629e21ee81))
+
 # [2.4.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.3.1...v2.4.0) (2026-09-22)
 
 
