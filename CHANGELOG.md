@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.3.0...v2.3.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* added readme ([15a7da2](https://github.com/alevnyacow/domain-first-project-structure/commit/15a7da26099cabb35647cb64f618e32c2cf87280))
+
 # [2.3.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.2.0...v2.3.0) (2026-09-22)
 
 
