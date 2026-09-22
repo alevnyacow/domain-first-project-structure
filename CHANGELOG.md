@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.0.1...v2.1.0) (2026-09-22)
+
+
+### Features
+
+* scaffold react page ([81042e7](https://github.com/alevnyacow/domain-first-project-structure/commit/81042e77e6f664ff77d1aedd50ee81f7d7cae131))
+
 ## [2.0.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.0.0...v2.0.1) (2026-09-22)
 
 
