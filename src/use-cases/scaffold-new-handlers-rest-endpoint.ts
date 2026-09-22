@@ -89,14 +89,13 @@ export const restHandlers = restWires.map(x => x().handle)
 import { EndpointGenerator } from '@domain-first/handlers-rest'
 
 export class ${endpointNaming.ClassName} {
-    constructor(private readonly endpointGenerator: EndpointGenerator) {}
-
-    private get logic() {
-        return () => {}
-    }
+    constructor(
+        private readonly endpointGenerator: EndpointGenerator,
+        private readonly handler: never
+    ) {}
 
     get handle() {
-        return this.endpointGenerator(this.logic, {
+        return this.endpointGenerator(this.handler.handle, {
             route: { method: '${method}', path: ['${boundedContextFolder.name}', '${controller}'${path.length ? `, ${path.map((x) => `'${x}'`).join(', ')}` : ''}] },
             tags: ['${boundedContextFolder.name}: ${controller}'],
         })
