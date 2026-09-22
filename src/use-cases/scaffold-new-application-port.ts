@@ -9,6 +9,12 @@ export const scaffoldNewApplicationPort = async (
     const name = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
+    let scaffoldUnitTests: boolean | undefined;
+
+    if (ConfigFile.Instance.data.testingLibrary) {
+        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
+    }
+
     const wiringFolder = boundedContextFolder.subitem(['wiring', 'ports']);
 
     const applicationPortsFolder = boundedContextFolder.subitem([
@@ -24,8 +30,32 @@ export abstract class ${naming.ClassName} {
             `.trim()
     );
 
+    if (scaffoldUnitTests) {
+        applicationPortsFolder.createFile(
+            `${naming.fileName}.spec.ts`,
+            `
+import { define, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { type ${naming.ClassName} } from './${naming.fileName}'
+import { wire${naming.ClassName} } from '../../wiring/ports/wire-${naming.fileName}'
+
+let ${naming.variableName}: ${naming.ClassName}
+
+beforeEach(() => {
+    ${naming.variableName} = wire${naming.ClassName}()
+})
+
+define('${naming.withSpaces}', () => {
+    test('can be wired', () => {
+        expect(${naming.variableName}).toBeDefined()
+    })
+})
+    `.trim()
+        );
+    }
+
     const implementationType = await input({
-        message: 'Adapter implementation type:'
+        message: 'Adapter implementation type:',
+        default: 'api'
     });
 
     const addTestImplementation = await confirm({
