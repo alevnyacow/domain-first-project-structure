@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.2.0...v2.3.0) (2026-09-22)
+
+
+### Features
+
+* unit tests for application ports, default `api` implementation type ([e5351e6](https://github.com/alevnyacow/domain-first-project-structure/commit/e5351e6c8536747452eec4b29df352a117cd52ae))
+
 # [2.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.1.0...v2.2.0) (2026-09-22)
 
 
