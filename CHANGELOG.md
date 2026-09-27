@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.5.0...v2.6.0) (2026-09-27)
+
+
+### Features
+
+* application-ports as separate wiring folder ([91caa60](https://github.com/alevnyacow/domain-first-project-structure/commit/91caa60ad02abac830d8aadd1e9cbeafb7f76275))
+
 # [2.5.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.4.0...v2.5.0) (2026-09-22)
 
 
