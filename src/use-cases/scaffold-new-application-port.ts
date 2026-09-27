@@ -15,7 +15,10 @@ export const scaffoldNewApplicationPort = async (
         scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
     }
 
-    const wiringFolder = boundedContextFolder.subitem(['wiring', 'ports']);
+    const wiringFolder = boundedContextFolder.subitem([
+        'wiring',
+        'appication-ports'
+    ]);
 
     const applicationPortsFolder = boundedContextFolder.subitem([
         'application',
