@@ -111,7 +111,7 @@ export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.
 }
         `.trim()
                     : /** Implementation without @domain-first/handlers */ `
-import { ${naming.ClassName}Query } from '../../../domain/queries/${naming.fileName}-query'
+import { ${naming.ClassName}Query } from '../../../application/queries/execution/${naming.fileName}-query'
 
 export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.ClassName}Query {
     constructor() {
@@ -141,7 +141,7 @@ export abstract class ${naming.ClassName}Query {
                     `.trim()
             );
         } else {
-            queriesFolder.createFile(
+            queriesFolder.subitem(['execution']).createFile(
                 `${naming.fileName}-query.ts`,
                 `
 export abstract class ${naming.ClassName}Query {

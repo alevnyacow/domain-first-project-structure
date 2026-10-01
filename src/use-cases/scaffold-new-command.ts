@@ -110,7 +110,7 @@ export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${namin
 }
         `.trim()
                     : /** Implementation without @domain-first/handlers */ `
-import { ${naming.ClassName}Command } from '../../../domain/commands/${naming.fileName}-command'
+import { ${naming.ClassName}Command } from '../../../application/commands/execution/${naming.fileName}-command'
 
 export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${naming.ClassName}Command {
     constructor() {
@@ -140,7 +140,7 @@ export abstract class ${naming.ClassName}Command {
                     `.trim()
             );
         } else {
-            commandsFolder.createFile(
+            commandsFolder.subitem(['execution']).createFile(
                 `${naming.fileName}-command.ts`,
                 `
 export abstract class ${naming.ClassName}Command {

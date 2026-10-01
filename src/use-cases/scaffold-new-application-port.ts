@@ -17,7 +17,7 @@ export const scaffoldNewApplicationPort = async (
 
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
-        'appication-ports'
+        'application-ports'
     ]);
 
     const applicationPortsFolder = boundedContextFolder.subitem([
@@ -37,9 +37,9 @@ export abstract class ${naming.ClassName} {
         applicationPortsFolder.createFile(
             `${naming.fileName}.spec.ts`,
             `
-import { define, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
 import { type ${naming.ClassName} } from './${naming.fileName}'
-import { wire${naming.ClassName} } from '../../wiring/ports/wire-${naming.fileName}'
+import { wire${naming.ClassName} } from '../../wiring/application-ports/wire-${naming.fileName}'
 
 let ${naming.variableName}: ${naming.ClassName}
 
@@ -47,7 +47,7 @@ beforeEach(() => {
     ${naming.variableName} = wire${naming.ClassName}()
 })
 
-define('${naming.withSpaces}', () => {
+describe('${naming.withSpaces}', () => {
     test('can be wired', () => {
         expect(${naming.variableName}).toBeDefined()
     })
