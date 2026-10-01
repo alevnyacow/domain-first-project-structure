@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.6.0...v2.7.0) (2026-10-01)
+
+
+### Features
+
+* infrastructure services, application services, presentation services ([fae522b](https://github.com/alevnyacow/domain-first-project-structure/commit/fae522b76e83d9b08f5842891540ef80418196b2))
+
 # [2.6.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.5.0...v2.6.0) (2026-09-27)
 
 
