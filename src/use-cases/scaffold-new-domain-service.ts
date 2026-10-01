@@ -1,4 +1,4 @@
-import { input } from '@inquirer/prompts';
+import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
@@ -11,39 +11,76 @@ export const scaffoldNewDomainService = async (
     });
     const naming = new UnknownFormatNaming(portName);
 
+    let scaffoldUnitTests: boolean | undefined;
+
+    if (ConfigFile.Instance.data.testingLibrary) {
+        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
+    }
+
+    const withWiring =
+        ConfigFile.Instance.data.domainFirstPackages.includes(
+            '@domain-first/wire'
+        );
+
+    const domainServicesFolder = boundedContextFolder.subitem([
+        'domain',
+        'services'
+    ]);
+
     /**
      * Content.
      */
-    boundedContextFolder.subitem(['domain', 'services']).createFile(
-        `${naming.fileName}-service.ts`,
+    domainServicesFolder.createFile(
+        `${naming.fileName}-domain-service.ts`,
         `
-export class ${naming.ClassName}Service {
+export class ${naming.ClassName}DomainService {
 
 }
         `.trim()
     );
 
+    if (scaffoldUnitTests) {
+        domainServicesFolder.createFile(
+            `${naming.fileName}-domain-service.spec.ts`,
+            `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    withWiring
+        ? `import { type ${naming.ClassName}DomainService } from './${naming.fileName}-domain-service'
+import { wire${naming.ClassName}DomainService } from '../../wiring/domain-services/wire-${naming.fileName}-domain-service'`
+        : `import { ${naming.ClassName}DomainService } from './${naming.fileName}-domain-service'`
+}
+
+let ${naming.variableName}DomainService: ${naming.ClassName}DomainService
+
+beforeEach(() => {
+    ${naming.variableName}DomainService = ${withWiring ? `wire${naming.ClassName}DomainService()` : `new ${naming.ClassName}DomainService()`}
+})
+
+describe('${naming.withSpaces}', () => {
+    test('can be ${withWiring ? 'wired' : 'created'}', () => {
+        expect(${naming.variableName}DomainService).toBeDefined()
+    })
+})
+    `.trim()
+        );
+    }
+
     /**
      * Wiring.
      */
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
-    ) {
-        boundedContextFolder
-            .subitem(['wiring', 'domain', 'services'])
-            .createFile(
-                `wire-${naming.fileName}-service.ts`,
-                `
+    if (withWiring) {
+        boundedContextFolder.subitem(['wiring', 'domain-services']).createFile(
+            `wire-${naming.fileName}-domain-service.ts`,
+            `
 import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}Service } from '../../../domain/services/${naming.fileName}-service'
+import { ${naming.ClassName}DomainService } from '../../domain/services/${naming.fileName}-domain-service'
 
-export const wire${naming.ClassName}Service = wireClass(
-    ${naming.ClassName}Service,
+export const wire${naming.ClassName}DomainService = wireClass(
+    ${naming.ClassName}DomainService,
     []
 )
             `.trim()
-            );
+        );
     }
 };

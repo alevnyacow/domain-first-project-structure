@@ -8,11 +8,14 @@ import {
     initializeUseCase,
     scaffoldNewAggregateUseCase,
     scaffoldNewApplicationPort,
+    scaffoldNewApplicationService,
     scaffoldNewBoundedContextUseCase,
     scaffoldNewCommand,
     scaffoldNewDomainService,
     scaffoldNewErrorUseCase,
     scaffoldNewHandlersRestEndpoint,
+    scaffoldNewInfrastructureService,
+    scaffoldNewPresentationService,
     scaffoldNewQuery,
     scaffoldNewUseCase,
     scaffoldReactPage,
@@ -106,9 +109,12 @@ const main = async () => {
 
             const layer = await select({
                 message: 'Layer:',
-                choices: specificContext
-                    ? ['Domain', 'Application', 'Presentation']
-                    : ['Domain', 'Application']
+                choices: [
+                    'Domain',
+                    'Application',
+                    'Infrastructure',
+                    'Presentation'
+                ]
             });
 
             if (layer === 'Domain') {
@@ -142,9 +148,10 @@ const main = async () => {
                               'New Query',
                               'New Command',
                               'New Use Case',
-                              'New Port'
+                              'New Port',
+                              'New Service'
                           ]
-                        : ['New Port']
+                        : ['New Port', 'New Service']
                 });
 
                 switch (operation) {
@@ -164,6 +171,27 @@ const main = async () => {
                         await scaffoldNewApplicationPort(boundedContextFolder);
                         return;
                     }
+                    case 'New Service': {
+                        await scaffoldNewApplicationService(
+                            boundedContextFolder
+                        );
+                        return;
+                    }
+                }
+            }
+            if (layer === 'Infrastructure') {
+                const operation = await select({
+                    message: 'Infrastructure layer operation:',
+                    choices: ['New Service']
+                });
+
+                switch (operation) {
+                    case 'New Service': {
+                        await scaffoldNewInfrastructureService(
+                            boundedContextFolder
+                        );
+                        return;
+                    }
                 }
             }
             if (layer === 'Presentation') {
@@ -175,14 +203,21 @@ const main = async () => {
                                   '@domain-first/handlers-rest'
                               )
                                   ? 'New Handlers-REST Endpoint'
-                                  : undefined
+                                  : undefined,
+                              'New Service'
                           ].filter((x) => x)
-                        : ['']
+                        : ['New Service']
                 });
 
                 switch (action) {
                     case 'New Handlers-REST Endpoint': {
                         await scaffoldNewHandlersRestEndpoint(
+                            boundedContextFolder
+                        );
+                        return;
+                    }
+                    case 'New Service': {
+                        await scaffoldNewPresentationService(
                             boundedContextFolder
                         );
                         return;

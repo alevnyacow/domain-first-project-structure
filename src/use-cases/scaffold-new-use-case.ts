@@ -1,4 +1,4 @@
-import { input } from '@inquirer/prompts';
+import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
@@ -11,6 +11,17 @@ export const scaffoldNewUseCase = async (boundedContextFolder: Folder) => {
 
     const useCaseName = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(useCaseName);
+
+    let scaffoldUnitTests: boolean | undefined;
+
+    if (ConfigFile.Instance.data.testingLibrary) {
+        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
+    }
+
+    const withWiring =
+        ConfigFile.Instance.data.domainFirstPackages.includes(
+            '@domain-first/wire'
+        );
 
     useCasesFolder.createFile(
         `${naming.fileName}-use-case.ts`,
@@ -46,11 +57,34 @@ export class ${naming.ClassName}UseCase {
 `.trim()
     );
 
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
-    ) {
+    if (scaffoldUnitTests) {
+        useCasesFolder.createFile(
+            `${naming.fileName}-use-case.spec.ts`,
+            `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    withWiring
+        ? `import { type ${naming.ClassName}UseCase } from './${naming.fileName}-use-case'
+import { wire${naming.ClassName}UseCase } from '../../wiring/use-cases/wire-${naming.fileName}-use-case'`
+        : `import { ${naming.ClassName}UseCase } from './${naming.fileName}-use-case'`
+}
+
+let ${naming.variableName}UseCase: ${naming.ClassName}UseCase
+
+beforeEach(() => {
+    ${naming.variableName}UseCase = ${withWiring ? `wire${naming.ClassName}UseCase()` : `new ${naming.ClassName}UseCase()`}
+})
+
+describe('${naming.withSpaces} use case', () => {
+    test('can be ${withWiring ? 'wired' : 'created'}', () => {
+        expect(${naming.variableName}UseCase).toBeDefined()
+    })
+})
+            `.trim()
+        );
+    }
+
+    if (withWiring) {
         boundedContextFolder.subitem(['wiring', 'use-cases']).createFile(
             `wire-${naming.fileName}-use-case.ts`,
             `
