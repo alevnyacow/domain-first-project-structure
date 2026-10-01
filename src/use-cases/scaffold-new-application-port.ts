@@ -33,29 +33,6 @@ export abstract class ${naming.ClassName} {
             `.trim()
     );
 
-    if (scaffoldUnitTests) {
-        applicationPortsFolder.createFile(
-            `${naming.fileName}.spec.ts`,
-            `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
-import { type ${naming.ClassName} } from './${naming.fileName}'
-import { wire${naming.ClassName} } from '../../wiring/application-ports/wire-${naming.fileName}'
-
-let ${naming.variableName}: ${naming.ClassName}
-
-beforeEach(() => {
-    ${naming.variableName} = wire${naming.ClassName}()
-})
-
-describe('${naming.withSpaces}', () => {
-    test('can be wired', () => {
-        expect(${naming.variableName}).toBeDefined()
-    })
-})
-    `.trim()
-        );
-    }
-
     const implementationType = await input({
         message: 'Adapter implementation type:',
         default: 'api'
@@ -95,6 +72,38 @@ export class ${currentNaming.ClassName} extends ${naming.ClassName} {
 
 }
             `
+        );
+    }
+
+    if (scaffoldUnitTests) {
+        const implementationNaming = new UnknownFormatNaming(
+            implementationType
+        );
+        applicationPortsFolder.createFile(
+            `${naming.fileName}.spec.ts`,
+            `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire')
+        ? `import { type ${naming.ClassName} } from './${naming.fileName}'
+import { wire${naming.ClassName} } from '../../wiring/application-ports/wire-${naming.fileName}'`
+        : `import { ${implementationNaming.ClassName}${naming.ClassName} } from '../../infrastructure/application-adapters/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}'
+
+type ${naming.ClassName} = ${implementationNaming.ClassName}${naming.ClassName}`
+}
+
+let ${naming.variableName}: ${naming.ClassName}
+
+beforeEach(() => {
+    ${naming.variableName} = ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? `wire${naming.ClassName}()` : `new ${implementationNaming.ClassName}${naming.ClassName}()`}
+})
+
+describe('${naming.withSpaces}', () => {
+    test('can be ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
+        expect(${naming.variableName}).toBeDefined()
+    })
+})
+            `.trim()
         );
     }
 

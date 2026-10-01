@@ -31,31 +31,10 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
 
     const isOrchestrator =
         queryType === 'Orchestrator (no infrastructure implementation)';
-
-    if (scaffoldUnitTests) {
-        queriesFolder
-            .subitem([isOrchestrator ? 'orchestration' : 'execution'])
-            .createFile(
-                `${naming.fileName}-query.spec.ts`,
-                `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
-import { type ${naming.ClassName}Query } from './${naming.fileName}-query'
-import { wire${naming.ClassName}Query } from '../../../wiring/queries/wire-${naming.fileName}-query'
-
-let ${naming.variableName}Query: ${naming.ClassName}Query
-
-beforeEach(() => {
-    ${naming.variableName}Query = wire${naming.ClassName}Query()
-})
-
-describe('${naming.withSpaces} query', () => {
-    test('can be wired', () => {
-        expect(${naming.variableName}Query).toBeDefined()
-    })
-})
-                `.trim()
-            );
-    }
+    const withWiring =
+        ConfigFile.Instance.data.domainFirstPackages.includes(
+            '@domain-first/wire'
+        );
 
     if (!isOrchestrator) {
         const implementationType = await input({
@@ -147,6 +126,38 @@ export abstract class ${naming.ClassName}Query {
 export abstract class ${naming.ClassName}Query {
 
 }`.trim()
+            );
+        }
+
+        if (scaffoldUnitTests) {
+            const implementationNaming = new UnknownFormatNaming(
+                implementationType
+            );
+            queriesFolder.subitem(['execution']).createFile(
+                `${naming.fileName}-query.spec.ts`,
+                `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    withWiring
+        ? `import { type ${naming.ClassName}Query } from './${naming.fileName}-query'
+import { wire${naming.ClassName}Query } from '../../../wiring/queries/wire-${naming.fileName}-query'`
+        : `import { ${implementationNaming.ClassName}${naming.ClassName}Query } from '../../../infrastructure/queries/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}-query'
+
+type ${naming.ClassName}Query = ${implementationNaming.ClassName}${naming.ClassName}Query`
+}
+
+let ${naming.variableName}Query: ${naming.ClassName}Query
+
+beforeEach(() => {
+    ${naming.variableName}Query = ${withWiring ? `wire${naming.ClassName}Query()` : `new ${implementationNaming.ClassName}${naming.ClassName}Query()`}
+})
+
+describe('${naming.withSpaces} query', () => {
+    test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
+        expect(${naming.variableName}Query).toBeDefined()
+    })
+})
+                `.trim()
             );
         }
 
@@ -243,6 +254,32 @@ import { ${naming.ClassName}Query } from '../../application/queries/orchestratio
 
 export const wire${naming.ClassName}Query = wireClass(${naming.ClassName}Query, [])
 `.trim()
+        );
+    }
+    if (scaffoldUnitTests) {
+        queriesFolder.subitem(['orchestration']).createFile(
+            `${naming.fileName}-query.spec.ts`,
+            `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    withWiring
+        ? `import { type ${naming.ClassName}Query } from './${naming.fileName}-query'
+import { wire${naming.ClassName}Query } from '../../../wiring/queries/wire-${naming.fileName}-query'`
+        : `import { ${naming.ClassName}Query } from './${naming.fileName}-query'`
+}
+
+let ${naming.variableName}Query: ${naming.ClassName}Query
+
+beforeEach(() => {
+${naming.variableName}Query = ${withWiring ? `wire${naming.ClassName}Query()` : `new ${naming.ClassName}Query()`}
+})
+
+describe('${naming.withSpaces} query', () => {
+test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
+    expect(${naming.variableName}Query).toBeDefined()
+})
+})
+        `.trim()
         );
     }
 };

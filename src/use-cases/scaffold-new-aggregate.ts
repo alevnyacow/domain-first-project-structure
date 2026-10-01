@@ -91,32 +91,6 @@ describe('${aggregateNaming.withSpaces}', () => {
         );
 
         /**
-         * Tests (if needed)
-         */
-        if (scaffoldUnitTests) {
-            aggregatesFolder.createFile(
-                `${aggregateNaming.fileName}-repository.spec.ts`,
-                `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
-import { wire${aggregateNaming.ClassName}Repository } from '../../../wiring/repositories/wire-${aggregateNaming.fileName}-repository'
-import type { ${aggregateNaming.ClassName}Repository } from './${aggregateNaming.fileName}-repository'
-
-let ${aggregateNaming.variableName}Repository: ${aggregateNaming.ClassName}Repository
-
-beforeEach(() => {
-    ${aggregateNaming.variableName}Repository = wire${aggregateNaming.ClassName}Repository()
-})
-
-describe('${aggregateNaming.withSpaces} repository', () => {
-    test('can be wired', () => {
-        expect(${aggregateNaming.variableName}Repository).toBeDefined()
-    })
-})
-                `.trim()
-            );
-        }
-
-        /**
          * Infrastructure prompts
          */
         const infrastructureImplementationType = await input({
@@ -167,6 +141,38 @@ export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implement
 
                         `.trim()
                 );
+        }
+
+        if (scaffoldUnitTests) {
+            const implementationNaming = new UnknownFormatNaming(
+                infrastructureImplementationType
+            );
+            aggregatesFolder.createFile(
+                `${aggregateNaming.fileName}-repository.spec.ts`,
+                `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire')
+        ? `import { wire${aggregateNaming.ClassName}Repository } from '../../../wiring/repositories/wire-${aggregateNaming.fileName}-repository'
+import type { ${aggregateNaming.ClassName}Repository } from './${aggregateNaming.fileName}-repository'`
+        : `import { ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository } from '../../../infrastructure/repositories/${implementationNaming.fileName}/${implementationNaming.fileName}-${aggregateNaming.fileName}-repository'
+
+type ${aggregateNaming.ClassName}Repository = ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository`
+}
+
+let ${aggregateNaming.variableName}Repository: ${aggregateNaming.ClassName}Repository
+
+beforeEach(() => {
+    ${aggregateNaming.variableName}Repository = ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? `wire${aggregateNaming.ClassName}Repository()` : `new ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository()`}
+})
+
+describe('${aggregateNaming.withSpaces} repository', () => {
+    test('can be ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
+        expect(${aggregateNaming.variableName}Repository).toBeDefined()
+    })
+})
+                `.trim()
+            );
         }
 
         if (

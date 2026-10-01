@@ -31,30 +31,10 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     const isOrchestrator =
         commandType === 'Orchestrator (no infrastructure implementation)';
 
-    if (scaffoldUnitTests) {
-        commandsFolder
-            .subitem([isOrchestrator ? 'orchestration' : 'execution'])
-            .createFile(
-                `${naming.fileName}-command.spec.ts`,
-                `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
-import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
-import { wire${naming.ClassName}Command } from '../../../wiring/commands/wire-${naming.fileName}-command'
-
-let ${naming.variableName}Command: ${naming.ClassName}Command
-
-beforeEach(() => {
-    ${naming.variableName}Command = wire${naming.ClassName}Command()
-})
-
-describe('${naming.withSpaces} command', () => {
-    test('can be wired', () => {
-        expect(${naming.variableName}Command).toBeDefined()
-    })
-})
-                `.trim()
-            );
-    }
+    const withWiring =
+        ConfigFile.Instance.data.domainFirstPackages.includes(
+            '@domain-first/wire'
+        );
 
     if (!isOrchestrator) {
         const implementationType = await input({
@@ -146,6 +126,38 @@ export abstract class ${naming.ClassName}Command {
 export abstract class ${naming.ClassName}Command {
 
 }`.trim()
+            );
+        }
+
+        if (scaffoldUnitTests) {
+            const implementationNaming = new UnknownFormatNaming(
+                implementationType
+            );
+            commandsFolder.subitem(['execution']).createFile(
+                `${naming.fileName}-command.spec.ts`,
+                `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    withWiring
+        ? `import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
+import { wire${naming.ClassName}Command } from '../../../wiring/commands/wire-${naming.fileName}-command'`
+        : `import { ${implementationNaming.ClassName}${naming.ClassName}Command } from '../../../infrastructure/commands/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}-command'
+
+type ${naming.ClassName}Command = ${implementationNaming.ClassName}${naming.ClassName}Command`
+}
+
+let ${naming.variableName}Command: ${naming.ClassName}Command
+
+beforeEach(() => {
+    ${naming.variableName}Command = ${withWiring ? `wire${naming.ClassName}Command()` : `new ${implementationNaming.ClassName}${naming.ClassName}Command()`}
+})
+
+describe('${naming.withSpaces} command', () => {
+    test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
+        expect(${naming.variableName}Command).toBeDefined()
+    })
+})
+                `.trim()
             );
         }
 
@@ -242,6 +254,32 @@ import { ${naming.ClassName}Command } from '../../application/commands/orchestra
 
 export const wire${naming.ClassName}Command = wireClass(${naming.ClassName}Command, [])
 `.trim()
+        );
+    }
+    if (scaffoldUnitTests) {
+        commandsFolder.subitem(['orchestration']).createFile(
+            `${naming.fileName}-command.spec.ts`,
+            `
+import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+${
+    withWiring
+        ? `import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
+import { wire${naming.ClassName}Command } from '../../../wiring/commands/wire-${naming.fileName}-command'`
+        : `import { ${naming.ClassName}Command } from './${naming.fileName}-command'`
+}
+
+let ${naming.variableName}Command: ${naming.ClassName}Command
+
+beforeEach(() => {
+${naming.variableName}Command = ${withWiring ? `wire${naming.ClassName}Command()` : `new ${naming.ClassName}Command()`}
+})
+
+describe('${naming.withSpaces} command', () => {
+test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
+    expect(${naming.variableName}Command).toBeDefined()
+})
+})
+        `.trim()
         );
     }
 };
