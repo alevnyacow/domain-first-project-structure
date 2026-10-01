@@ -1,3 +1,10 @@
+## [2.7.3](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.2...v2.7.3) (2026-10-01)
+
+
+### Bug Fixes
+
+* unit-tests without wiring ([8923c78](https://github.com/alevnyacow/domain-first-project-structure/commit/8923c78531fdeeaaf7c603c12676f25c8ba801c2))
+
 ## [2.7.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.1...v2.7.2) (2026-10-01)
 
 
