@@ -1,3 +1,10 @@
+## [2.7.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.0...v2.7.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* new README ([f01c061](https://github.com/alevnyacow/domain-first-project-structure/commit/f01c06147ee4d8b065c65fe0ee76d6f2f41c6326))
+
 # [2.7.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.6.0...v2.7.0) (2026-10-01)
 
 
