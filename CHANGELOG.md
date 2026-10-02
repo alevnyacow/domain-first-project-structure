@@ -1,3 +1,10 @@
+## [2.7.4](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.3...v2.7.4) (2026-10-02)
+
+
+### Bug Fixes
+
+* default persistence layer implementation for repos ([f074a7a](https://github.com/alevnyacow/domain-first-project-structure/commit/f074a7a5190dd95f495df88455e004286d5c3c10))
+
 ## [2.7.3](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.2...v2.7.3) (2026-10-01)
 
 
