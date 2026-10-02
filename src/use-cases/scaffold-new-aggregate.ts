@@ -95,7 +95,8 @@ describe('${aggregateNaming.withSpaces}', () => {
          */
         const infrastructureImplementationType = await input({
             message: 'Repository infrastructure implementation type:',
-            default: 'prisma'
+            default:
+                ConfigFile.Instance.data.defaultPersistenceLayerImplementation
         });
 
         let addTestImplementation: boolean = false;

@@ -209,7 +209,7 @@ The project configuration is stored in `domain-first.project-structure.config.js
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `rootFolder`                            | Base path for generated source, relative to the project root.                                                                                                 |
 | `domainFirstPackages`                   | Explicit list of integrations used by templates. An empty array selects basic class templates where supported.                                                |
-| `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries. Repository and port prompts have their own defaults: `prisma` and `api`.                   |
+| `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                            |
 | `useReact`                              | Shows or hides the React module menu.                                                                                                                         |
 | `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test prompts. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`. |
 
