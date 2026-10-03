@@ -26,6 +26,18 @@ export const initializeUseCase = async () => {
 
     const useReact = await confirm({ message: 'Use React' });
 
+    let storybookFramework: string | undefined;
+
+    const withStorybook = useReact
+        ? await confirm({ message: 'Use Storybook' })
+        : false;
+    if (withStorybook) {
+        storybookFramework = await input({
+            message: 'Storybook framework package:',
+            default: '@storybook/react-vite'
+        });
+    }
+
     let testingLibrary: string | undefined;
 
     const withTests = await confirm({ message: 'Scaffold unit tests' });
@@ -41,6 +53,7 @@ export const initializeUseCase = async () => {
         domainFirstPackages,
         defaultPersistenceLayerImplementation,
         useReact,
+        storybookFramework,
         testingLibrary
     });
 

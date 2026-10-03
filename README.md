@@ -117,7 +117,8 @@ src/
     ├── rest/
     └── react/
         ├── pages/
-        └── widgets/
+        ├── widgets/
+        └── ui-kit/
 ```
 
 This is an example of the accumulated output; creating a context alone creates its directory and, when enabled, its error namespace.
@@ -184,6 +185,7 @@ Enable `useReact` and choose **Scaffold React module** from the main menu. Modul
 | New widget → monolithic        | `widgets/<name>/index.tsx` with props and rendering in one file.                                           |
 | New widget → with separated ui | Widget entry point, `types.ts`, `ui/index.tsx`, and `hooks/use-ui-model.ts`.                               |
 | New widget → headless          | Widget entry point, types, and a UI-model hook; the rendering component is supplied through the `UI` prop. |
+| New UI-kit component           | `ui-kit/<name>/index.tsx` with a typed props object and a component; with `storybookFramework`, also `<name>.stories.tsx`. |
 
 ## Configuration
 
@@ -201,6 +203,7 @@ The project configuration is stored in `domain-first.project-structure.config.js
     ],
     "defaultPersistenceLayerImplementation": "prisma",
     "useReact": true,
+    "storybookFramework": "@storybook/react-vite",
     "testingLibrary": "vitest"
 }
 ```
@@ -211,6 +214,7 @@ The project configuration is stored in `domain-first.project-structure.config.js
 | `domainFirstPackages`                   | Explicit list of integrations used by templates. An empty array selects basic class templates where supported.                                                |
 | `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                            |
 | `useReact`                              | Shows or hides the React module menu.                                                                                                                         |
+| `storybookFramework`                    | Storybook framework package imported by generated stories (`Meta`, `StoryObj`), e.g. `@storybook/react-vite`. Omit this field to skip stories for UI-kit components. Asked during setup only when React is enabled. |
 | `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test prompts. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`. |
 
 ### Package integrations

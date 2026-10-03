@@ -18,6 +18,7 @@ const configSchema = z.object({
     ),
     defaultPersistenceLayerImplementation: z.string(),
     useReact: z.boolean(),
+    storybookFramework: z.string().optional(),
     testingLibrary: z.string().optional()
 });
 
