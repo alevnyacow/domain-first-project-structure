@@ -12,7 +12,11 @@ export class UnknownFormatNaming {
                 source.substring(0, 1).toUpperCase() + source.substring(1);
         }
 
-        const words = source.split('-');
+        /**
+         * Empty segments come from empty names (e.g. a skipped test
+         * implementation) or repeated hyphens and have no first letter.
+         */
+        const words = source.split('-').filter((word) => !!word);
 
         this.camelCase = words
             .map((word, index) =>
