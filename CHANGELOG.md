@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.5...v2.8.0) (2026-10-03)
+
+
+### Features
+
+* UI-Kit module scaffolding ([834836a](https://github.com/alevnyacow/domain-first-project-structure/commit/834836a1a0d5dc0f1dac14412d5f48df4d0aeb14))
+
 ## [2.7.5](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.4...v2.7.5) (2026-10-03)
 
 
