@@ -1,3 +1,10 @@
+## [2.7.5](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.4...v2.7.5) (2026-10-03)
+
+
+### Bug Fixes
+
+* naming ([50b378d](https://github.com/alevnyacow/domain-first-project-structure/commit/50b378d8a5891edc3c08b608096a5377cdb69b3b))
+
 ## [2.7.4](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.3...v2.7.4) (2026-10-02)
 
 
