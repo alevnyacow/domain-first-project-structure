@@ -1,3 +1,10 @@
+## [2.10.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.1...v2.10.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* added trims ([c9120dd](https://github.com/alevnyacow/domain-first-project-structure/commit/c9120dd0b9b92e0830d25f521885f2e5e02d58c8))
+
 ## [2.10.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.0...v2.10.1) (2026-10-04)
 
 
