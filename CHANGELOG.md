@@ -1,3 +1,10 @@
+## [2.10.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.0...v2.10.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* file override check ([747b551](https://github.com/alevnyacow/domain-first-project-structure/commit/747b55171f481a1cffd4aa1e47027515bf4ed0ce))
+
 # [2.10.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.9.1...v2.10.0) (2026-10-04)
 
 
