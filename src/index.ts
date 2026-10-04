@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { select } from '@inquirer/prompts';
+import path from 'node:path';
+import { confirm, select } from '@inquirer/prompts';
 import { ConfigFile } from './config-file';
-import { Folder } from './file-system';
+import { Folder, filesToOverwrite, writePendingChanges } from './file-system';
 import { ProjectRoot } from './project-root';
 import {
     initializeUseCase,
@@ -268,4 +269,30 @@ const main = async () => {
     }
 };
 
-main();
+const run = async () => {
+    await main();
+
+    const overwrittenFiles = filesToOverwrite();
+
+    if (overwrittenFiles.length) {
+        const root = new ProjectRoot().path;
+        console.log('These files already exist and will be overwritten:');
+        for (const filePath of overwrittenFiles) {
+            console.log(`  ${path.relative(root, filePath)}`);
+        }
+
+        const overwrite = await confirm({
+            message: 'Overwrite them?',
+            default: false
+        });
+
+        if (!overwrite) {
+            console.log('Cancelled: nothing was written.');
+            return;
+        }
+    }
+
+    writePendingChanges();
+};
+
+run();

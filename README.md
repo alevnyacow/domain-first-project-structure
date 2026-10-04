@@ -263,7 +263,7 @@ src/bounded-contexts/sales/
 
 Use lowercase kebab-case for entered names, such as `place-order` and `payment-gateway`. Names are used in paths, and class and variable names are derived from their hyphen-separated words: `place-order` becomes `PlaceOrderUseCase` for a use case.
 
-Generation writes files directly and can overwrite matching filenames without confirmation. Use a new name for a new component, and review the generated changes before continuing implementation.
+Nothing is written until a run finishes. If the run would replace existing files, the CLI lists them and asks `Overwrite them?` (default: No). Answering No, or interrupting the CLI at any prompt, leaves the project unchanged. Lines added to existing barrels, error files, and wiring indexes are not overwrites and are never duplicated. Use a new name for a new component, and review the generated changes before continuing implementation.
 
 ## License
 

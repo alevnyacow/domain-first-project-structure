@@ -1,6 +1,42 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/**
+ * Generators change files here first and the disk only in
+ * `writePendingChanges`, so a whole run can be confirmed or cancelled.
+ * `replacesFile` marks a full rewrite (not lines added to a file).
+ */
+const pendingFiles = new Map<
+    string,
+    { content: string; replacesFile: boolean }
+>();
+const pendingFolders = new Set<string>();
+
+/**
+ * Existing files a full rewrite would replace, whatever their content.
+ */
+export const filesToOverwrite = () =>
+    [...pendingFiles]
+        .filter(
+            ([filePath, { replacesFile }]) =>
+                replacesFile && fs.existsSync(filePath)
+        )
+        .map(([filePath]) => filePath);
+
+export const writePendingChanges = () => {
+    for (const folderPath of pendingFolders) {
+        fs.mkdirSync(folderPath, { recursive: true });
+    }
+
+    for (const [filePath, { content }] of pendingFiles) {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(filePath, content, 'utf8');
+    }
+
+    pendingFolders.clear();
+    pendingFiles.clear();
+};
+
 class FileSystemItem {
     constructor(public readonly path: string) {}
 
@@ -17,7 +53,7 @@ class FileSystemItem {
 
 export class Folder extends FileSystemItem {
     createIfNotExisted = () => {
-        fs.mkdirSync(this.path, { recursive: true });
+        pendingFolders.add(this.path);
     };
 
     get content() {
@@ -55,7 +91,15 @@ export class Folder extends FileSystemItem {
 }
 
 export class File extends FileSystemItem {
+    get exists() {
+        return pendingFiles.has(this.path) || fs.existsSync(this.path);
+    }
+
     get data() {
+        const pendingFile = pendingFiles.get(this.path);
+        if (pendingFile) {
+            return pendingFile.content;
+        }
         if (!this.exists) {
             throw new Error('File does not exist');
         }
@@ -63,21 +107,18 @@ export class File extends FileSystemItem {
     }
 
     set data(content: string) {
-        fs.writeFileSync(this.path, content);
+        pendingFiles.set(this.path, { content, replacesFile: true });
     }
 
     addLine = (newLine: string, separator = '\n') => {
-        let content = '';
+        const content = this.exists ? this.data : '';
 
-        try {
-            content = fs.readFileSync(this.path, 'utf8');
-        } catch {}
-
-        fs.writeFileSync(
-            this.path,
-            [content.trim(), newLine.trim()].filter((x) => !!x).join(separator),
-            'utf8'
-        );
+        pendingFiles.set(this.path, {
+            content: [content.trim(), newLine.trim()]
+                .filter((x) => !!x)
+                .join(separator),
+            replacesFile: pendingFiles.get(this.path)?.replacesFile ?? false
+        });
     };
 
     /**
