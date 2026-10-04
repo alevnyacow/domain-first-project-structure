@@ -79,4 +79,19 @@ export class File extends FileSystemItem {
             'utf8'
         );
     };
+
+    /**
+     * Re-running a generator for the same name must not duplicate the line.
+     */
+    addLineIfMissing = (newLine: string, separator = '\n') => {
+        const alreadyAdded =
+            this.exists &&
+            this.data
+                .split('\n')
+                .some((line) => line.trim() === newLine.trim());
+
+        if (!alreadyAdded) {
+            this.addLine(newLine, separator);
+        }
+    };
 }

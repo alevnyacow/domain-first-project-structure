@@ -28,7 +28,7 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
         const naming = new UnknownFormatNaming(errorName);
         currentErrorFolder
             .file('index.ts')
-            .addLine(
+            .addLineIfMissing(
                 `export const ${naming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Error = ${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${naming.fileName}')`,
                 '\n\n'
             );
@@ -41,18 +41,23 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
         });
         const { ClassName, fileName } = new UnknownFormatNaming(namespaceName);
 
-        currentErrorFolder.createFile(
-            `${fileName}.ts`,
-            `
+        /**
+         * An existing namespace file holds its errors: never overwrite it.
+         */
+        if (!currentErrorFolder.file(`${fileName}.ts`).exists) {
+            currentErrorFolder.createFile(
+                `${fileName}.ts`,
+                `
 import { errorNamespace } from '@domain-first/errors'
 
 export const ${ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors = errorNamespace('${boundedContextFolder.name}').subnamespace('${fileName}')
-`
-        );
+`.trim()
+            );
+        }
 
         currentErrorFolder
             .file('index.ts')
-            .addLine(`export * from './${fileName}'`, '\n\n');
+            .addLineIfMissing(`export * from './${fileName}'`, '\n\n');
 
         return;
     }
@@ -71,7 +76,7 @@ export const ${ClassName}${new UnknownFormatNaming(boundedContextFolder.name).Cl
 
     currentErrorFolder
         .file(`${namespace}.ts`)
-        .addLine(
+        .addLineIfMissing(
             `export const ${ClassName}${namespaceNaming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Error = ${namespaceNaming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${fileName}')`,
             '\n\n'
         );

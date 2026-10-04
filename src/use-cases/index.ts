@@ -4,6 +4,7 @@ export * from './scaffold-new-application-port';
 export * from './scaffold-new-application-service';
 export * from './scaffold-new-bounded-context';
 export * from './scaffold-new-command';
+export * from './scaffold-new-domain-object';
 export * from './scaffold-new-domain-service';
 export * from './scaffold-new-error';
 export * from './scaffold-new-handlers-rest-endpoint';

@@ -84,7 +84,7 @@ A bounded context groups a business area and its implementation. Within it, each
 | `presentation/`   | REST endpoints and presentation services.                                                             |
 | `wiring/`         | Factories that construct components and select implementations, when `@domain-first/wire` is enabled. |
 
-The **Shared Layer** menu provides cross-context errors, application ports, and application, infrastructure, and presentation services under `<rootFolder>/shared`.
+The **Shared Layer** menu provides cross-context errors, entities and value objects, application ports, and application, infrastructure, and presentation services under `<rootFolder>/shared`.
 
 A project using handler and wiring integrations can grow into this structure:
 
@@ -131,6 +131,7 @@ Choose a bounded context, then a layer:
 | Layer / menu option                       | Generated output                                                                                                                                                   |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Domain → New Aggregate                    | Aggregate root and barrel export; optional repository contract, primary and test implementations, tests, and repository wiring.                                    |
+| Domain → New Entity / New Value Object    | Entity or value object class with tests, in the `entities/` or `value-objects/` folder of a chosen aggregate (exported from its barrel) or of the context's `domain/`. Also in the Shared Layer, under `shared/domain/`. |
 | Domain → Errors                           | Errors in the context namespace, nested namespaces, and exports. Uses `@domain-first/errors`.                                                                      |
 | Domain → New Service                      | Domain service class, with optional tests and wiring.                                                                                                              |
 | Application → New Use Case                | Use case class; handler schemas and `handle` when enabled; optional tests and wiring.                                                                              |

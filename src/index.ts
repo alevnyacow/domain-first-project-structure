@@ -11,6 +11,7 @@ import {
     scaffoldNewApplicationService,
     scaffoldNewBoundedContextUseCase,
     scaffoldNewCommand,
+    scaffoldNewDomainObject,
     scaffoldNewDomainService,
     scaffoldNewErrorUseCase,
     scaffoldNewHandlersRestEndpoint,
@@ -136,13 +137,33 @@ const main = async () => {
                 const operation = await select({
                     message: 'Domain layer operation:',
                     choices: specificContext
-                        ? ['New Aggregate', 'Errors', 'New Service']
-                        : ['Errors']
+                        ? [
+                              'New Aggregate',
+                              'New Entity',
+                              'New Value Object',
+                              'Errors',
+                              'New Service'
+                          ]
+                        : ['New Entity', 'New Value Object', 'Errors']
                 });
 
                 switch (operation) {
                     case 'New Aggregate': {
                         await scaffoldNewAggregateUseCase(boundedContextFolder);
+                        return;
+                    }
+                    case 'New Entity': {
+                        await scaffoldNewDomainObject(
+                            boundedContextFolder,
+                            'entity'
+                        );
+                        return;
+                    }
+                    case 'New Value Object': {
+                        await scaffoldNewDomainObject(
+                            boundedContextFolder,
+                            'value-object'
+                        );
                         return;
                     }
                     case 'Errors': {
