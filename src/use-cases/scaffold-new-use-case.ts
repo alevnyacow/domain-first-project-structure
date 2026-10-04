@@ -1,4 +1,4 @@
-import { confirm, input } from '@inquirer/prompts';
+import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
@@ -12,11 +12,7 @@ export const scaffoldNewUseCase = async (boundedContextFolder: Folder) => {
     const useCaseName = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(useCaseName);
 
-    let scaffoldUnitTests: boolean | undefined;
-
-    if (ConfigFile.Instance.data.testingLibrary) {
-        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
-    }
+    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
 
     const withWiring =
         ConfigFile.Instance.data.domainFirstPackages.includes(

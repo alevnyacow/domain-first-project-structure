@@ -52,7 +52,7 @@ On the first run, the CLI asks for:
 | `@domain-first` packages           | The integrations to use in generated templates.                                                             |
 | Default persistence implementation | A label such as `prisma`, used as the suggested implementation for execution commands and queries.          |
 | React                              | Whether to show the React module menu.                                                                      |
-| Unit tests                         | Whether to offer test generation, and which module to import test helpers from. Suggested module: `vitest`. |
+| Unit tests                         | Whether to generate tests, and which module to import test helpers from. Suggested module: `vitest`.        |
 
 Setup writes `domain-first.project-structure.config.json` beside your `package.json` and creates shared helpers for the selected `wire` and `errors` integrations. That first run then exits.
 
@@ -161,7 +161,7 @@ With `@domain-first/wire`, generators create `wireClass` factories. Repositories
 
 Implementation names such as `prisma`, `api`, `in-memory`, and `mock` determine names and locations for generated classes. Add the database queries, API calls, or in-memory behavior yourself. Fill in the dependency lists in wiring factories as you implement constructors.
 
-When `testingLibrary` is configured, supported generators ask whether to add `.spec.ts` files. These start with construction or wiring checks; extend them with tests for your business behavior. Repository, command, query, and port test templates reference wiring factories, so use the wiring integration or adapt those tests to your own construction setup.
+When `testingLibrary` is configured, supported generators always add `.spec.ts` files. These start with construction or wiring checks; extend them with tests for your business behavior. Repository, command, query, and port test templates reference wiring factories, so use the wiring integration or adapt those tests to your own construction setup.
 
 ### REST endpoints
 
@@ -182,10 +182,10 @@ Enable `useReact` and choose **Scaffold React module** from the main menu. Modul
 | Generator                      | Output                                                                                                     |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | New page                       | `pages/<name>-page.tsx` with a typed props object and a component.                                         |
-| New widget → monolithic        | `widgets/<name>/index.tsx` with props and rendering in one file.                                           |
-| New widget → with separated ui | Widget entry point, `types.ts`, `ui/index.tsx`, and `hooks/use-ui-model.ts`.                               |
-| New widget → headless          | Widget entry point, types, and a UI-model hook; the rendering component is supplied through the `UI` prop. |
-| New UI-kit component           | `ui-kit/<name>/index.tsx` with a typed props object and a component; with `storybookFramework`, also `<name>.stories.tsx`. |
+| New widget → monolithic        | `widgets/<name>/<name>-widget.tsx` with props and rendering in one file, re-exported from `index.ts`.      |
+| New widget → with separated ui | `<name>-widget.tsx`, `types.ts`, `ui/<name>-widget-ui.tsx`, `hooks/use-<name>-ui-model.ts`, and `index.ts`. |
+| New widget → headless          | `<name>-widget.tsx`, types, a UI-model hook, and `index.ts`; the rendering component is supplied through the `UI` prop. |
+| New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`. |
 
 ## Configuration
 
@@ -215,7 +215,7 @@ The project configuration is stored in `domain-first.project-structure.config.js
 | `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                            |
 | `useReact`                              | Shows or hides the React module menu.                                                                                                                         |
 | `storybookFramework`                    | Storybook framework package imported by generated stories (`Meta`, `StoryObj`), e.g. `@storybook/react-vite`. Omit this field to skip stories for UI-kit components. Asked during setup only when React is enabled. |
-| `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test prompts. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`. |
+| `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test generation. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`. |
 
 ### Package integrations
 

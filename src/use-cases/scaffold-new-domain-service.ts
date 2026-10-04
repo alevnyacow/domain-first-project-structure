@@ -1,4 +1,4 @@
-import { confirm, input } from '@inquirer/prompts';
+import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
@@ -11,11 +11,7 @@ export const scaffoldNewDomainService = async (
     });
     const naming = new UnknownFormatNaming(portName);
 
-    let scaffoldUnitTests: boolean | undefined;
-
-    if (ConfigFile.Instance.data.testingLibrary) {
-        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
-    }
+    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
 
     const withWiring =
         ConfigFile.Instance.data.domainFirstPackages.includes(

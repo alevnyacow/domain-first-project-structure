@@ -13,11 +13,16 @@ export const scaffoldReactWidget = async (presentationReactFolder: Folder) => {
     const { ClassName, fileName } = new UnknownFormatNaming(widgetName);
 
     const folder = presentationReactFolder.subitem(['widgets', fileName]);
+    const widgetFileName = `${fileName}-widget`;
+    const uiFileName = `${fileName}-widget-ui`;
+    const uiModelFileName = `use-${fileName}-ui-model`;
+
+    folder.createFile('index.ts', `export * from './${widgetFileName}'`);
 
     switch (widgetType) {
         case 'monolithic': {
             folder.createFile(
-                'index.tsx',
+                `${widgetFileName}.tsx`,
                 `
 import { type FC } from 'react'
 
@@ -41,15 +46,15 @@ export type ${ClassName}WidgetUIProps = { }
             );
 
             folder.createFile(
-                'index.tsx',
+                `${widgetFileName}.tsx`,
                 `
 import { type FC } from 'react'
 import type { ${ClassName}WidgetProps } from './types'
-import { ${ClassName}WidgetUI } from './ui'
-import { useUIModel } from './hooks/use-ui-model'
+import { ${ClassName}WidgetUI } from './ui/${uiFileName}'
+import { use${ClassName}UIModel } from './hooks/${uiModelFileName}'
 
 export const ${ClassName}Widget: FC<${ClassName}WidgetProps> = (props) => {
-    const uiModel = useUIModel(props)
+    const uiModel = use${ClassName}UIModel(props)
     return <${ClassName}WidgetUI {...uiModel} />
 }
 
@@ -58,7 +63,7 @@ export type { ${ClassName}WidgetProps }
             );
 
             folder.subitem(['ui']).createFile(
-                'index.tsx',
+                `${uiFileName}.tsx`,
                 `
 import { FC } from 'react'
 import type { ${ClassName}WidgetUIProps } from '../types'
@@ -69,11 +74,11 @@ export const ${ClassName}WidgetUI: FC<${ClassName}WidgetUIProps> = (props) => {
             `.trim()
             );
             folder.subitem(['hooks']).createFile(
-                'use-ui-model.ts',
+                `${uiModelFileName}.ts`,
                 `
 import type { ${ClassName}WidgetProps, ${ClassName}WidgetUIProps } from '../types'
 
-export const useUIModel = (widgetProps: ${ClassName}WidgetProps): ${ClassName}WidgetUIProps => {
+export const use${ClassName}UIModel = (widgetProps: ${ClassName}WidgetProps): ${ClassName}WidgetUIProps => {
     return {}
 }
             `.trim()
@@ -96,14 +101,14 @@ export type ${ClassName}WidgetProps = {
             );
 
             folder.createFile(
-                'index.tsx',
+                `${widgetFileName}.tsx`,
                 `
 import { type FC } from 'react'
 import type { ${ClassName}WidgetProps } from './types'
-import { useUIModel } from './hooks/use-ui-model'
+import { use${ClassName}UIModel } from './hooks/${uiModelFileName}'
 
 export const ${ClassName}Widget: FC<${ClassName}WidgetProps> = (props) => {
-    const uiModel = useUIModel(props)
+    const uiModel = use${ClassName}UIModel(props)
     return <props.UI {...uiModel} />
 }
 
@@ -112,11 +117,11 @@ export type { ${ClassName}WidgetProps }
             );
 
             folder.subitem(['hooks']).createFile(
-                'use-ui-model.ts',
+                `${uiModelFileName}.ts`,
                 `
 import type { ${ClassName}WidgetProps, ${ClassName}WidgetUIProps } from '../types'
 
-export const useUIModel = (widgetProps: Omit<${ClassName}WidgetProps, 'UI'>): ${ClassName}WidgetUIProps => {
+export const use${ClassName}UIModel = (widgetProps: Omit<${ClassName}WidgetProps, 'UI'>): ${ClassName}WidgetUIProps => {
     return {}
 }
             `.trim()

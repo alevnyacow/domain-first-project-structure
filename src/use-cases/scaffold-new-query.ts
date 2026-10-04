@@ -16,10 +16,7 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
 
     const queryName = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(queryName);
-    let scaffoldUnitTests: boolean | undefined;
-    if (ConfigFile.Instance.data.testingLibrary) {
-        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
-    }
+    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
 
     const queryType = await select({
         choices: [

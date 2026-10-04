@@ -12,13 +12,7 @@ export const scaffoldNewAggregateUseCase = async (
 
     const aggregateNaming = new UnknownFormatNaming(aggregateName);
 
-    let scaffoldUnitTests: boolean | undefined;
-
-    if (ConfigFile.Instance.data.testingLibrary) {
-        scaffoldUnitTests = await confirm({
-            message: 'Scaffold unit-tests'
-        });
-    }
+    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
 
     const withRepository = await confirm({
         message: 'With Repository'

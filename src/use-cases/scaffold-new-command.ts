@@ -15,10 +15,7 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     ]);
 
     const commandName = await input({ message: 'Name: ' });
-    let scaffoldUnitTests: boolean | undefined;
-    if (ConfigFile.Instance.data.testingLibrary) {
-        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
-    }
+    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
     const naming = new UnknownFormatNaming(commandName);
     const commandType = await select({
         choices: [

@@ -14,8 +14,10 @@ export const scaffoldReactUIKitComponent = async (
         fileName
     ]);
 
+    componentFolder.createFile('index.ts', `export * from './${fileName}'`);
+
     componentFolder.createFile(
-        'index.tsx',
+        `${fileName}.tsx`,
         `
 import { type FC } from 'react'
 
@@ -34,7 +36,7 @@ export const ${ClassName}: FC<${ClassName}Props> = (props) => {
             `${fileName}.stories.tsx`,
             `
 import type { Meta, StoryObj } from '${storybookFramework}'
-import { ${ClassName} } from '.'
+import { ${ClassName} } from './${fileName}'
 
 const meta = {
     title: 'UI-kit/${ClassName}',

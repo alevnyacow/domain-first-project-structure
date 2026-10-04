@@ -9,11 +9,7 @@ export const scaffoldNewApplicationPort = async (
     const name = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
-    let scaffoldUnitTests: boolean | undefined;
-
-    if (ConfigFile.Instance.data.testingLibrary) {
-        scaffoldUnitTests = await confirm({ message: 'Scaffold unit-tests' });
-    }
+    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
 
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
