@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.8.0...v2.8.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* always generate unit tests, no barrel-files with logic ([2090de9](https://github.com/alevnyacow/domain-first-project-structure/commit/2090de9607139b8e98e3218a8e5f311bd60d909d))
+
 # [2.8.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.7.5...v2.8.0) (2026-10-03)
 
 
