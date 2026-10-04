@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.9.1...v2.10.0) (2026-10-04)
+
+
+### Features
+
+* scaffolding entities and value objects ([270a826](https://github.com/alevnyacow/domain-first-project-structure/commit/270a826291467ad58752788eac6faeec5561861e))
+
 ## [2.9.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.9.0...v2.9.1) (2026-10-04)
 
 
