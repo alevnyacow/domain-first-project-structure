@@ -12,5 +12,6 @@ export * from './scaffold-new-presentation-service';
 export * from './scaffold-new-query';
 export * from './scaffold-new-use-case';
 export * from './scaffold-react-page';
+export * from './scaffold-react-shared-hook';
 export * from './scaffold-react-ui-kit-component';
 export * from './scaffold-react-widget';

@@ -118,7 +118,8 @@ src/
     └── react/
         ├── pages/
         ├── widgets/
-        └── ui-kit/
+        ├── ui-kit/
+        └── hooks/
 ```
 
 This is an example of the accumulated output; creating a context alone creates its directory and, when enabled, its error namespace.
@@ -186,6 +187,7 @@ Enable `useReact` and choose **Scaffold React module** from the main menu. Modul
 | New widget → with separated ui | `<name>-widget.tsx`, `types.ts`, `ui/<name>-widget-ui.tsx`, `hooks/use-<name>-ui-model.ts`, and `index.ts`. |
 | New widget → headless          | `<name>-widget.tsx`, types, a UI-model hook, and `index.ts`; the rendering component is supplied through the `UI` prop. |
 | New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`. |
+| New shared hook                | `hooks/use-<name>.ts` with an app-wide hook, such as `use-debounce`; a leading `use-` in the name is not repeated. |
 
 ## Configuration
 

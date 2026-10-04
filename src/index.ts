@@ -19,6 +19,7 @@ import {
     scaffoldNewQuery,
     scaffoldNewUseCase,
     scaffoldReactPage,
+    scaffoldReactSharedHook,
     scaffoldReactUIKitComponent,
     scaffoldReactWidget
 } from './use-cases';
@@ -74,7 +75,12 @@ const main = async () => {
             ]);
             const action = await select({
                 message: 'Module: ',
-                choices: ['New widget', 'New page', 'New UI-kit component']
+                choices: [
+                    'New widget',
+                    'New page',
+                    'New UI-kit component',
+                    'New shared hook'
+                ]
             });
             switch (action) {
                 case 'New widget': {
@@ -87,6 +93,10 @@ const main = async () => {
                 }
                 case 'New UI-kit component': {
                     await scaffoldReactUIKitComponent(reactFolder);
+                    return;
+                }
+                case 'New shared hook': {
+                    await scaffoldReactSharedHook(reactFolder);
                     return;
                 }
                 default: {
