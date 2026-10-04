@@ -1,3 +1,10 @@
+# [2.9.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.8.1...v2.9.0) (2026-10-04)
+
+
+### Features
+
+* scaffold shared react hook ([9344d1d](https://github.com/alevnyacow/domain-first-project-structure/commit/9344d1dd7ba4f29bf06bc832c7f044c40b8d202e))
+
 ## [2.8.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.8.0...v2.8.1) (2026-10-04)
 
 
