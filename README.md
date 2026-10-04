@@ -184,7 +184,7 @@ Enable `useReact` and choose **Scaffold React module** from the main menu. Modul
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | New page                       | `pages/<name>-page.tsx` with a typed props object and a component.                                         |
 | New widget → monolithic        | `widgets/<name>/<name>-widget.tsx` with props and rendering in one file, re-exported from `index.ts`.      |
-| New widget → with separated ui | `<name>-widget.tsx`, `types.ts`, `ui/<name>-widget-ui.tsx`, `hooks/use-<name>-ui-model.ts`, and `index.ts`. |
+| New widget → with separated ui | `<name>-widget.tsx`, `types.ts`, `ui/<name>-widget-ui.tsx`, `hooks/use-<name>-ui-model.ts`, and `index.ts`; with `storybookFramework`, also `ui/<name>-widget-ui.stories.tsx`. |
 | New widget → headless          | `<name>-widget.tsx`, types, a UI-model hook, and `index.ts`; the rendering component is supplied through the `UI` prop. |
 | New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`. |
 | New shared hook                | `hooks/use-<name>.ts` with an app-wide hook, such as `use-debounce`; a leading `use-` in the name is not repeated. |
@@ -216,7 +216,7 @@ The project configuration is stored in `domain-first.project-structure.config.js
 | `domainFirstPackages`                   | Explicit list of integrations used by templates. An empty array selects basic class templates where supported.                                                |
 | `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                            |
 | `useReact`                              | Shows or hides the React module menu.                                                                                                                         |
-| `storybookFramework`                    | Storybook framework package imported by generated stories (`Meta`, `StoryObj`), e.g. `@storybook/react-vite`. Omit this field to skip stories for UI-kit components. Asked during setup only when React is enabled. |
+| `storybookFramework`                    | Storybook framework package imported by generated stories (`Meta`, `StoryObj`), e.g. `@storybook/react-vite`. Omit this field to skip stories for UI-kit components and widget UI. Asked during setup only when React is enabled. |
 | `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test generation. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`. |
 
 ### Package integrations

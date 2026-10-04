@@ -1,4 +1,5 @@
 import { input, select } from '@inquirer/prompts';
+import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 
@@ -73,6 +74,32 @@ export const ${ClassName}WidgetUI: FC<${ClassName}WidgetUIProps> = (props) => {
 }
             `.trim()
             );
+
+            const { storybookFramework } = ConfigFile.Instance.data;
+
+            if (storybookFramework) {
+                folder.subitem(['ui']).createFile(
+                    `${uiFileName}.stories.tsx`,
+                    `
+import type { Meta, StoryObj } from '${storybookFramework}'
+import { ${ClassName}WidgetUI } from './${uiFileName}'
+
+const meta = {
+    title: 'Widgets/${ClassName}',
+    component: ${ClassName}WidgetUI
+} satisfies Meta<typeof ${ClassName}WidgetUI>
+
+export default meta
+
+type Story = StoryObj<typeof meta>
+
+export const Default: Story = {
+    args: {}
+}
+                    `.trim()
+                );
+            }
+
             folder.subitem(['hooks']).createFile(
                 `${uiModelFileName}.ts`,
                 `
