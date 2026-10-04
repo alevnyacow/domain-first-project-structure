@@ -131,7 +131,7 @@ export const wire${endpointNaming.ClassName} = wireClass(
     ${endpointNaming.ClassName},
     []
 )
-        `
+        `.trim()
         );
 
         wiringFolder

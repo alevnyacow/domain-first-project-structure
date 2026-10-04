@@ -67,7 +67,7 @@ describe('${aggregateNaming.withSpaces}', () => {
         expect(${aggregateNaming.variableName}).toBeDefined()
     })
 })
-            `
+            `.trim()
         );
     }
 

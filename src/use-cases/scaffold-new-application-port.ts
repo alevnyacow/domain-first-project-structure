@@ -67,7 +67,7 @@ import { ${naming.ClassName} } from '../../../application/ports/${naming.fileNam
 export class ${currentNaming.ClassName} extends ${naming.ClassName} {
 
 }
-            `
+            `.trim()
         );
     }
 
