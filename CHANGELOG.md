@@ -1,3 +1,10 @@
+## [2.10.3](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.2...v2.10.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* domain services can be scaffolded from shared ([25db2fa](https://github.com/alevnyacow/domain-first-project-structure/commit/25db2fab494d0712729e76c85561597300ed60f1))
+
 ## [2.10.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.1...v2.10.2) (2026-10-04)
 
 
