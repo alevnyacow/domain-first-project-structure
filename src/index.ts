@@ -145,7 +145,12 @@ const main = async () => {
                               'Errors',
                               'New Service'
                           ]
-                        : ['New Entity', 'New Value Object', 'Errors']
+                        : [
+                              'New Entity',
+                              'New Value Object',
+                              'Errors',
+                              'New Service'
+                          ]
                 });
 
                 switch (operation) {

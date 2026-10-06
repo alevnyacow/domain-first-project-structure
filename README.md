@@ -84,7 +84,7 @@ A bounded context groups a business area and its implementation. Within it, each
 | `presentation/`   | REST endpoints and presentation services.                                                             |
 | `wiring/`         | Factories that construct components and select implementations, when `@domain-first/wire` is enabled. |
 
-The **Shared Layer** menu provides cross-context errors, entities and value objects, application ports, and application, infrastructure, and presentation services under `<rootFolder>/shared`.
+The **Shared Layer** menu provides cross-context errors, entities and value objects, application ports, and domain, application, infrastructure, and presentation services under `<rootFolder>/shared`.
 
 A project using handler and wiring integrations can grow into this structure:
 
