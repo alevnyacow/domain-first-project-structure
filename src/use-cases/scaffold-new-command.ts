@@ -215,6 +215,8 @@ export const wire${naming.ClassName}Command = envBranchedWire({
 import { defineHandler } from '@domain-first/handlers'
 
 export class ${naming.ClassName}Command {
+    constructor() {}
+
     static inputSchema = {}
     static outputSchema = {}
 
@@ -233,7 +235,7 @@ export class ${naming.ClassName}Command {
             `${naming.fileName}-command.ts`,
             `
 export class ${naming.ClassName}Command {
-
+    constructor() {}
 }`.trim()
         );
     }

@@ -215,6 +215,8 @@ export const wire${naming.ClassName}Query = envBranchedWire({
 import { defineHandler } from '@domain-first/handlers'
 
 export class ${naming.ClassName}Query {
+    constructor() {}
+
     static inputSchema = {}
     static outputSchema = {}
 
@@ -233,7 +235,7 @@ export class ${naming.ClassName}Query {
             `${naming.fileName}-query.ts`,
             `
 export class ${naming.ClassName}Query {
-
+    constructor() {}
 }`.trim()
         );
     }
