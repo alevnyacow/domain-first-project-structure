@@ -1,3 +1,10 @@
+## [2.10.4](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.3...v2.10.4) (2026-10-08)
+
+
+### Bug Fixes
+
+* constructor in orchestrated commands / queries ([7a246ce](https://github.com/alevnyacow/domain-first-project-structure/commit/7a246cee25a2dc2a54649a5f4f458619a0abdfe3))
+
 ## [2.10.3](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.2...v2.10.3) (2026-10-06)
 
 
