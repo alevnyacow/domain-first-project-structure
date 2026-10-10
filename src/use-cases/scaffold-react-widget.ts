@@ -1,19 +1,29 @@
 import { input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
-import { UnknownFormatNaming } from '../unknown-format-naming';
+import { NestedName } from '../nested-name';
 
 export const scaffoldReactWidget = async (presentationReactFolder: Folder) => {
-    const widgetName = await input({ message: 'Name: ' });
+    const widgetName = await input({
+        message: 'Name (folders split by "/"): ',
+        validate: NestedName.validate
+    });
 
     const widgetType = await select({
         choices: ['monolithic', 'with separated ui', 'headless'],
         message: 'Type: '
     });
 
-    const { ClassName, fileName } = new UnknownFormatNaming(widgetName);
+    const { folders, ClassName, fileName, classNameSegments } = new NestedName(
+        widgetName
+    );
 
-    const folder = presentationReactFolder.subitem(['widgets', fileName]);
+    const folder = presentationReactFolder.subitem([
+        'widgets',
+        ...folders,
+        fileName
+    ]);
+    const storyTitle = ['Widgets', ...classNameSegments].join('/');
     const widgetFileName = `${fileName}-widget`;
     const uiFileName = `${fileName}-widget-ui`;
     const uiModelFileName = `use-${fileName}-ui-model`;
@@ -85,7 +95,7 @@ import type { Meta, StoryObj } from '${storybookFramework}'
 import { ${ClassName}WidgetUI } from './${uiFileName}'
 
 const meta = {
-    title: 'Widgets/${ClassName}',
+    title: '${storyTitle}',
     component: ${ClassName}WidgetUI
 } satisfies Meta<typeof ${ClassName}WidgetUI>
 

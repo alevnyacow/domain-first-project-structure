@@ -1,12 +1,15 @@
 import { input } from '@inquirer/prompts';
 import type { Folder } from '../file-system';
-import { UnknownFormatNaming } from '../unknown-format-naming';
+import { NestedName } from '../nested-name';
 
 export const scaffoldReactPage = async (presentationReactFolder: Folder) => {
-    const name = await input({ message: 'Provide name:' });
-    const { ClassName, fileName } = new UnknownFormatNaming(name);
+    const name = await input({
+        message: 'Provide name (folders split by "/"):',
+        validate: NestedName.validate
+    });
+    const { folders, ClassName, fileName } = new NestedName(name);
 
-    presentationReactFolder.subitem(['pages']).createFile(
+    presentationReactFolder.subitem(['pages', ...folders]).createFile(
         `${fileName}-page.tsx`,
         `
 import { type FC } from 'react'

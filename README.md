@@ -190,6 +190,8 @@ Enable `useReact` and choose **Scaffold React module** from the main menu. Modul
 | New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`. |
 | New shared hook                | `hooks/use-<name>.ts` with an app-wide hook, such as `use-debounce`; a leading `use-` in the name is not repeated. |
 
+Page and widget names can include folders split by `/`. For example, a page named `admin/panel/users` is created at `pages/admin/panel/users-page.tsx` as `AdminPanelUsersPage`, and a widget with the same name at `widgets/admin/panel/users/` as `AdminPanelUsersWidget` with the story title `Widgets/Admin/Panel/Users`. File names use only the last segment; code names use the whole path.
+
 ## Configuration
 
 The project configuration is stored in `domain-first.project-structure.config.json`. Commit it to share generation settings with your team. For example:
