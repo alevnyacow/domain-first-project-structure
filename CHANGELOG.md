@@ -1,3 +1,15 @@
+# [2.11.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.4...v2.11.0) (2026-10-10)
+
+
+### Bug Fixes
+
+* missing files ([2ea3a9f](https://github.com/alevnyacow/domain-first-project-structure/commit/2ea3a9ffba7fc358059a879eed7f7308668bf8f1))
+
+
+### Features
+
+* nested names for react pages and widgets ([21ec208](https://github.com/alevnyacow/domain-first-project-structure/commit/21ec2085c42f81ec919a1ded3be6585618a5413e))
+
 ## [2.10.4](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.3...v2.10.4) (2026-10-08)
 
 
