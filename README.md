@@ -203,6 +203,82 @@ Enable `useReact` and choose **Scaffold React module** from the main menu. Modul
 
 Page and widget names can include folders split by `/`. For example, a page named `admin/panel/users` is created at `pages/admin/panel/users-page.tsx` as `AdminPanelUsersPage`, and a widget with the same name at `widgets/admin/panel/users/` as `AdminPanelUsersWidget` with the story title `Widgets/Admin/Panel/Users`. File names use only the last segment; code names use the whole path.
 
+### Project integrations
+
+Choose **Add integration → Storybook (React + Vite)** to configure Storybook.
+The integration creates `main.ts` and `preview.ts` under
+`<rootFolder>/presentation/react/.storybook`, enables React scaffolding and sets
+`storybookFramework` to `@storybook/react-vite` for future generated stories.
+It uses relative story paths and configures the Vite alias `@` to the absolute
+project root (the directory containing `package.json`), computed at runtime
+from the config location. Add project CSS to `preview.ts` with relative imports
+or `@/` imports. The setup includes `@vitejs/plugin-react`.
+
+It adds these package scripts, with paths adjusted to your `rootFolder`:
+
+```json
+{
+  "storybook": "storybook dev -p 6006 -c \"src/presentation/react/.storybook\"",
+  "build-storybook": "storybook build -c \"src/presentation/react/.storybook\" -o \"src/presentation/react/storybook-static\""
+}
+```
+
+Existing unrelated scripts and package fields are preserved. If a script name
+already has a different command, choose to keep it, replace it, or use another
+name. Identical generated configs and scripts are skipped on subsequent runs;
+changed config files use the usual overwrite confirmation. Cancelling before
+writing leaves all files unchanged.
+
+After writing, the CLI prints npm commands for missing dependencies and the
+selected scripts. It does not install packages or execute scripts. Install commands omit version constraints for Storybook, its React + Vite
+framework, Vite and the React plugin; existing dependency versions are preserved
+and must be compatible with those packages. Generate a
+UI-kit component or a widget with separated UI to add your first story. The
+static build goes to `<rootFolder>/presentation/react/storybook-static`.
+
+### Missing domain-first packages
+
+Choose **Add integration → Missing domain-first packages** to compare
+`domainFirstPackages` in the configuration with `dependencies`, `devDependencies`
+and `optionalDependencies` in the project's `package.json`. The CLI prints one
+`npm i` command for missing packages, without version constraints. If none are
+missing, it reports that all configured packages are already declared. This
+checks declared dependencies, not the contents of `node_modules`, and does not
+modify files or install packages.
+
+### Prisma 8 (PostgreSQL)
+
+Choose **Add integration → Prisma 8 (PostgreSQL, RC)**. The preset creates
+`<rootFolder>/shared/infrastructure/prisma/prisma.config.ts` and a starter
+`contract.prisma`. Existing contracts are preserved, including your models.
+
+You can optionally create `PrismaInfrastructureService` in
+`shared/infrastructure/services`; it exposes `orm`, uses the Temporal polyfill,
+and reuses the client across development hot reloads. When `@domain-first/wire`
+is enabled, the integration also creates its wiring factory. A separate prompt
+lets you make `prisma` the default persistence implementation.
+
+The integration adds three scripts, all pointing to the generated config:
+
+- `prisma:emit`: emit `contract.json` and `contract.d.ts`.
+- `prisma:migration:plan`: emit the contract, then plan a migration.
+- `prisma:migration:apply`: apply migrations and advance the `db` ref.
+
+Script conflicts use the same keep/replace/rename flow as Storybook. File changes
+are staged until overwrite confirmation; no packages are installed and no
+commands connect to the database during scaffolding.
+
+The printed install commands omit version constraints for `prisma`,
+`@prisma/cli-engine`, `@prisma/orm-postgres`, `temporal-polyfill`, and `dotenv`. Already declared dependencies are kept. This is a PostgreSQL
+preset for Prisma 8 RC, not a Prisma 7 migration tool.
+
+After installing dependencies, configure `DATABASE_URL` (the CLI loads `.env`;
+your application must load its runtime environment), add your models to the
+contract and run the emit script before compiling or importing the service.
+Use Node.js 22.18+, TypeScript 5.9+, ESM and JSON import support. Review planned
+migrations before running the apply script. Generated contract files and
+migration history are managed by Prisma, not by this scaffolder.
+
 ## Configuration
 
 The project configuration is stored in `domain-first.project-structure.config.json`. Commit it to share generation settings with your team. For example:

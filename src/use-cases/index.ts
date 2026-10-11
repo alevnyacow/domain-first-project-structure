@@ -1,3 +1,4 @@
+export * from './add-integration';
 export * from './initialize';
 export * from './scaffold-new-aggregate';
 export * from './scaffold-new-application-port';

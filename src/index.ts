@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import path from 'node:path';
-import { confirm, select } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 import { ConfigFile } from './config-file';
-import { Folder, filesToOverwrite, writePendingChanges } from './file-system';
+import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
+import { savePendingChanges } from './save-pending-changes';
 import {
+    addIntegration,
     initializeUseCase,
     scaffoldNewAggregateUseCase,
     scaffoldNewApplicationPort,
@@ -59,7 +60,8 @@ const main = async () => {
               }
             : undefined,
         { name: 'Shared Layer', action: 'Scaffold in bounded context' },
-        scaffoldNewBoundedContext
+        scaffoldNewBoundedContext,
+        { name: 'Add integration', action: 'Add integration' }
     ].filter((x) => !!x);
 
     const result = await select({
@@ -70,6 +72,10 @@ const main = async () => {
     const { action, name } = options.find((x) => x.name === result)!;
 
     switch (action) {
+        case 'Add integration': {
+            await addIntegration();
+            return;
+        }
         case 'Scaffold React module': {
             const reactFolder = new Folder(rootPath).subitem([
                 ConfigFile.Instance.data.rootFolder,
@@ -288,27 +294,7 @@ const main = async () => {
 const run = async () => {
     await main();
 
-    const overwrittenFiles = filesToOverwrite();
-
-    if (overwrittenFiles.length) {
-        const root = new ProjectRoot().path;
-        console.log('These files already exist and will be overwritten:');
-        for (const filePath of overwrittenFiles) {
-            console.log(`  ${path.relative(root, filePath)}`);
-        }
-
-        const overwrite = await confirm({
-            message: 'Overwrite them?',
-            default: false
-        });
-
-        if (!overwrite) {
-            console.log('Cancelled: nothing was written.');
-            return;
-        }
-    }
-
-    writePendingChanges();
+    await savePendingChanges();
 };
 
 run();

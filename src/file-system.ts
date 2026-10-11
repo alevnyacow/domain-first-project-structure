@@ -23,6 +23,11 @@ export const filesToOverwrite = () =>
         )
         .map(([filePath]) => filePath);
 
+export const discardPendingChanges = () => {
+    pendingFolders.clear();
+    pendingFiles.clear();
+};
+
 export const writePendingChanges = () => {
     for (const folderPath of pendingFolders) {
         fs.mkdirSync(folderPath, { recursive: true });
@@ -33,8 +38,7 @@ export const writePendingChanges = () => {
         fs.writeFileSync(filePath, content, 'utf8');
     }
 
-    pendingFolders.clear();
-    pendingFiles.clear();
+    discardPendingChanges();
 };
 
 class FileSystemItem {
