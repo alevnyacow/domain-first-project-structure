@@ -2,7 +2,7 @@ import path from 'node:path';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
-import { addPackageScripts } from './package-scripts';
+import { addPackageScripts, describeScripts } from './package-scripts';
 
 export const playwrightScripts = {
     'test:e2e': 'playwright test'
@@ -113,20 +113,13 @@ export const addPlaywright = async (): Promise<string[]> => {
     for (const entry of gitignoreEntries) addGitignoreEntry(root, entry);
 
     return [
-        'Playwright configuration saved.',
-        'Next steps (run from the project package directory):',
         ...(dependencies['@playwright/test']
             ? []
-            : ['  npm install --save-dev @playwright/test']),
-        '  npx playwright install --with-deps',
-        '  Existing dependency versions were kept.',
-        ...(manifest.scripts?.dev
-            ? []
-            : [
-                  '  Add a "dev" script: Playwright starts it as the web server.'
-              ]),
-        '  Adjust baseURL and webServer.url if the dev server does not listen on http://localhost:3000.',
-        `  ${selected['test:e2e'] ? `npm run ${selected['test:e2e']}` : 'npx playwright test'}`,
-        '  Open the HTML report: npx playwright show-report'
+            : ['npm install --save-dev @playwright/test']),
+        'npx playwright install --with-deps',
+        ...describeScripts(selected, {
+            'test:e2e':
+                'start the dev server and run end-to-end specs from specs/e2e'
+        })
     ];
 };

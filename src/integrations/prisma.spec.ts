@@ -91,15 +91,14 @@ test('adds config, optional service and wiring with deferred writes', async () =
     );
     expect(manifest.scripts.dev).toBe('vite');
     expect(manifest.dependencies).toEqual({});
-    expect(steps).toContain(
-        '  npm install --save-dev prisma @prisma/cli-engine'
-    );
-    expect(steps).toContain(
-        '  npm install @prisma/orm-postgres temporal-polyfill dotenv'
-    );
-    expect(steps[4]).toBe(
-        '  Add !src/server/shared/infrastructure/prisma in your linter, to ignore prisma files.'
-    );
+    expect(steps).toEqual([
+        'npm install @prisma/orm-postgres temporal-polyfill dotenv',
+        'npm install --save-dev prisma @prisma/cli-engine',
+        'Add !src/server/shared/infrastructure/prisma in your linter, to ignore prisma files.',
+        'npm run prisma:emit — emit contract.json and contract.d.ts from contract.prisma',
+        'npm run prisma:migration:plan — emit the contract and plan a migration',
+        'npm run prisma:migration:apply — apply planned migrations to the database in DATABASE_URL'
+    ]);
 });
 
 test('supports config only and preserves existing dependencies and persistence default', async () => {
@@ -119,7 +118,7 @@ test('supports config only and preserves existing dependencies and persistence d
         false
     );
     expect(steps).toContain(
-        '  npm install @prisma/orm-postgres temporal-polyfill'
+        'npm install @prisma/orm-postgres temporal-polyfill'
     );
     expect(
         JSON.parse(fs.readFileSync(configPath, 'utf8'))

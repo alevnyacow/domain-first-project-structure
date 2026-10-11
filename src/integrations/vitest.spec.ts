@@ -78,10 +78,11 @@ test('adds config, scripts, gitignore entry and testing library with deferred wr
     expect(fs.readFileSync(path.join(project, '.gitignore'), 'utf8')).toBe(
         '/coverage/\n'
     );
-    expect(steps).toContain(
-        '  npm install --save-dev vitest @vitest/coverage-v8'
-    );
-    expect(steps).toContain('  npm run test:coverage');
+    expect(steps).toEqual([
+        'npm install --save-dev vitest @vitest/coverage-v8',
+        'npm run test — run unit tests',
+        'npm run test:coverage — run unit tests with a V8 coverage report in coverage/'
+    ]);
 
     await addVitest();
     expect(filesToOverwrite()).toEqual([]);
@@ -104,7 +105,7 @@ test('inlines handlers-next and skips installed packages', async () => {
     const content = fs.readFileSync(vitestConfigPath, 'utf8');
     expect(content).toContain('"bounded-contexts/**/*.ts"');
     expect(content).toContain("inline: ['@domain-first/handlers-next']");
-    expect(steps).toContain('  npm install --save-dev @vitest/coverage-v8');
+    expect(steps).toContain('npm install --save-dev @vitest/coverage-v8');
 });
 
 test('keeps another testing library when replacement is declined', async () => {

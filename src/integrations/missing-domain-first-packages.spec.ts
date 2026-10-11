@@ -50,19 +50,17 @@ test('prints only configured missing packages, once each', () => {
                 optionalDependencies: { '@domain-first/handlers': '^5' }
             }
         )
-    ).toContain('  npm i @domain-first/errors @domain-first/handlers-rest');
+    ).toContain('npm i @domain-first/errors @domain-first/handlers-rest');
 });
 
 test('handles manifests without dependencies', () => {
     expect(check(['@domain-first/wire'], {})).toContain(
-        '  npm i @domain-first/wire'
+        'npm i @domain-first/wire'
     );
 });
 
 test('reports when no installation is needed, including empty config', () => {
-    const message = [
-        'All configured domain-first packages are already declared in package.json.'
-    ];
+    const message: string[] = [];
     expect(check([], {})).toEqual(message);
     expect(
         check(['@domain-first/types'], {

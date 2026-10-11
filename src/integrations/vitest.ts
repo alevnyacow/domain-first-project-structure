@@ -4,7 +4,7 @@ import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
-import { addPackageScripts } from './package-scripts';
+import { addPackageScripts, describeScripts } from './package-scripts';
 
 export const vitestScripts = {
     test: 'vitest run --reporter=dot --silent=passed-only',
@@ -93,15 +93,13 @@ export const addVitest = async (): Promise<string[]> => {
         (name) => !dependencies[name]
     );
     return [
-        'Vitest configuration saved.',
-        'Next steps (run from the project package directory):',
         ...(missing.length
-            ? [`  npm install --save-dev ${missing.join(' ')}`]
+            ? [`npm install --save-dev ${missing.join(' ')}`]
             : []),
-        '  Existing dependency versions were kept; resolve.tsconfigPaths requires Vite 8+.',
-        ...(selected.test ? [`  npm run ${selected.test}`] : []),
-        ...(selected['test:coverage']
-            ? [`  npm run ${selected['test:coverage']}`]
-            : [])
+        ...describeScripts(selected, {
+            test: 'run unit tests',
+            'test:coverage':
+                'run unit tests with a V8 coverage report in coverage/'
+        })
     ];
 };

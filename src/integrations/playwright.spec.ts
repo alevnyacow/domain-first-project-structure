@@ -69,15 +69,14 @@ test('adds config, example spec, script and gitignore entries with deferred writ
     expect(fs.readFileSync(path.join(project, '.gitignore'), 'utf8')).toBe(
         '/test-results/\n/playwright-report/\n/blob-report/\n/playwright/.cache/\n/playwright/.auth/\n'
     );
-    expect(steps.slice(2, 4)).toEqual([
-        '  npm install --save-dev @playwright/test',
-        '  npx playwright install --with-deps'
+    expect(steps).toEqual([
+        'npm install --save-dev @playwright/test',
+        'npx playwright install --with-deps',
+        'npm run test:e2e — start the dev server and run end-to-end specs from specs/e2e'
     ]);
     expect(fs.readFileSync(configPath, 'utf8')).not.toContain(
         "channel: 'chrome'"
     );
-    expect(steps).toContain('  npm run test:e2e');
-    expect(steps.join('\n')).not.toContain('Add a "dev" script');
 
     fs.writeFileSync(specPath, '// custom spec');
     await addPlaywright();
@@ -92,11 +91,10 @@ test('adds config, example spec, script and gitignore entries with deferred writ
     expect(filesToOverwrite()).toEqual([configPath]);
 });
 
-test('skips installed package and asks for a dev script', async () => {
+test('skips installed package', async () => {
     setup({ devDependencies: { '@playwright/test': '^1.0.0' } });
-    const steps = await addPlaywright();
-    expect(steps.join('\n')).not.toContain('npm install');
-    expect(steps).toContain(
-        '  Add a "dev" script: Playwright starts it as the web server.'
-    );
+    expect(await addPlaywright()).toEqual([
+        'npx playwright install --with-deps',
+        'npm run test:e2e — start the dev server and run end-to-end specs from specs/e2e'
+    ]);
 });

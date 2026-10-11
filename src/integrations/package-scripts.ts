@@ -41,3 +41,14 @@ export const addPackageScripts = async (
     }
     return selected;
 };
+
+export const describeScripts = (
+    selected: Record<string, string>,
+    descriptions: Record<string, string>
+) =>
+    Object.entries(descriptions)
+        .filter(([name]) => selected[name])
+        .map(
+            ([name, description]) =>
+                `npm run ${selected[name]} — ${description}`
+        );

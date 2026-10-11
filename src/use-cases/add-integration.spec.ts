@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { confirm, select } from '@inquirer/prompts';
 import { afterAll, expect, rstest, test } from '@rstest/core';
 import { File, writePendingChanges } from '../file-system';
@@ -25,14 +26,23 @@ test('standalone use case writes files before reporting next steps', async () =>
     rstest.mocked(select).mockResolvedValueOnce(0);
     rstest.mocked(addStorybook).mockImplementationOnce(async () => {
         new File(filePath).data = 'created';
-        return ['Run npm install'];
+        return ['npm install vitest', 'Add !shared/prisma in your linter.'];
     });
     const log = rstest.spyOn(console, 'log').mockImplementation(() => {
         expect(fs.readFileSync(filePath, 'utf8')).toBe('created');
     });
     try {
         await addIntegration();
-        expect(log).toHaveBeenCalledWith('Run npm install');
+        expect(log).toHaveBeenCalledTimes(1);
+        expect(stripVTControlCharacters(log.mock.calls[0][0])).toBe(
+            [
+                'Run these commands to install the required dependencies:',
+                'npm install vitest',
+                '',
+                'Additional information:',
+                'Add !shared/prisma in your linter.'
+            ].join('\n')
+        );
     } finally {
         log.mockRestore();
     }
@@ -52,7 +62,7 @@ test('cancelled overwrite discards changes and suppresses next steps', async () 
         await addIntegration();
         writePendingChanges();
         expect(fs.readFileSync(filePath, 'utf8')).toBe('original');
-        expect(log).not.toHaveBeenCalledWith('Run npm install');
+        expect(log).toHaveBeenLastCalledWith('Cancelled: nothing was written.');
     } finally {
         log.mockRestore();
     }

@@ -4,7 +4,7 @@ import { ConfigFile } from '../config-file';
 import { File, Folder } from '../file-system';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
-import { addPackageScripts } from './package-scripts';
+import { addPackageScripts, describeScripts } from './package-scripts';
 
 export const storybookFiles = (relativeProjectRoot: string) => ({
     'main.ts': `import { resolve } from 'node:path';
@@ -131,20 +131,15 @@ export const addStorybook = async (): Promise<string[]> => {
         (name) => !dependencies[name]
     );
     return [
-        'Storybook configuration saved (React + Vite).',
-        'Next steps (run from the project package directory):',
         ...(missing.length
-            ? [`  npm install --save-dev ${missing.join(' ')}`]
+            ? [`npm install --save-dev ${missing.join(' ')}`]
             : []),
         ...(missingReact.length
-            ? [`  npm install ${missingReact.join(' ')}`]
+            ? [`npm install ${missingReact.join(' ')}`]
             : []),
-        '  Existing dependency versions were kept; ensure Storybook packages are compatible.',
-        '  Add your CSS imports to .storybook/preview.ts using relative paths or the @/ alias (project root).',
-        '  Generate a UI-kit component or widget UI to create a story.',
-        ...(selected.storybook ? [`  npm run ${selected.storybook}`] : []),
-        ...(selected['build-storybook']
-            ? [`  npm run ${selected['build-storybook']}`]
-            : [])
+        ...describeScripts(selected, {
+            storybook: 'start Storybook on http://localhost:6006',
+            'build-storybook': `build static Storybook into ${buildFolder}`
+        })
     ];
 };

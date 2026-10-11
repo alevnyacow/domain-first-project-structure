@@ -3,7 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, expect, rstest, test } from '@rstest/core';
 import { File, filesToOverwrite, writePendingChanges } from '../file-system';
-import { addPackageScripts, addStorybook, storybookScripts } from './index';
+import {
+    addPackageScripts,
+    addStorybook,
+    describeScripts,
+    storybookScripts
+} from './index';
 
 rstest.mock('@inquirer/prompts', () => ({
     select: rstest.fn(),
@@ -76,6 +81,15 @@ test('identical scripts are left unchanged without prompting', async () => {
     expect(select).not.toHaveBeenCalled();
 });
 
+test('describes only selected scripts under their final names', () => {
+    expect(
+        describeScripts(
+            { test: 'test:unit' },
+            { test: 'run unit tests', 'test:coverage': 'run coverage' }
+        )
+    ).toEqual(['npm run test:unit — run unit tests']);
+});
+
 test('script paths follow rootFolder, including nested folders and spaces', () => {
     expect(storybookScripts('.').storybook).toBe(
         'storybook dev -p 6006 -c "presentation/react/.storybook"'
@@ -122,7 +136,7 @@ test('Storybook integration stages config, is repeatable and flags edited files'
             '# Existing rules\nnode_modules/\n'
         );
         expect(steps).toContain(
-            '  npm install --save-dev @storybook/react-vite vite @vitejs/plugin-react'
+            'npm install --save-dev @storybook/react-vite vite @vitejs/plugin-react'
         );
         writePendingChanges();
         expect(fs.readFileSync(mainPath, 'utf8')).toContain("'@': projectRoot");

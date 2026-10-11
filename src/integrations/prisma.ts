@@ -3,7 +3,7 @@ import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
-import { addPackageScripts } from './package-scripts';
+import { addPackageScripts, describeScripts } from './package-scripts';
 
 const runtimePackages = ['@prisma/orm-postgres', 'temporal-polyfill', 'dotenv'];
 const developmentPackages = ['prisma', '@prisma/cli-engine'];
@@ -154,31 +154,23 @@ export const addPrisma = async (): Promise<string[]> => {
     const install = (packages: string[], dev: boolean) => {
         const missing = packages.filter((name) => !dependencies[name]);
         return missing.length
-            ? [`  npm install${dev ? ' --save-dev' : ''} ${missing.join(' ')}`]
+            ? [`npm install${dev ? ' --save-dev' : ''} ${missing.join(' ')}`]
             : [];
     };
-    const scriptCommand = (name: string) =>
-        selected[name]
-            ? `npm run ${selected[name]}`
-            : prismaScripts(config.rootFolder)[
-                  name as keyof ReturnType<typeof prismaScripts>
-              ];
     const relativeFolder = path
         .relative(root, prismaFolder)
         .split(path.sep)
         .join('/');
     return [
-        'Prisma 8 configuration saved (PostgreSQL, RC preset).',
-        'Next steps (run from the project package directory):',
         ...install(runtimePackages, false),
         ...install(developmentPackages, true),
-        `  Add !${relativeFolder} in your linter, to ignore prisma files.`,
-        '  Existing dependency versions were kept.',
-        '  Use Node.js 22.18+ and TypeScript 5.9+ with ESM and JSON import support.',
-        '  Set DATABASE_URL in your project environment (.env for the CLI); load it in the application runtime too.',
-        `  Add your models to ${relativeFolder}/contract.prisma.`,
-        `  Emit the contract before compiling or importing the service: ${scriptCommand('prisma:emit')}`,
-        `  Plan migrations: ${scriptCommand('prisma:migration:plan')}`,
-        `  Review the generated migrations, then apply: ${scriptCommand('prisma:migration:apply')}`
+        `Add !${relativeFolder} in your linter, to ignore prisma files.`,
+        ...describeScripts(selected, {
+            'prisma:emit':
+                'emit contract.json and contract.d.ts from contract.prisma',
+            'prisma:migration:plan': 'emit the contract and plan a migration',
+            'prisma:migration:apply':
+                'apply planned migrations to the database in DATABASE_URL'
+        })
     ];
 };

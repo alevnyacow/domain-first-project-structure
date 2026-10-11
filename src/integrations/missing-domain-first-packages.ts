@@ -17,12 +17,5 @@ export const missingDomainFirstPackages = (): string[] => {
         (name) => !Object.hasOwn(dependencies, name)
     );
 
-    return missing.length
-        ? [
-              'Install missing domain-first packages (run from the project package directory):',
-              `  npm i ${missing.join(' ')}`
-          ]
-        : [
-              'All configured domain-first packages are already declared in package.json.'
-          ];
+    return missing.length ? [`npm i ${missing.join(' ')}`] : [];
 };

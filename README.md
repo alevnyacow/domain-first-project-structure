@@ -229,8 +229,8 @@ name. Identical generated configs and scripts are skipped on subsequent runs;
 changed config files use the usual overwrite confirmation. Cancelling before
 writing leaves all files unchanged.
 
-After writing, the CLI prints npm commands for missing dependencies and the
-selected scripts. It does not install packages or execute scripts. Install commands omit version constraints for Storybook, its React + Vite
+After writing, the CLI prints only npm commands for missing dependencies. It
+does not install packages or execute scripts. Install commands omit version constraints for Storybook, its React + Vite
 framework, Vite and the React plugin; existing dependency versions are preserved
 and must be compatible with those packages. Generate a
 UI-kit component or a widget with separated UI to add your first story. The
@@ -244,7 +244,7 @@ Choose **Add integration → Missing domain-first packages** to compare
 `domainFirstPackages` in the configuration with `dependencies`, `devDependencies`
 and `optionalDependencies` in the project's `package.json`. The CLI prints one
 `npm i` command for missing packages, without version constraints. If none are
-missing, it reports that all configured packages are already declared. This
+missing, it prints nothing. This
 checks declared dependencies, not the contents of `node_modules`, and does not
 modify files or install packages.
 
@@ -271,7 +271,9 @@ are staged until overwrite confirmation; no packages are installed and no
 commands connect to the database during scaffolding.
 
 The printed install commands omit version constraints for `prisma`,
-`@prisma/cli-engine`, `@prisma/orm-postgres`, `temporal-polyfill`, and `dotenv`. Already declared dependencies are kept. This is a PostgreSQL
+`@prisma/cli-engine`, `@prisma/orm-postgres`, `temporal-polyfill`, and `dotenv`. Already declared dependencies are kept.
+The CLI also reminds you to add `!<rootFolder>/shared/infrastructure/prisma` to
+your linter ignores. This is a PostgreSQL
 preset for Prisma 8 RC, not a Prisma 7 migration tool.
 
 After installing dependencies, configure `DATABASE_URL` (the CLI loads `.env`;
@@ -323,10 +325,9 @@ integration adds a `test:e2e` script (`playwright test`) and ignores
 `/test-results/`, `/playwright-report/`, `/blob-report/`, `/playwright/.cache/`
 and `/playwright/.auth/` in `.gitignore`.
 
-After writing, the CLI prints the commands needed to run the specs: installing
-`@playwright/test` if it is missing, `npx playwright install --with-deps` for
-the browsers and their system dependencies, the `test:e2e` script and
-`npx playwright show-report`.
+After writing, the CLI prints `npm install --save-dev @playwright/test` if the
+package is missing and `npx playwright install --with-deps` for the browsers and
+their system dependencies. Then run `npm run test:e2e`.
 
 ## Configuration
 
