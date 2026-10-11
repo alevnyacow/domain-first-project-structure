@@ -1,3 +1,10 @@
+## [2.14.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.14.1...v2.14.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* full path name for widgets and pages ([683427e](https://github.com/alevnyacow/domain-first-project-structure/commit/683427e21c1449dfc0d4b675419d90bb08a12ab8))
+
 ## [2.14.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.14.0...v2.14.1) (2026-10-11)
 
 
