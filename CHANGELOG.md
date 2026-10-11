@@ -1,3 +1,10 @@
+# [2.15.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.14.2...v2.15.0) (2026-10-11)
+
+
+### Features
+
+* openapi generation script, orval ([c8cb4a6](https://github.com/alevnyacow/domain-first-project-structure/commit/c8cb4a691fe36d0e2454b9cc110a2c51dde8321c))
+
 ## [2.14.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.14.1...v2.14.2) (2026-10-11)
 
 
