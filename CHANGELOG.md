@@ -1,3 +1,10 @@
+## [2.16.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.16.0...v2.16.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* barrel imports in rename/movereact widgets ([a36d0b5](https://github.com/alevnyacow/domain-first-project-structure/commit/a36d0b5bb4f066c284dae1db3cbef9a9fdef0b14))
+
 # [2.16.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.15.1...v2.16.0) (2026-10-11)
 
 
