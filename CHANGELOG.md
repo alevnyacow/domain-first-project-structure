@@ -1,3 +1,10 @@
+## [2.14.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.14.0...v2.14.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* simplified integration terminal outputs ([0379e1c](https://github.com/alevnyacow/domain-first-project-structure/commit/0379e1cd2c8577a4fc01a73c2c56c4d2af27e256))
+
 # [2.14.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.13.1...v2.14.0) (2026-10-11)
 
 
