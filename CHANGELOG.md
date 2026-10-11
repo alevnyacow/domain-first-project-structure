@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.13.1...v2.14.0) (2026-10-11)
+
+
+### Features
+
+* vitest and playwright integrations ([288762f](https://github.com/alevnyacow/domain-first-project-structure/commit/288762f159019684ea43d561c4fae6df20723268))
+
 ## [2.13.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.13.0...v2.13.1) (2026-10-11)
 
 
