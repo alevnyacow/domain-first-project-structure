@@ -1,3 +1,10 @@
+## [2.13.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.13.0...v2.13.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* gitignore for prisma build files, lint ignore message ([64e58c5](https://github.com/alevnyacow/domain-first-project-structure/commit/64e58c53da681873583664ee9ef024db8be1ae26))
+
 # [2.13.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.12.0...v2.13.0) (2026-10-11)
 
 
