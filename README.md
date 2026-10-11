@@ -234,7 +234,9 @@ selected scripts. It does not install packages or execute scripts. Install comma
 framework, Vite and the React plugin; existing dependency versions are preserved
 and must be compatible with those packages. Generate a
 UI-kit component or a widget with separated UI to add your first story. The
-static build goes to `<rootFolder>/presentation/react/storybook-static`.
+static build goes to `<rootFolder>/presentation/react/storybook-static`; the
+integration adds this directory to the project `.gitignore` without duplicating
+the entry on subsequent runs.
 
 ### Missing domain-first packages
 

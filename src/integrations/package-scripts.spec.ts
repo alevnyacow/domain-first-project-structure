@@ -108,6 +108,8 @@ test('Storybook integration stages config, is repeatable and flags edited files'
             useReact: true
         })
     );
+    const gitignorePath = path.join(project, '.gitignore');
+    fs.writeFileSync(gitignorePath, '# Existing rules\nnode_modules/\n');
     const cwd = rstest.spyOn(process, 'cwd').mockReturnValue(project);
     try {
         const steps = await addStorybook();
@@ -116,6 +118,9 @@ test('Storybook integration stages config, is repeatable and flags edited files'
             'src/client/presentation/react/.storybook/main.ts'
         );
         expect(fs.existsSync(mainPath)).toBe(false);
+        expect(fs.readFileSync(gitignorePath, 'utf8')).toBe(
+            '# Existing rules\nnode_modules/\n'
+        );
         expect(steps).toContain(
             '  npm install --save-dev @storybook/react-vite vite @vitejs/plugin-react'
         );
@@ -135,6 +140,9 @@ test('Storybook integration stages config, is repeatable and flags edited files'
         await addStorybook();
         expect(filesToOverwrite()).toEqual([]);
         writePendingChanges();
+        expect(fs.readFileSync(gitignorePath, 'utf8')).toBe(
+            '# Existing rules\nnode_modules/\n/src/client/presentation/react/storybook-static/\n'
+        );
         fs.writeFileSync(mainPath, '// custom config');
         await addStorybook();
         expect(filesToOverwrite()).toEqual([mainPath]);

@@ -97,6 +97,9 @@ test('adds config, optional service and wiring with deferred writes', async () =
     expect(steps).toContain(
         '  npm install @prisma/orm-postgres temporal-polyfill dotenv'
     );
+    expect(steps[4]).toBe(
+        '  Add !src/server/shared/infrastructure/prisma in your linter, to ignore prisma files.'
+    );
 });
 
 test('supports config only and preserves existing dependencies and persistence default', async () => {

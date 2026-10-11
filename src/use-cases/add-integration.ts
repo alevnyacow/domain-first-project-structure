@@ -29,7 +29,9 @@ export const addIntegration = async () => {
                     .map((line) =>
                         /^\s*npm (?:i|install)\b/.test(line)
                             ? styleText(['bold', 'cyan'], line)
-                            : line
+                            : line.replace(/^(\s*Add )(!\S+)/, (_, prefix, path) =>
+                                  prefix + styleText(['bold', 'cyan'], path)
+                              )
                     )
                     .join('\n')
             );

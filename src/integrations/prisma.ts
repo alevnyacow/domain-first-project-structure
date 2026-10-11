@@ -172,6 +172,7 @@ export const addPrisma = async (): Promise<string[]> => {
         'Next steps (run from the project package directory):',
         ...install(runtimePackages, false),
         ...install(developmentPackages, true),
+        `  Add !${relativeFolder} in your linter, to ignore prisma files.`,
         '  Existing dependency versions were kept.',
         '  Use Node.js 22.18+ and TypeScript 5.9+ with ESM and JSON import support.',
         '  Set DATABASE_URL in your project environment (.env for the CLI); load it in the application runtime too.',
