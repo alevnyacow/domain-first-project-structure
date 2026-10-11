@@ -281,6 +281,53 @@ Use Node.js 22.18+, TypeScript 5.9+, ESM and JSON import support. Review planned
 migrations before running the apply script. Generated contract files and
 migration history are managed by Prisma, not by this scaffolder.
 
+### Vitest
+
+Choose **Add integration → Vitest**. The integration creates `vitest.config.ts`
+in the project root (the directory containing `package.json`) with
+`resolve.tsconfigPaths` and V8 coverage for `<rootFolder>/bounded-contexts` and
+`<rootFolder>/shared`. Specs, infrastructure, REST presentation and wiring are
+excluded from coverage. When `@domain-first/handlers-next` is declared, the
+config also inlines it so Vitest can resolve its `next/headers` import.
+
+It sets `testingLibrary` to `vitest`, so generators scaffold unit tests; if
+another testing library is configured, the CLI asks before replacing it. It also
+adds `/coverage/` to the project `.gitignore` and these package scripts:
+
+```json
+{
+  "test": "vitest run --reporter=dot --silent=passed-only",
+  "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only"
+}
+```
+
+Script conflicts and overwrite confirmation work as in the other integrations.
+The printed install command omits version constraints for `vitest` and
+`@vitest/coverage-v8`; already declared dependencies are kept.
+`resolve.tsconfigPaths` requires Vite 8+. The config excludes `specs/e2e`, which
+belongs to Playwright.
+
+### Playwright
+
+Choose **Add integration → Playwright**. The integration creates
+`playwright.config.ts` in the project root with `testDir: './specs/e2e'`, an
+HTML reporter, traces on retry, screenshots and videos on failure, and projects
+for Chromium, Firefox, WebKit, Mobile Chrome and Mobile Safari, all running on
+Playwright's own browser builds.
+The web server runs `npm run dev` at `http://localhost:3000` and is reused
+outside CI; adjust `baseURL` and `webServer.url` for another port.
+
+A mock example goes to `specs/e2e/home`: `home.e2e.spec.ts` and a `README.MD`
+with its user stories. Existing example files are never overwritten. The
+integration adds a `test:e2e` script (`playwright test`) and ignores
+`/test-results/`, `/playwright-report/`, `/blob-report/`, `/playwright/.cache/`
+and `/playwright/.auth/` in `.gitignore`.
+
+After writing, the CLI prints the commands needed to run the specs: installing
+`@playwright/test` if it is missing, `npx playwright install --with-deps` for
+the browsers and their system dependencies, the `test:e2e` script and
+`npx playwright show-report`.
+
 ## Configuration
 
 The project configuration is stored in `domain-first.project-structure.config.json`. Commit it to share generation settings with your team. For example:

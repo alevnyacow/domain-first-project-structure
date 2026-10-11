@@ -3,6 +3,7 @@ import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File, Folder } from '../file-system';
 import { ProjectRoot } from '../project-root';
+import { addGitignoreEntry } from './gitignore';
 import { addPackageScripts } from './package-scripts';
 
 export const storybookFiles = (relativeProjectRoot: string) => ({
@@ -115,15 +116,7 @@ export const addStorybook = async (): Promise<string[]> => {
         config.rootFolder.replaceAll('\\', '/'),
         'presentation/react/storybook-static'
     );
-    const ignoreEntry = `/${buildFolder}/`;
-    const gitignore = new File(path.join(root, '.gitignore'));
-    const ignored = gitignore.exists ? gitignore.data : '';
-    if (!ignored.split(/\r?\n/).includes(ignoreEntry)) {
-        const newline = ignored.includes('\r\n') ? '\r\n' : '\n';
-        gitignore.update(
-            `${ignored}${ignored && !ignored.endsWith('\n') ? newline : ''}${ignoreEntry}${newline}`
-        );
-    }
+    addGitignoreEntry(root, `/${buildFolder}/`);
     const dependencies = {
         ...manifest.dependencies,
         ...manifest.devDependencies
