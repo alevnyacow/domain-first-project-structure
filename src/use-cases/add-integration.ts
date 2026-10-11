@@ -1,6 +1,9 @@
 import { styleText } from 'node:util';
 import { select } from '@inquirer/prompts';
+import { ConfigFile } from '../config-file';
 import {
+    addOpenapi,
+    addOrval,
     addPlaywright,
     addPrisma,
     addStorybook,
@@ -9,23 +12,37 @@ import {
 } from '../integrations';
 import { savePendingChanges } from '../save-pending-changes';
 
-const integrations = [
+const withHandlersRest = () =>
+    ConfigFile.Instance.data.domainFirstPackages.includes(
+        '@domain-first/handlers-rest'
+    );
+
+const integrations: {
+    name: string;
+    run: () => string[] | Promise<string[]>;
+    available?: () => boolean;
+}[] = [
     { name: 'Storybook (React + Vite)', run: addStorybook },
     { name: 'Prisma 8 (PostgreSQL, RC)', run: addPrisma },
     { name: 'Vitest', run: addVitest },
     { name: 'Playwright', run: addPlaywright },
+    { name: 'OpenAPI', run: addOpenapi, available: () => withHandlersRest() },
+    {
+        name: 'Orval (React Query client)',
+        run: addOrval,
+        available: () => withHandlersRest() && ConfigFile.Instance.data.useReact
+    },
     { name: 'Missing domain-first packages', run: missingDomainFirstPackages }
 ];
 
 export const addIntegration = async () => {
-    const index = await select({
+    const integration = await select({
         message: 'Integration:',
-        choices: integrations.map((integration, value) => ({
-            name: integration.name,
-            value
-        }))
+        choices: integrations
+            .filter(({ available }) => available?.() ?? true)
+            .map((value) => ({ name: value.name, value }))
     });
-    const nextSteps = await integrations[index].run();
+    const nextSteps = await integration.run();
     if (await savePendingChanges()) {
         const isCommand = (line: string) =>
             /^\s*(?:npm (?:i|install)|npx playwright install)\b/.test(line);

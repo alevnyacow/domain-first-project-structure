@@ -46,13 +46,13 @@ npm exec --package=@domain-first/project-structure -- df-ps
 
 On the first run, the CLI asks for:
 
-| Setting                            | What to enter                                                                                               |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Root folder                        | The source directory, such as `src` or `src/server`. Default: `src`.                                        |
-| `@domain-first` packages           | The integrations to use in generated templates.                                                             |
-| Default persistence implementation | A label such as `prisma`, used as the suggested implementation for execution commands and queries.          |
-| React                              | Whether to show the React module menu.                                                                      |
-| Unit tests                         | Whether to generate tests, and which module to import test helpers from. Suggested module: `vitest`.        |
+| Setting                            | What to enter                                                                                        |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Root folder                        | The source directory, such as `src` or `src/server`. Default: `src`.                                 |
+| `@domain-first` packages           | The integrations to use in generated templates.                                                      |
+| Default persistence implementation | A label such as `prisma`, used as the suggested implementation for execution commands and queries.   |
+| React                              | Whether to show the React module menu.                                                               |
+| Unit tests                         | Whether to generate tests, and which module to import test helpers from. Suggested module: `vitest`. |
 
 Setup writes `domain-first.project-structure.config.json` beside your `package.json` and creates shared helpers for the selected `wire` and `errors` integrations. That first run then exits.
 
@@ -128,19 +128,19 @@ This is an example of the accumulated output; creating a context alone creates i
 
 Choose a bounded context, then a layer:
 
-| Layer / menu option                       | Generated output                                                                                                                                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Domain → New Aggregate                    | Aggregate root and barrel export; optional repository contract, primary and test implementations, tests, and repository wiring.                                    |
+| Layer / menu option                       | Generated output                                                                                                                                                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Domain → New Aggregate                    | Aggregate root and barrel export; optional repository contract, primary and test implementations, tests, and repository wiring.                                                                                          |
 | Domain → New Entity / New Value Object    | Entity or value object class with tests, in the `entities/` or `value-objects/` folder of a chosen aggregate (exported from its barrel) or of the context's `domain/`. Also in the Shared Layer, under `shared/domain/`. |
-| Domain → Errors                           | Errors in the context namespace, nested namespaces, and exports. Uses `@domain-first/errors`.                                                                      |
-| Domain → New Service                      | Domain service class, with optional tests and wiring.                                                                                                              |
-| Application → New Use Case                | Use case class; handler schemas and `handle` when enabled; optional tests and wiring.                                                                              |
-| Application → New Command / New Query     | Execution or orchestration templates, with optional tests and wiring.                                                                                              |
-| Application → New Port                    | Abstract port and an adapter implementation, with an optional test adapter, tests, and wiring.                                                                     |
-| Application → New Service                 | Application service class, with optional tests and wiring.                                                                                                         |
-| Infrastructure → New Service              | Infrastructure service class, with optional tests and wiring.                                                                                                      |
-| Presentation → New Service                | Presentation service class, with optional tests and wiring.                                                                                                        |
-| Presentation → New Handlers-REST Endpoint | Endpoint class for a controller, method, and relative path; wiring and handler exports when enabled. Requires `@domain-first/handlers-rest` to appear in the menu. |
+| Domain → Errors                           | Errors in the context namespace, nested namespaces, and exports. Uses `@domain-first/errors`.                                                                                                                            |
+| Domain → New Service                      | Domain service class, with optional tests and wiring.                                                                                                                                                                    |
+| Application → New Use Case                | Use case class; handler schemas and `handle` when enabled; optional tests and wiring.                                                                                                                                    |
+| Application → New Command / New Query     | Execution or orchestration templates, with optional tests and wiring.                                                                                                                                                    |
+| Application → New Port                    | Abstract port and an adapter implementation, with an optional test adapter, tests, and wiring.                                                                                                                           |
+| Application → New Service                 | Application service class, with optional tests and wiring.                                                                                                                                                               |
+| Infrastructure → New Service              | Infrastructure service class, with optional tests and wiring.                                                                                                                                                            |
+| Presentation → New Service                | Presentation service class, with optional tests and wiring.                                                                                                                                                              |
+| Presentation → New Handlers-REST Endpoint | Endpoint class for a controller, method, and relative path; wiring and handler exports when enabled. Requires `@domain-first/handlers-rest` to appear in the menu.                                                       |
 
 ### Commands and queries
 
@@ -165,12 +165,12 @@ Implementation names such as `prisma`, `api`, `in-memory`, and `mock` determine 
 
 The list depends on the layer of the class being built:
 
-| Layer          | Can depend on                                |
-| -------------- | -------------------------------------------- |
-| Domain         | Domain                                       |
-| Application    | Domain, application                          |
-| Infrastructure | Domain, infrastructure                       |
-| Presentation   | Application, presentation                    |
+| Layer          | Can depend on             |
+| -------------- | ------------------------- |
+| Domain         | Domain                    |
+| Application    | Domain, application       |
+| Infrastructure | Domain, infrastructure    |
+| Presentation   | Application, presentation |
 
 Some kinds of modules have narrower rules. From the application layer, application services can use only ports. Use cases can't use other use cases, and repository implementations can't use other repositories. Execution commands and queries can't use other commands or queries. From the application layer, orchestration commands and queries can use only execution commands and queries. Repository, execution command, execution query, and port implementations belong to infrastructure: they implement application modules but can't take them as dependencies. REST endpoints are not offered as dependencies. Their dependencies are chosen when they are generated (see REST endpoints) and are not available in **Wire dependency**.
 
@@ -192,14 +192,14 @@ With wiring enabled, the generator also adds endpoint factories and exports coll
 
 Enable `useReact` and choose **Scaffold React module** from the main menu. Modules are created under `<rootFolder>/presentation/react`.
 
-| Generator                      | Output                                                                                                     |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| New page                       | `pages/<name>-page.tsx` with a typed props object and a component.                                         |
-| New widget → monolithic        | `widgets/<name>/<name>-widget.tsx` with props and rendering in one file, re-exported from `index.ts`.      |
+| Generator                      | Output                                                                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| New page                       | `pages/<name>-page.tsx` with a typed props object and a component.                                                                                                             |
+| New widget → monolithic        | `widgets/<name>/<name>-widget.tsx` with props and rendering in one file, re-exported from `index.ts`.                                                                          |
 | New widget → with separated ui | `<name>-widget.tsx`, `types.ts`, `ui/<name>-widget-ui.tsx`, `hooks/use-<name>-ui-model.ts`, and `index.ts`; with `storybookFramework`, also `ui/<name>-widget-ui.stories.tsx`. |
-| New widget → headless          | `<name>-widget.tsx`, types, a UI-model hook, and `index.ts`; the rendering component is supplied through the `UI` prop. |
-| New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`. |
-| New shared hook                | `hooks/use-<name>.ts` with an app-wide hook, such as `use-debounce`; a leading `use-` in the name is not repeated. |
+| New widget → headless          | `<name>-widget.tsx`, types, a UI-model hook, and `index.ts`; the rendering component is supplied through the `UI` prop.                                                        |
+| New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`.                       |
+| New shared hook                | `hooks/use-<name>.ts` with an app-wide hook, such as `use-debounce`; a leading `use-` in the name is not repeated.                                                             |
 
 Page and widget names can include folders split by `/`. For example, a page named `admin/panel/users` is created at `pages/admin/panel/admin-panel-users-page.tsx` as `AdminPanelUsersPage`, and a widget with the same name at `widgets/admin/panel/users/admin-panel-users-widget.tsx` as `AdminPanelUsersWidget` with the story title `Widgets/Admin/Panel/Users`. The widget folder uses only the last segment; file names and code names use the whole path.
 
@@ -218,8 +218,8 @@ It adds these package scripts, with paths adjusted to your `rootFolder`:
 
 ```json
 {
-  "storybook": "storybook dev -p 6006 -c \"src/presentation/react/.storybook\"",
-  "build-storybook": "storybook build -c \"src/presentation/react/.storybook\" -o \"src/presentation/react/storybook-static\""
+    "storybook": "storybook dev -p 6006 -c \"src/presentation/react/.storybook\"",
+    "build-storybook": "storybook build -c \"src/presentation/react/.storybook\" -o \"src/presentation/react/storybook-static\""
 }
 ```
 
@@ -298,8 +298,8 @@ adds `/coverage/` to the project `.gitignore` and these package scripts:
 
 ```json
 {
-  "test": "vitest run --reporter=dot --silent=passed-only",
-  "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only"
+    "test": "vitest run --reporter=dot --silent=passed-only",
+    "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only"
 }
 ```
 
@@ -329,6 +329,65 @@ After writing, the CLI prints `npm install --save-dev @playwright/test` if the
 package is missing and `npx playwright install --with-deps` for the browsers and
 their system dependencies. Then run `npm run test:e2e`.
 
+### OpenAPI
+
+Choose **Add integration → OpenAPI**. The item is listed only when
+`domainFirstPackages` includes `@domain-first/handlers-rest`. The integration asks for the route prefix
+your HTTP server serves `restHandlers` under (`/api` by default) and for the
+document path (`public/openapi.json` when `next` is declared, otherwise
+`openapi.json`). It creates `scripts/generate-openapi.ts` in the project root,
+which passes `restHandlers` from `<rootFolder>/presentation/rest` to
+`generateOpenAPI` from `@domain-first/handlers-rest`. The document title comes from the package name. It adds this package script:
+
+```json
+{
+    "openapi": "tsx --env-file-if-exists=.env scripts/generate-openapi.ts"
+}
+```
+
+`.env` is loaded because wiring imported through `restHandlers` may read the
+environment. Script conflicts and overwrite confirmation work as in the other
+integrations. After writing, the CLI prints `npm install --save-dev tsx` and
+`npm install @domain-first/handlers-rest` for missing packages. `restHandlers`
+are created with the first REST endpoint generated with `@domain-first/wire`;
+until then, the CLI reminds you about it. Run `npm run openapi` after adding or
+changing endpoints, then regenerate your API client, if you have one.
+
+### Orval (React Query client)
+
+Choose **Add integration → Orval (React Query client)**. The item is listed only
+when `domainFirstPackages` includes `@domain-first/handlers-rest` and `useReact`
+is enabled. The integration asks for the OpenAPI document path; the default is
+read from `scripts/generate-openapi.ts` created by the OpenAPI integration. It
+creates:
+
+- `<rootFolder>/presentation/react/data-layer/orval.config.ts`: TanStack Query
+  v5 hooks on `fetch`, split by tags into `data-layer/orval`, with schemas in
+  its `model` folder. Orval resolves paths relative to the config, so they
+  point to the OpenAPI document and the data layer from there. When `next` is
+  declared, request URLs start with `NEXT_PUBLIC_API_BASE_URL`.
+- `data-layer/api-client/mutator.ts`: `customInstance`, which every generated
+  request goes through. It calls `fetch` and throws `ApiError` with the status
+  and the parsed body on non-2xx responses; the hooks type that body per
+  endpoint. Add auth headers, token refresh and other shared request logic here.
+- `data-layer/query-provider.tsx`: `QueryProvider` with one `QueryClient` per
+  browser session. Wrap your app in it.
+
+The mutator and the provider are starting points and are never overwritten.
+
+The generated `data-layer/orval/` folder is added to `.gitignore`, and this
+package script is added, with the path adjusted to your `rootFolder`:
+
+```json
+{
+    "client:orval": "orval --config \"src/presentation/react/data-layer/orval.config.ts\""
+}
+```
+
+After writing, the CLI prints `npm install @tanstack/react-query` and
+`npm install --save-dev orval` for missing packages. Run `npm run openapi`, then
+`npm run client:orval`, and import hooks and types from `data-layer/orval`.
+
 ## Configuration
 
 The project configuration is stored in `domain-first.project-structure.config.json`. Commit it to share generation settings with your team. For example:
@@ -350,14 +409,14 @@ The project configuration is stored in `domain-first.project-structure.config.js
 }
 ```
 
-| Field                                   | Effect                                                                                                                                                        |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rootFolder`                            | Base path for generated source, relative to the project root.                                                                                                 |
-| `domainFirstPackages`                   | Explicit list of integrations used by templates. An empty array selects basic class templates where supported.                                                |
-| `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                            |
-| `useReact`                              | Shows or hides the React module menu.                                                                                                                         |
+| Field                                   | Effect                                                                                                                                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rootFolder`                            | Base path for generated source, relative to the project root.                                                                                                                                                                     |
+| `domainFirstPackages`                   | Explicit list of integrations used by templates. An empty array selects basic class templates where supported.                                                                                                                    |
+| `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                                                                                                |
+| `useReact`                              | Shows or hides the React module menu.                                                                                                                                                                                             |
 | `storybookFramework`                    | Storybook framework package imported by generated stories (`Meta`, `StoryObj`), e.g. `@storybook/react-vite`. Omit this field to skip stories for UI-kit components and widget UI. Asked during setup only when React is enabled. |
-| `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test generation. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`. |
+| `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test generation. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`.                                                                  |
 
 ### Package integrations
 
