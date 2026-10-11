@@ -1,3 +1,10 @@
+## [2.15.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.15.0...v2.15.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* openapi generation without trailing empty string ([903d4a5](https://github.com/alevnyacow/domain-first-project-structure/commit/903d4a51e5c7a814f5d7704d66e694bd699e02b7))
+
 # [2.15.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.14.2...v2.15.0) (2026-10-11)
 
 
