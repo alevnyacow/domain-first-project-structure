@@ -14,14 +14,13 @@ export const scaffoldReactWidget = async (presentationReactFolder: Folder) => {
         message: 'Type: '
     });
 
-    const { folders, ClassName, fileName, classNameSegments } = new NestedName(
-        widgetName
-    );
+    const { folders, folderName, ClassName, fileName, classNameSegments } =
+        new NestedName(widgetName);
 
     const folder = presentationReactFolder.subitem([
         'widgets',
         ...folders,
-        fileName
+        folderName
     ]);
     const storyTitle = ['Widgets', ...classNameSegments].join('/');
     const widgetFileName = `${fileName}-widget`;

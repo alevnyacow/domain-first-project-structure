@@ -8,11 +8,13 @@ const splitSegments = (rawSource: string) =>
 
 /**
  * A name with optional folders before it, e.g. `admin/panel/users`.
- * The last segment names the files; the whole path names the code
- * (`AdminPanelUsers`), so equal names in different folders don't clash.
+ * The last segment names the folder; the whole path names the files
+ * (`admin-panel-users`) and the code (`AdminPanelUsers`), so equal names
+ * in different folders don't clash.
  */
 export class NestedName {
     readonly folders: string[];
+    readonly folderName: string;
     readonly fileName: string;
     readonly ClassName: string;
     /**
@@ -24,7 +26,12 @@ export class NestedName {
         const segments = splitSegments(rawSource);
 
         this.folders = segments.slice(0, -1);
-        this.fileName = new UnknownFormatNaming(segments.at(-1) ?? '').fileName;
+        this.folderName = new UnknownFormatNaming(
+            segments.at(-1) ?? ''
+        ).fileName;
+        this.fileName = segments
+            .map((segment) => new UnknownFormatNaming(segment).fileName)
+            .join('-');
         this.classNameSegments = segments.map(
             (segment) => new UnknownFormatNaming(segment).ClassName
         );
