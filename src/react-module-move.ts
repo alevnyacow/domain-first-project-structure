@@ -182,6 +182,17 @@ const readAliases = (projectRoot: string): TsconfigAlias[] => {
 const specifierPattern =
     /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*|\bmock\s*\(\s*)(['"])([^'"\n]+)\2/g;
 
+const reExportPattern =
+    /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[^}]*\})\s*from\s*(['"])([^'"\n]+)\1/g;
+
+/** Paths an import may use for the file: without extension, and its folder for `index`. */
+const importPaths = (file: string) => {
+    const withoutExtension = file.replace(codeExtension, '');
+    return path.basename(withoutExtension) === 'index'
+        ? [withoutExtension, path.dirname(withoutExtension)]
+        : [withoutExtension];
+};
+
 export type MovePlan = {
     /** Old path → new path of every file of the module. */
     moves: [string, string][];
@@ -291,6 +302,42 @@ export const moveReactModule = (
     );
     const newTitle = ['Widgets', ...newName.classNameSegments].join('/');
 
+    const codeFiles = new Map(
+        walk(projectRoot)
+            .filter((file) => codeExtension.test(file))
+            .map((file) => [file, fs.readFileSync(file, 'utf8')] as const)
+    );
+
+    /**
+     * Files re-exporting the module, directly or through each other: their
+     * importers get the module's classes, so they are renamed there too.
+     */
+    const barrels = new Set<string>();
+    const isBarrel = (resolved: string) =>
+        barrels.has(resolved.replace(codeExtension, ''));
+    for (let found = true; found; ) {
+        found = false;
+        for (const [file, content] of codeFiles) {
+            if (moves.has(file) || isBarrel(file)) continue;
+            const reExportsModule = [...content.matchAll(reExportPattern)].some(
+                ([, , specifier]) => {
+                    const resolution = resolve(specifier, file);
+                    return (
+                        !!resolution &&
+                        (!!movedPath(resolution.resolved) ||
+                            isBarrel(resolution.resolved))
+                    );
+                }
+            );
+            if (reExportsModule) {
+                for (const importPath of importPaths(file)) {
+                    barrels.add(importPath);
+                }
+                found = true;
+            }
+        }
+    }
+
     const rewrite = (content: string, oldFile: string, newFile: string) => {
         let referencesModule = false;
         const rewritten = content.replace(
@@ -299,7 +346,9 @@ export const moveReactModule = (
                 const resolution = resolve(specifier, oldFile);
                 if (!resolution) return match;
                 const moved = movedPath(resolution.resolved);
-                if (moved) referencesModule = true;
+                if (moved || isBarrel(resolution.resolved)) {
+                    referencesModule = true;
+                }
                 if (!moved && oldFile === newFile) return match;
                 const next = specifierFor(
                     newFile,
@@ -322,16 +371,15 @@ export const moveReactModule = (
             : renamed;
     };
 
-    const updated: string[] = [];
-    for (const file of walk(projectRoot)) {
-        const newFile = moves.get(file);
-        if (!codeExtension.test(file)) {
-            if (newFile && newFile !== file) {
-                new File(file).moveTo(newFile, reactFolder);
-            }
-            continue;
+    for (const [file, newFile] of moves) {
+        if (!codeFiles.has(file) && newFile !== file) {
+            new File(file).moveTo(newFile, reactFolder);
         }
-        const content = fs.readFileSync(file, 'utf8');
+    }
+
+    const updated: string[] = [];
+    for (const [file, content] of codeFiles) {
+        const newFile = moves.get(file);
         const next = rewrite(content, file, newFile ?? file);
         if (newFile && newFile !== file) {
             new File(newFile).data = next;

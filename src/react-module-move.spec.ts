@@ -235,6 +235,67 @@ export default () => <AdminUsersPage />`);
     });
 });
 
+describe('moveReactModule through barrels', () => {
+    test('renames classes in files importing barrels that re-export the module', () => {
+        const { project, reactFolder, read } = setup();
+        const files: Record<string, string> = {
+            'presentation/react/widgets/index.ts': "export * from './users'",
+            'presentation/react/index.ts': "export * from './widgets'",
+            'presentation/react/pages/team-page.tsx': `import { UsersWidget } from '../widgets'
+
+export const TeamPage = () => <UsersWidget />`,
+            'app/team/page.tsx': `import { UsersWidget } from '@/presentation/react'
+
+export default () => <UsersWidget />`,
+            'app/other/page.tsx': `import { Button } from '@/presentation/react/ui-kit/button'
+
+const UsersWidgetTitle = 'local'`
+        };
+        for (const [file, content] of Object.entries(files)) {
+            fs.mkdirSync(path.dirname(path.join(project, file)), {
+                recursive: true
+            });
+            fs.writeFileSync(path.join(project, file), content);
+        }
+        const [widget] = findReactModules(reactFolder, 'widget');
+        const plan = moveReactModule(
+            project,
+            reactFolder,
+            widget,
+            'admin/users'
+        );
+        writePendingChanges();
+
+        expect(read('presentation/react/widgets/index.ts')).toBe(
+            "export * from './admin/users'"
+        );
+        expect(read('presentation/react/index.ts')).toBe(
+            "export * from './widgets'"
+        );
+        expect(
+            read('presentation/react/pages/team-page.tsx')
+        ).toBe(`import { AdminUsersWidget } from '../widgets'
+
+export const TeamPage = () => <AdminUsersWidget />`);
+        expect(
+            read('app/team/page.tsx')
+        ).toBe(`import { AdminUsersWidget } from '@/presentation/react'
+
+export default () => <AdminUsersWidget />`);
+        expect(read('app/other/page.tsx')).toContain(
+            "const UsersWidgetTitle = 'local'"
+        );
+        expect(
+            plan.updated.map((file) => path.relative(project, file)).sort()
+        ).toEqual([
+            'app/team/page.tsx',
+            'presentation/react/pages/team-page.tsx',
+            'presentation/react/pages/users-page.tsx',
+            'presentation/react/widgets/index.ts'
+        ]);
+    });
+});
+
 describe('validateMove', () => {
     test('rejects existing targets, moves into itself and bad names', () => {
         const { reactFolder } = setup();

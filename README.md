@@ -209,8 +209,9 @@ folders. A widget moves with its whole folder (assets included), and a page with
 the files next to it that share its name, such as `<name>-page.module.css`. File
 names, `<Name>Page`, `<Name>Widget…` and `use<Name>UIModel` follow the new name,
 and so does a generated story title. Imports of the module are updated across
-the project, both relative ones and `tsconfig.json` `paths` aliases such as `@/`,
-and relative imports inside the module are adjusted to its new location. The CLI
+the project, both relative ones and `tsconfig.json` `paths` aliases such as `@/`;
+files importing it through barrels (`export * from` / `export { … } from`) get
+the renamed classes too, and relative imports inside the module are adjusted to its new location. The CLI
 lists the files to move and to update and asks before writing; emptied folders
 are removed. Entering the same name renames files made before file names used
 the whole path, for example `pages/admin/users-page.tsx` to
