@@ -1,3 +1,10 @@
+# [2.13.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.12.0...v2.13.0) (2026-10-11)
+
+
+### Features
+
+* add integrations ([0048d90](https://github.com/alevnyacow/domain-first-project-structure/commit/0048d90ca7dcb0da4b135e0d35c50f36eb98b6f7))
+
 # [2.12.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.11.0...v2.12.0) (2026-10-11)
 
 
