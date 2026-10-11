@@ -1,3 +1,10 @@
+# [2.12.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.11.0...v2.12.0) (2026-10-11)
+
+
+### Features
+
+* automatic wiring ([f6971c3](https://github.com/alevnyacow/domain-first-project-structure/commit/f6971c329c76129cb33b5960a86a3cde1b5aa9d2))
+
 # [2.11.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.10.4...v2.11.0) (2026-10-10)
 
 
