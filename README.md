@@ -347,8 +347,11 @@ which passes `restHandlers` from `<rootFolder>/presentation/rest` to
 
 `.env` is loaded because wiring imported through `restHandlers` may read the
 environment. Script conflicts and overwrite confirmation work as in the other
-integrations. After writing, the CLI prints `npm install --save-dev tsx` and
-`npm install @domain-first/handlers-rest` for missing packages. `restHandlers`
+integrations. After writing, the CLI prints `npm install --save-dev tsx` when
+`tsx` is missing. The script needs `@domain-first/handlers-rest` 7.0.2+, where
+OpenAPI paths start with `/` without a leading empty prefix segment; when the
+package is missing or older (the installed version is checked first, then the
+declared range), the CLI prints `npm install @domain-first/handlers-rest@^7.0.2`. `restHandlers`
 are created with the first REST endpoint generated with `@domain-first/wire`;
 until then, the CLI reminds you about it. Run `npm run openapi` after adding or
 changing endpoints, then regenerate your API client, if you have one.

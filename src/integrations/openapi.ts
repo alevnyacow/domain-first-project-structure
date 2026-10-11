@@ -44,19 +44,45 @@ export const openapiGenerator = (
         path.posix.dirname(openapiScriptPath),
         restFolder
     );
-    // A leading empty segment makes every path start with "/"
-    const apiRoutePrefix = ['', ...splitPath(routePrefix)]
-        .map((segment) => `'${segment}'`)
-        .join(', ');
+    const prefixSegments = splitPath(routePrefix);
+    const apiRoutePrefix = prefixSegments.length
+        ? `\n    apiRoutePrefix: [${prefixSegments.map((segment) => `'${segment}'`).join(', ')}],`
+        : '';
     return `import { generateOpenAPI } from '@domain-first/handlers-rest';
 import { restHandlers } from '${restImport.startsWith('.') ? restImport : `./${restImport}`}';
 
 generateOpenAPI(restHandlers, {
-    document: { info: { title: '${title}', version: '1.0.0' } },
-    apiRoutePrefix: [${apiRoutePrefix}],
+    document: { info: { title: '${title}', version: '1.0.0' } },${apiRoutePrefix}
     outputFile: { path: '${outputPath}' }
 });
 `;
+};
+
+// The first version where generateOpenAPI adds the leading "/" to paths itself
+const minimalHandlersRest = [7, 0, 2];
+
+const parseVersion = (value: unknown) =>
+    String(value ?? '')
+        .match(/(\d+)\.(\d+)\.(\d+)/)
+        ?.slice(1)
+        .map(Number);
+
+/**
+ * The installed version wins over the declared range, which only gives
+ * the lowest version allowed.
+ */
+export const handlersRestUpToDate = (root: string, declared: unknown) => {
+    const installed = new File(
+        path.join(root, 'node_modules/@domain-first/handlers-rest/package.json')
+    );
+    const version = parseVersion(
+        installed.exists ? JSON.parse(installed.data).version : declared
+    );
+    if (!version) return false;
+    for (const [index, part] of minimalHandlersRest.entries()) {
+        if (version[index] !== part) return version[index] > part;
+    }
+    return true;
 };
 
 export const addOpenapi = async (): Promise<string[]> => {
@@ -97,9 +123,14 @@ export const addOpenapi = async (): Promise<string[]> => {
         path.join(root, rootFolder, 'presentation', 'rest', 'index.ts')
     ).exists;
     return [
-        ...(dependencies['@domain-first/handlers-rest']
+        ...(handlersRestUpToDate(
+            root,
+            dependencies['@domain-first/handlers-rest']
+        )
             ? []
-            : ['npm install @domain-first/handlers-rest']),
+            : [
+                  `npm install @domain-first/handlers-rest@^${minimalHandlersRest.join('.')}`
+              ]),
         ...(dependencies.tsx ? [] : ['npm install --save-dev tsx']),
         ...describeScripts(selected, {
             openapi: `generate the OpenAPI document from restHandlers in ${splitPath(outputPath).join('/')}`

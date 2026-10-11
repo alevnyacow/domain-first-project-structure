@@ -8,7 +8,7 @@ import {
     filesToOverwrite,
     writePendingChanges
 } from '../file-system';
-import { addOpenapi, apiTitle } from './index';
+import { addOpenapi, apiTitle, handlersRestUpToDate } from './index';
 
 rstest.mock('@inquirer/prompts', () => ({
     confirm: rstest.fn(),
@@ -79,7 +79,7 @@ import { restHandlers } from '../presentation/rest';
 
 generateOpenAPI(restHandlers, {
     document: { info: { title: 'Demo API', version: '1.0.0' } },
-    apiRoutePrefix: ['', 'api'],
+    apiRoutePrefix: ['api'],
     outputFile: { path: 'public/openapi.json' }
 });
 `
@@ -92,7 +92,7 @@ generateOpenAPI(restHandlers, {
         'tsx --env-file-if-exists=.env scripts/generate-openapi.ts'
     );
     expect(steps).toEqual([
-        'npm install @domain-first/handlers-rest',
+        'npm install @domain-first/handlers-rest@^7.0.2',
         'npm install --save-dev tsx',
         'npm run openapi — generate the OpenAPI document from restHandlers in public/openapi.json',
         'restHandlers appear in presentation/rest/index.ts with the first REST endpoint generated with @domain-first/wire'
@@ -109,7 +109,7 @@ test('resolves the root folder and skips installed packages', async () => {
         'src/server',
         {
             name: 'shop',
-            dependencies: { '@domain-first/handlers-rest': '^7.0.0' },
+            dependencies: { '@domain-first/handlers-rest': '^7.0.2' },
             devDependencies: { tsx: '^4.0.0' }
         },
         ['', 'openapi.json']
@@ -128,8 +128,35 @@ test('resolves the root folder and skips installed packages', async () => {
     expect(content).toContain(
         "import { restHandlers } from '../src/server/presentation/rest';"
     );
-    expect(content).toContain("apiRoutePrefix: [''],");
+    expect(content).not.toContain('apiRoutePrefix');
     expect(steps).toEqual([
         'npm run openapi — generate the OpenAPI document from restHandlers in openapi.json'
     ]);
+});
+
+test('requires @domain-first/handlers-rest 7.0.2 or newer', () => {
+    const project = fs.mkdtempSync(path.join(root, 'versions-'));
+    expect(handlersRestUpToDate(project, undefined)).toBe(false);
+    expect(handlersRestUpToDate(project, 'latest')).toBe(false);
+    expect(handlersRestUpToDate(project, '^7.0.1')).toBe(false);
+    expect(handlersRestUpToDate(project, '~6.9.9')).toBe(false);
+    expect(handlersRestUpToDate(project, '^7.0.2')).toBe(true);
+    expect(handlersRestUpToDate(project, '>=7.1.0')).toBe(true);
+    expect(handlersRestUpToDate(project, '8.0.0')).toBe(true);
+
+    const installed = path.join(
+        project,
+        'node_modules/@domain-first/handlers-rest'
+    );
+    fs.mkdirSync(installed, { recursive: true });
+    fs.writeFileSync(
+        path.join(installed, 'package.json'),
+        JSON.stringify({ version: '7.0.3' })
+    );
+    expect(handlersRestUpToDate(project, '^7.0.1')).toBe(true);
+    fs.writeFileSync(
+        path.join(installed, 'package.json'),
+        JSON.stringify({ version: '7.0.1' })
+    );
+    expect(handlersRestUpToDate(project, '^7.0.2')).toBe(false);
 });
