@@ -8,6 +8,7 @@ import { savePendingChanges } from './save-pending-changes';
 import {
     addIntegration,
     initializeUseCase,
+    moveReactModuleUseCase,
     scaffoldNewAggregateUseCase,
     scaffoldNewApplicationPort,
     scaffoldNewApplicationService,
@@ -88,7 +89,9 @@ const main = async () => {
                     'New widget',
                     'New page',
                     'New UI-kit component',
-                    'New shared hook'
+                    'New shared hook',
+                    'Move or rename widget',
+                    'Move or rename page'
                 ]
             });
             switch (action) {
@@ -106,6 +109,14 @@ const main = async () => {
                 }
                 case 'New shared hook': {
                     await scaffoldReactSharedHook(reactFolder);
+                    return;
+                }
+                case 'Move or rename widget': {
+                    await moveReactModuleUseCase(reactFolder, 'widget');
+                    return;
+                }
+                case 'Move or rename page': {
+                    await moveReactModuleUseCase(reactFolder, 'page');
                     return;
                 }
                 default: {

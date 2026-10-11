@@ -11,6 +11,10 @@ const pendingFiles = new Map<
     { content: string; replacesFile: boolean }
 >();
 const pendingFolders = new Set<string>();
+/** Target path → source path, moved as is (binary-safe). */
+const pendingMoves = new Map<string, { sourcePath: string; stopAt: string }>();
+/** Deleted file → the folder where emptied parent folders stop being removed. */
+const pendingDeletions = new Map<string, string>();
 
 /**
  * Existing files a full rewrite would replace, whatever their content.
@@ -26,6 +30,20 @@ export const filesToOverwrite = () =>
 export const discardPendingChanges = () => {
     pendingFolders.clear();
     pendingFiles.clear();
+    pendingMoves.clear();
+    pendingDeletions.clear();
+};
+
+const removeEmptyFolders = (folderPath: string, stopAt: string) => {
+    let current = folderPath;
+    while (
+        current.startsWith(`${stopAt}${path.sep}`) &&
+        fs.existsSync(current) &&
+        !fs.readdirSync(current).length
+    ) {
+        fs.rmdirSync(current);
+        current = path.dirname(current);
+    }
 };
 
 export const writePendingChanges = () => {
@@ -36,6 +54,22 @@ export const writePendingChanges = () => {
     for (const [filePath, { content }] of pendingFiles) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
         fs.writeFileSync(filePath, content, 'utf8');
+    }
+
+    for (const [targetPath, { sourcePath }] of pendingMoves) {
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.renameSync(sourcePath, targetPath);
+    }
+
+    for (const filePath of pendingDeletions.keys()) {
+        fs.rmSync(filePath, { force: true });
+    }
+    // Emptied folders go only after every file left them
+    for (const [filePath, stopAt] of pendingDeletions) {
+        removeEmptyFolders(path.dirname(filePath), stopAt);
+    }
+    for (const { sourcePath, stopAt } of pendingMoves.values()) {
+        removeEmptyFolders(path.dirname(sourcePath), stopAt);
     }
 
     discardPendingChanges();
@@ -96,8 +130,27 @@ export class Folder extends FileSystemItem {
 
 export class File extends FileSystemItem {
     get exists() {
-        return pendingFiles.has(this.path) || fs.existsSync(this.path);
+        return (
+            pendingFiles.has(this.path) ||
+            pendingMoves.has(this.path) ||
+            (fs.existsSync(this.path) && !pendingDeletions.has(this.path))
+        );
     }
+
+    /**
+     * Folders emptied by the deletion are removed too, up to `stopAt`
+     * (exclusive), which must contain the file.
+     */
+    delete = (stopAt: string) => {
+        pendingDeletions.set(this.path, stopAt);
+    };
+
+    /**
+     * Moves the file as is, without reading it, so binary files survive.
+     */
+    moveTo = (targetPath: string, stopAt: string) => {
+        pendingMoves.set(targetPath, { sourcePath: this.path, stopAt });
+    };
 
     get data() {
         const pendingFile = pendingFiles.get(this.path);
