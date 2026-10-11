@@ -16,3 +16,4 @@ export * from './scaffold-react-page';
 export * from './scaffold-react-shared-hook';
 export * from './scaffold-react-ui-kit-component';
 export * from './scaffold-react-widget';
+export * from './wire-dependency';

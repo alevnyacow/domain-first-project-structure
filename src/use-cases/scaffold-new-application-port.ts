@@ -2,6 +2,7 @@ import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewApplicationPort = async (
     boundedContextFolder: Folder
@@ -108,7 +109,7 @@ describe('${naming.withSpaces}', () => {
             '@domain-first/wire'
         )
     ) {
-        wiringFolder.createFile(
+        const wireFile = wiringFolder.createFile(
             `wire-${naming.fileName}.ts`,
             `
 import { wireClass } from '@domain-first/wire'
@@ -147,5 +148,7 @@ export const wire${naming.ClassName} = envBranchedWire({
 
                 `.trim()
         );
+
+        await wireNewModuleDependencies(boundedContextFolder, wireFile);
     }
 };

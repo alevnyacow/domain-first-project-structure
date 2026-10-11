@@ -2,6 +2,7 @@ import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewInfrastructureService = async (
     boundedContextFolder: Folder
@@ -62,7 +63,7 @@ describe('${naming.withSpaces}', () => {
     }
 
     if (withWiring) {
-        wiringFolder.createFile(
+        const wireFile = wiringFolder.createFile(
             `wire-${naming.fileName}-infrastructure-service.ts`,
             `
 import { wireClass } from '@domain-first/wire'
@@ -74,5 +75,7 @@ export const wire${naming.ClassName}InfrastructureService = wireClass(
 )
             `.trim()
         );
+
+        await wireNewModuleDependencies(boundedContextFolder, wireFile);
     }
 };

@@ -23,7 +23,8 @@ import {
     scaffoldReactPage,
     scaffoldReactSharedHook,
     scaffoldReactUIKitComponent,
-    scaffoldReactWidget
+    scaffoldReactWidget,
+    wireDependency
 } from './use-cases';
 
 const main = async () => {
@@ -130,9 +131,19 @@ const main = async () => {
                     'Domain',
                     'Application',
                     'Infrastructure',
-                    'Presentation'
-                ]
+                    'Presentation',
+                    ConfigFile.Instance.data.domainFirstPackages.includes(
+                        '@domain-first/wire'
+                    )
+                        ? 'Wire dependency'
+                        : undefined
+                ].filter((x) => !!x)
             });
+
+            if (layer === 'Wire dependency') {
+                await wireDependency(boundedContextFolder);
+                return;
+            }
 
             if (layer === 'Domain') {
                 const operation = await select({

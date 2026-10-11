@@ -2,6 +2,7 @@ import { confirm, input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     const queriesFolder = boundedContextFolder.subitem([
@@ -170,9 +171,11 @@ describe('${naming.withSpaces} query', () => {
                 testImplementationType
             );
 
-            boundedContextFolder.subitem(['wiring', 'queries']).createFile(
-                `wire-${naming.fileName}-query.ts`,
-                `
+            const wireFile = boundedContextFolder
+                .subitem(['wiring', 'queries'])
+                .createFile(
+                    `wire-${naming.fileName}-query.ts`,
+                    `
 import { wireClass } from '@domain-first/wire'
 import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
 ${implementationTypes
@@ -196,7 +199,9 @@ export const wire${naming.ClassName}Query = envBranchedWire({
     production: wire${implementationNaming.ClassName}Implementation
 })
     `.trim()
-            );
+                );
+
+            await wireNewModuleDependencies(boundedContextFolder, wireFile);
         }
         return;
     }
@@ -279,6 +284,14 @@ test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
 })
 })
         `.trim()
+        );
+    }
+    if (withWiring) {
+        await wireNewModuleDependencies(
+            boundedContextFolder,
+            boundedContextFolder
+                .subitem(['wiring', 'queries'])
+                .file(`wire-${naming.fileName}-query.ts`)
         );
     }
 };

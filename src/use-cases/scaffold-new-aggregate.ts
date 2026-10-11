@@ -2,6 +2,7 @@ import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewAggregateUseCase = async (
     boundedContextFolder: Folder
@@ -182,9 +183,11 @@ describe('${aggregateNaming.withSpaces} repository', () => {
                 testImplementationType
             );
 
-            boundedContextFolder.subitem(['wiring', 'repositories']).createFile(
-                `wire-${aggregateNaming.fileName}-repository.ts`,
-                `
+            const wireFile = boundedContextFolder
+                .subitem(['wiring', 'repositories'])
+                .createFile(
+                    `wire-${aggregateNaming.fileName}-repository.ts`,
+                    `
 import { wireClass } from '@domain-first/wire'
 import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
 ${implementationTypes
@@ -208,7 +211,9 @@ export const wire${aggregateNaming.ClassName}Repository = envBranchedWire({
     production: wire${implementationNaming.ClassName}Implementation
 })
     `.trim()
-            );
+                );
+
+            await wireNewModuleDependencies(boundedContextFolder, wireFile);
         }
     }
 };

@@ -2,6 +2,7 @@ import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewUseCase = async (boundedContextFolder: Folder) => {
     const useCasesFolder = boundedContextFolder.subitem([
@@ -81,9 +82,11 @@ describe('${naming.withSpaces} use case', () => {
     }
 
     if (withWiring) {
-        boundedContextFolder.subitem(['wiring', 'use-cases']).createFile(
-            `wire-${naming.fileName}-use-case.ts`,
-            `
+        const wireFile = boundedContextFolder
+            .subitem(['wiring', 'use-cases'])
+            .createFile(
+                `wire-${naming.fileName}-use-case.ts`,
+                `
 import { wireClass } from '@domain-first/wire'
 import { ${naming.ClassName}UseCase } from '../../application/use-cases/${naming.fileName}-use-case'
 
@@ -93,6 +96,8 @@ export const wire${naming.ClassName}UseCase = wireClass(
 )
 
 `.trim()
-        );
+            );
+
+        await wireNewModuleDependencies(boundedContextFolder, wireFile);
     }
 };

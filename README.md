@@ -161,7 +161,18 @@ With `@domain-first/wire`, generators create `wireClass` factories. Repositories
 | `development` | The primary implementation. Also used when `NODE_ENV` is unset.              |
 | `production`  | The primary implementation.                                                  |
 
-Implementation names such as `prisma`, `api`, `in-memory`, and `mock` determine names and locations for generated classes. Add the database queries, API calls, or in-memory behavior yourself. Fill in the dependency lists in wiring factories as you implement constructors.
+Implementation names such as `prisma`, `api`, `in-memory`, and `mock` determine names and locations for generated classes. Add the database queries, API calls, or in-memory behavior yourself. As the last step, generators that create a wiring factory offer to pick its dependencies from wired modules of the same bounded context and the Shared Layer. Each selected module is added to the factory's dependency list and to the constructor, for example `private readonly userRepository: UserRepository`. Environment-branched factories (repositories, execution commands and queries, ports) wire each implementation in isolation: you pick dependencies separately for each one, for example for `PrismaUserRepository` and then for `InMemoryUserRepository`. Each list starts with a **Suggested** group when infrastructure modules match the implementation name: `prisma-infrastructure-service` for a `prisma` implementation, or `in-memory-db-infrastructure-service` for an `in-memory` one. To add dependencies to an existing module later, select **Wire dependency** in the bounded context or Shared Layer menu. Environment-branched modules are listed there once per implementation, such as `UserRepository (prisma)` and `UserRepository (in-memory)`, and only the chosen one is changed.
+
+The list depends on the layer of the class being built:
+
+| Layer          | Can depend on                                |
+| -------------- | -------------------------------------------- |
+| Domain         | Domain                                       |
+| Application    | Domain, application                          |
+| Infrastructure | Domain, infrastructure                       |
+| Presentation   | Application, presentation                    |
+
+Some kinds of modules have narrower rules. From the application layer, application services can use only ports. Use cases can't use other use cases, and repository implementations can't use other repositories. Execution commands and queries can't use other commands or queries. From the application layer, orchestration commands and queries can use only execution commands and queries. Repository, execution command, execution query, and port implementations belong to infrastructure: they implement application modules but can't take them as dependencies. REST endpoints are not offered as dependencies. Their dependencies are chosen when they are generated (see REST endpoints) and are not available in **Wire dependency**.
 
 When `testingLibrary` is configured, supported generators always add `.spec.ts` files. These start with construction or wiring checks; extend them with tests for your business behavior. Repository, command, query, and port test templates reference wiring factories, so use the wiring integration or adapt those tests to your own construction setup.
 
@@ -173,7 +184,7 @@ Select an existing controller or create one, choose `get`, `post`, `patch`, `del
 src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts
 ```
 
-The route metadata uses `/sales/orders/recent`. Connect the endpoint to an application handler and provide its `EndpointGenerator`; the generated handler dependency starts as a `never` placeholder.
+The route metadata uses `/sales/orders/recent`. With `@domain-first/wire`, the generator then asks for the endpoint generator, picked from presentation services of the bounded context and the Shared Layer (services with `endpoint` in the name are suggested first), and for the handler, picked from queries, commands, and use cases of the bounded context. The endpoint's constructor gets the chosen types, and its wiring factory gets their factories. In `get handle()`, call the generating method of the chosen service yourself, for example `this.endpointGenerator.generate(...)` for `readonly generate = createEndpoint(...)(adapter)`. Without wiring, or when there is nothing to pick, the endpoint keeps the `EndpointGenerator` type and a `never` handler placeholder for you to replace.
 
 With wiring enabled, the generator also adds endpoint factories and exports collected as `restHandlers` in `<rootFolder>/presentation/rest/index.ts`. Connect these handlers to your HTTP server.
 

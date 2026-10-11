@@ -110,6 +110,17 @@ export class File extends FileSystemItem {
         pendingFiles.set(this.path, { content, replacesFile: true });
     }
 
+    /**
+     * Changes the content without marking a full rewrite, so editing an
+     * existing file doesn't ask to overwrite it.
+     */
+    update = (content: string) => {
+        pendingFiles.set(this.path, {
+            content,
+            replacesFile: pendingFiles.get(this.path)?.replacesFile ?? false
+        });
+    };
+
     addLine = (newLine: string, separator = '\n') => {
         const content = this.exists ? this.data : '';
 

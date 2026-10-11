@@ -2,6 +2,7 @@ import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewDomainService = async (
     boundedContextFolder: Folder
@@ -66,9 +67,11 @@ describe('${naming.withSpaces}', () => {
      * Wiring.
      */
     if (withWiring) {
-        boundedContextFolder.subitem(['wiring', 'domain-services']).createFile(
-            `wire-${naming.fileName}-domain-service.ts`,
-            `
+        const wireFile = boundedContextFolder
+            .subitem(['wiring', 'domain-services'])
+            .createFile(
+                `wire-${naming.fileName}-domain-service.ts`,
+                `
 import { wireClass } from '@domain-first/wire'
 import { ${naming.ClassName}DomainService } from '../../domain/services/${naming.fileName}-domain-service'
 
@@ -77,6 +80,8 @@ export const wire${naming.ClassName}DomainService = wireClass(
     []
 )
             `.trim()
-        );
+            );
+
+        await wireNewModuleDependencies(boundedContextFolder, wireFile);
     }
 };
