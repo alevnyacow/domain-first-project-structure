@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.15.1...v2.16.0) (2026-10-11)
+
+
+### Features
+
+* move or rename pages and widgets ([8fa0362](https://github.com/alevnyacow/domain-first-project-structure/commit/8fa0362ee862c78e51e089387121354452ba8605))
+
 ## [2.15.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.15.0...v2.15.1) (2026-10-11)
 
 
