@@ -1,3 +1,10 @@
+## [2.16.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.16.1...v2.16.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* path parameters support ([fc72a0f](https://github.com/alevnyacow/domain-first-project-structure/commit/fc72a0fda954cd33f65d8c37cc9a6cc9978a2cfe))
+
 ## [2.16.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.16.0...v2.16.1) (2026-10-11)
 
 
