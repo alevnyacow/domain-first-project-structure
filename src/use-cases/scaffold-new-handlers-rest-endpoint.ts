@@ -76,12 +76,30 @@ export const restHandlers = restWires.map(x => x().handle)
         .split('/')
         .filter((x) => !!x);
 
+    /**
+     * Path parameters (`:id`) can't be part of file and folder names
+     * everywhere (Windows), so they are named `_id_` there.
+     */
+    const pathParameterAsName = (segment: string) =>
+        segment.startsWith(':') ? `_${segment.slice(1)}_` : segment;
+
     const controllerFolder = restPresentationFolder.subitem([controller]);
-    const endpointFolder = controllerFolder.subitem(routeSegments);
+    const endpointFolder = controllerFolder.subitem(
+        routeSegments.map(pathParameterAsName)
+    );
 
-    const nameBase = `${controller}-${routeSegments.length ? `${routeSegments.join('-')}-` : ''}${method}-endpoint`;
+    const nameBase = `${controller}-${routeSegments.length ? `${routeSegments.map(pathParameterAsName).join('-')}-` : ''}${method}-endpoint`;
 
-    const endpointNaming = new UnknownFormatNaming(nameBase);
+    /**
+     * A colon can't be part of a class name either.
+     */
+    const endpointClassName = [controller, ...routeSegments, method, 'endpoint']
+        .map((segment) =>
+            segment.startsWith(':')
+                ? pathParameterAsName(segment)
+                : new UnknownFormatNaming(segment).ClassName
+        )
+        .join('');
 
     const withWiring =
         ConfigFile.Instance.data.domainFirstPackages.includes(
@@ -118,7 +136,7 @@ import type { ${handler.typeName} } from '${relativeImport(endpointFile, handler
         : ''
 }
 
-export class ${endpointNaming.ClassName} {
+export class ${endpointClassName} {
     constructor(
         private readonly endpointGenerator: ${endpointGenerator?.typeName ?? 'EndpointGenerator'},
         private readonly handler: ${handler?.typeName ?? 'never'}
@@ -161,7 +179,7 @@ export class ${endpointNaming.ClassName} {
             `${wireNaming.fileName}.ts`,
             `
 import { wireClass } from '@domain-first/wire'
-import { ${endpointNaming.ClassName} } from '${relativeImport(wireFile, endpointFile)}'
+import { ${endpointClassName} } from '${relativeImport(wireFile, endpointFile)}'
 ${dependencies
     .map(
         (x) =>
@@ -169,8 +187,8 @@ ${dependencies
     )
     .join('\n')}
 
-export const wire${endpointNaming.ClassName} = wireClass(
-    ${endpointNaming.ClassName},
+export const wire${endpointClassName} = wireClass(
+    ${endpointClassName},
     [${dependencies.map((x) => x.wireName).join(', ')}]
 )
         `.trim()
