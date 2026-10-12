@@ -1,3 +1,10 @@
+## [2.17.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.17.0...v2.17.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* openapi extractor ([4a520f6](https://github.com/alevnyacow/domain-first-project-structure/commit/4a520f63a34e97f4150250f2aef8277bbf86dfd2))
+
 # [2.17.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.16.2...v2.17.0) (2026-10-12)
 
 
