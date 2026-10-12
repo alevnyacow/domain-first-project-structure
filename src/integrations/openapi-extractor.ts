@@ -111,13 +111,18 @@ const findHandlerClass = (endpointFile: SourceFile) =>
         ?.getDeclarations()
         .find(Node.isClassDeclaration);
 
+// Path parameters (\`:id\`) can't be part of file and folder names
+// everywhere (Windows), so endpoints name them \`_id_\` there.
+const pathParameterAsName = (segment: string) =>
+    segment.startsWith(':') ? \`_\${segment.slice(1)}_\` : segment;
+
 export const createOpenApiDataFromEndpointLogicExtractor = ({
     summary: summaryTag,
     description: descriptionTag = '@description'
 }: OpenApiDataTags = {}) => {
     return (routeMetadata: {
         method: string;
-        path: string[];
+        path: readonly string[];
     }): OpenApiData | undefined => {
         try {
             const [currentBoundedContext, controller, ...relativePath] =
@@ -134,7 +139,7 @@ export const createOpenApiDataFromEndpointLogicExtractor = ({
                     'presentation',
                     'rest',
                     controller,
-                    ...relativePath,
+                    ...relativePath.map(pathParameterAsName),
                     \`\${routeMetadata.method.toUpperCase()}.ts\`
                 )
             );

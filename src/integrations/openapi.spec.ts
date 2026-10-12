@@ -202,3 +202,11 @@ test('resolves endpoint files under the root folder', () => {
                     'bounded-contexts',`
     );
 });
+
+test('names path parameters of endpoint folders as _id_', () => {
+    const extractor = openapiExtractor('.');
+    expect(extractor).toContain(
+        `segment.startsWith(':') ? \`_\${segment.slice(1)}_\` : segment;`
+    );
+    expect(extractor).toContain('...relativePath.map(pathParameterAsName),');
+});
