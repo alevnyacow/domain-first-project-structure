@@ -1,14 +1,17 @@
 import path from 'node:path';
-import { input } from '@inquirer/prompts';
+import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
+import { openapiExtractor, openapiExtractorPath } from './openapi-extractor';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
 export const openapiScriptPath = 'scripts/generate-openapi.ts';
 
 export const defaultOpenapiPath = (withNext: boolean) =>
     withNext ? 'public/openapi.json' : 'openapi.json';
+
+const extractorPackages = ['ts-morph', '@microsoft/tsdoc'];
 
 export const openapiScripts = {
     // Wiring imported through `restHandlers` may read the environment
@@ -34,7 +37,8 @@ export const openapiGenerator = (
     rootFolder: string,
     title: string,
     routePrefix: string,
-    outputPath: string
+    outputPath: string,
+    withExtractor = false
 ) => {
     const restFolder = path.posix.join(
         rootFolder.replaceAll('\\', '/'),
@@ -48,41 +52,35 @@ export const openapiGenerator = (
     const apiRoutePrefix = prefixSegments.length
         ? `\n    apiRoutePrefix: [${prefixSegments.map((segment) => `'${segment}'`).join(', ')}],`
         : '';
-    return `import { generateOpenAPI } from '@domain-first/handlers-rest';
-import { restHandlers } from '${restImport.startsWith('.') ? restImport : `./${restImport}`}';
+    const extractorImport = `./${path.posix.relative(
+        path.posix.dirname(openapiScriptPath),
+        openapiExtractorPath.replace(/\.ts$/, '')
+    )}`;
+    const handlers = withExtractor
+        ? `
+const extractOpenApiDataFromEndpointLogic =
+    createOpenApiDataFromEndpointLogicExtractor();
 
-generateOpenAPI(restHandlers, {
+const handlers = restHandlers.map((x) => ({
+    ...x,
+    metadata: {
+        ...x.metadata,
+        openApiMetadata: {
+            ...extractOpenApiDataFromEndpointLogic(x.metadata.route),
+            ...(x.metadata.openApiMetadata ?? {})
+        }
+    }
+}));
+`
+        : '';
+    return `import { generateOpenAPI } from '@domain-first/handlers-rest';
+import { restHandlers } from '${restImport.startsWith('.') ? restImport : `./${restImport}`}';${withExtractor ? `\nimport { createOpenApiDataFromEndpointLogicExtractor } from '${extractorImport}';` : ''}
+${handlers}
+generateOpenAPI(${withExtractor ? 'handlers' : 'restHandlers'}, {
     document: { info: { title: '${title}', version: '1.0.0' } },${apiRoutePrefix}
     outputFile: { path: '${outputPath}' }
 });
 `;
-};
-
-// The first version where generateOpenAPI adds the leading "/" to paths itself
-const minimalHandlersRest = [7, 0, 2];
-
-const parseVersion = (value: unknown) =>
-    String(value ?? '')
-        .match(/(\d+)\.(\d+)\.(\d+)/)
-        ?.slice(1)
-        .map(Number);
-
-/**
- * The installed version wins over the declared range, which only gives
- * the lowest version allowed.
- */
-export const handlersRestUpToDate = (root: string, declared: unknown) => {
-    const installed = new File(
-        path.join(root, 'node_modules/@domain-first/handlers-rest/package.json')
-    );
-    const version = parseVersion(
-        installed.exists ? JSON.parse(installed.data).version : declared
-    );
-    if (!version) return false;
-    for (const [index, part] of minimalHandlersRest.entries()) {
-        if (version[index] !== part) return version[index] > part;
-    }
-    return true;
 };
 
 export const addOpenapi = async (): Promise<string[]> => {
@@ -106,14 +104,29 @@ export const addOpenapi = async (): Promise<string[]> => {
             splitPath(value).length ? true : 'Path is required'
     });
 
+    const withExtractor = await confirm({
+        message:
+            'Fill operationId, summary and description from the endpoint logic TSDoc?',
+        default: true
+    });
+
     const selected = await addPackageScripts(manifestFile, openapiScripts);
+
+    if (withExtractor) {
+        const extractorFile = new File(path.join(root, openapiExtractorPath));
+        const extractor = openapiExtractor(rootFolder);
+        if (!extractorFile.exists || extractorFile.data !== extractor) {
+            extractorFile.data = extractor;
+        }
+    }
 
     const generatorFile = new File(path.join(root, openapiScriptPath));
     const content = openapiGenerator(
         rootFolder,
         apiTitle(manifest.name),
         routePrefix,
-        splitPath(outputPath).join('/')
+        splitPath(outputPath).join('/'),
+        withExtractor
     );
     if (!generatorFile.exists || generatorFile.data !== content) {
         generatorFile.data = content;
@@ -122,16 +135,17 @@ export const addOpenapi = async (): Promise<string[]> => {
     const hasRestHandlers = new File(
         path.join(root, rootFolder, 'presentation', 'rest', 'index.ts')
     ).exists;
+    const missingExtractorPackages = withExtractor
+        ? extractorPackages.filter((name) => !dependencies[name])
+        : [];
     return [
-        ...(handlersRestUpToDate(
-            root,
-            dependencies['@domain-first/handlers-rest']
-        )
+        ...(dependencies['@domain-first/handlers-rest']
             ? []
-            : [
-                  `npm install @domain-first/handlers-rest@^${minimalHandlersRest.join('.')}`
-              ]),
+            : ['npm install @domain-first/handlers-rest']),
         ...(dependencies.tsx ? [] : ['npm install --save-dev tsx']),
+        ...(missingExtractorPackages.length
+            ? [`npm install --save-dev ${missingExtractorPackages.join(' ')}`]
+            : []),
         ...describeScripts(selected, {
             openapi: `generate the OpenAPI document from restHandlers in ${splitPath(outputPath).join('/')}`
         }),

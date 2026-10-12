@@ -1,14 +1,15 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { input } from '@inquirer/prompts';
+import { confirm, input } from '@inquirer/prompts';
 import { afterAll, afterEach, expect, rstest, test } from '@rstest/core';
 import {
     discardPendingChanges,
     filesToOverwrite,
     writePendingChanges
 } from '../file-system';
-import { addOpenapi, apiTitle, handlersRestUpToDate } from './index';
+import { addOpenapi, apiTitle } from './index';
+import { openapiExtractor } from './openapi-extractor';
 
 rstest.mock('@inquirer/prompts', () => ({
     confirm: rstest.fn(),
@@ -63,7 +64,7 @@ test('adds the generator script and the package script with deferred writes', as
         '.',
         {
             name: 'demo',
-            dependencies: { next: '16.0.0' }
+            dependencies: { next: '*' }
         },
         ['/api', 'public/openapi.json']
     );
@@ -92,7 +93,7 @@ generateOpenAPI(restHandlers, {
         'tsx --env-file-if-exists=.env scripts/generate-openapi.ts'
     );
     expect(steps).toEqual([
-        'npm install @domain-first/handlers-rest@^7.0.2',
+        'npm install @domain-first/handlers-rest',
         'npm install --save-dev tsx',
         'npm run openapi — generate the OpenAPI document from restHandlers in public/openapi.json',
         'restHandlers appear in presentation/rest/index.ts with the first REST endpoint generated with @domain-first/wire'
@@ -109,8 +110,8 @@ test('resolves the root folder and skips installed packages', async () => {
         'src/server',
         {
             name: 'shop',
-            dependencies: { '@domain-first/handlers-rest': '^7.0.2' },
-            devDependencies: { tsx: '^4.0.0' }
+            dependencies: { '@domain-first/handlers-rest': '*' },
+            devDependencies: { tsx: '*' }
         },
         ['', 'openapi.json']
     );
@@ -134,29 +135,70 @@ test('resolves the root folder and skips installed packages', async () => {
     ]);
 });
 
-test('requires @domain-first/handlers-rest 7.0.2 or newer', () => {
-    const project = fs.mkdtempSync(path.join(root, 'versions-'));
-    expect(handlersRestUpToDate(project, undefined)).toBe(false);
-    expect(handlersRestUpToDate(project, 'latest')).toBe(false);
-    expect(handlersRestUpToDate(project, '^7.0.1')).toBe(false);
-    expect(handlersRestUpToDate(project, '~6.9.9')).toBe(false);
-    expect(handlersRestUpToDate(project, '^7.0.2')).toBe(true);
-    expect(handlersRestUpToDate(project, '>=7.1.0')).toBe(true);
-    expect(handlersRestUpToDate(project, '8.0.0')).toBe(true);
+test('scaffolds the extractor and merges its data into the handlers', async () => {
+    const { project, scriptPath } = setup(
+        '.',
+        {
+            name: 'demo',
+            dependencies: { '@domain-first/handlers-rest': '*' },
+            devDependencies: { tsx: '*', 'ts-morph': '*' }
+        },
+        ['/api', 'openapi.json']
+    );
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
+    const steps = await addOpenapi();
+    writePendingChanges();
+    expect(
+        fs.readFileSync(
+            path.join(
+                project,
+                'scripts/extract-open-api-data-from-endpoint.ts'
+            ),
+            'utf8'
+        )
+    ).toBe(openapiExtractor('.'));
+    expect(fs.readFileSync(scriptPath, 'utf8')).toBe(
+        `import { generateOpenAPI } from '@domain-first/handlers-rest';
+import { restHandlers } from '../presentation/rest';
+import { createOpenApiDataFromEndpointLogicExtractor } from './extract-open-api-data-from-endpoint';
 
-    const installed = path.join(
-        project,
-        'node_modules/@domain-first/handlers-rest'
+const extractOpenApiDataFromEndpointLogic =
+    createOpenApiDataFromEndpointLogicExtractor();
+
+const handlers = restHandlers.map((x) => ({
+    ...x,
+    metadata: {
+        ...x.metadata,
+        openApiMetadata: {
+            ...extractOpenApiDataFromEndpointLogic(x.metadata.route),
+            ...(x.metadata.openApiMetadata ?? {})
+        }
+    }
+}));
+
+generateOpenAPI(handlers, {
+    document: { info: { title: 'Demo API', version: '1.0.0' } },
+    apiRoutePrefix: ['api'],
+    outputFile: { path: 'openapi.json' }
+});
+`
     );
-    fs.mkdirSync(installed, { recursive: true });
-    fs.writeFileSync(
-        path.join(installed, 'package.json'),
-        JSON.stringify({ version: '7.0.3' })
+    expect(steps).toEqual([
+        'npm install --save-dev @microsoft/tsdoc',
+        'npm run openapi — generate the OpenAPI document from restHandlers in openapi.json',
+        'restHandlers appear in presentation/rest/index.ts with the first REST endpoint generated with @domain-first/wire'
+    ]);
+});
+
+test('resolves endpoint files under the root folder', () => {
+    expect(openapiExtractor('.')).toContain(
+        `path.join(
+                    'bounded-contexts',`
     );
-    expect(handlersRestUpToDate(project, '^7.0.1')).toBe(true);
-    fs.writeFileSync(
-        path.join(installed, 'package.json'),
-        JSON.stringify({ version: '7.0.1' })
+    expect(openapiExtractor('./src\\server/')).toContain(
+        `path.join(
+                    'src',
+                    'server',
+                    'bounded-contexts',`
     );
-    expect(handlersRestUpToDate(project, '^7.0.2')).toBe(false);
 });
