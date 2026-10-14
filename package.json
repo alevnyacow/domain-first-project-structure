@@ -16,12 +16,15 @@
         }
     },
     "bin": {
-        "df-ps": "./dist/index.js"
+        "df-ps": "./dist/index.js",
+        "df-skills": "./bin/df-skills.mjs"
     },
     "main": "./dist/index.cjs",
     "types": "./dist/index.d.ts",
     "files": [
-        "dist"
+        "dist",
+        "bin",
+        "skills"
     ],
     "publishConfig": {
         "access": "public"

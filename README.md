@@ -11,7 +11,7 @@ npm install --save-dev @domain-first/project-structure
 npx df-ps
 ```
 
-[Quick start](#quick-start) · [Project structure](#project-structure) · [Generators](#generators) · [Configuration](#configuration) · [Example workflow](#example-workflow)
+[Quick start](#quick-start) · [Project structure](#project-structure) · [Generators](#generators) · [Configuration](#configuration) · [Agent skills](#agent-skills) · [Example workflow](#example-workflow)
 
 ## Why use it?
 
@@ -448,6 +448,24 @@ The project configuration is stored in `domain-first.project-structure.config.js
 Select the packages you intend to use and install them in your application separately. The CLI reads this list from configuration; it does not detect or install dependencies. React and your testing library also need their own project setup.
 
 You can edit the configuration for future runs. Existing files are left as they are when you edit settings; enabling `wire` or `errors` later also requires adding the shared helpers that initial setup would create, plus context error namespaces where needed.
+
+## Agent skills
+
+The package ships skills that teach coding agents to plan features, scaffold components with `df-ps`, and implement the generated code. Copy them into your project:
+
+```bash
+npx df-skills
+```
+
+Choose the agents and whether to install into the project or your home directory. Or pass flags:
+
+| Flag | Installs into |
+| --- | --- |
+| `--claude` | `.claude/skills` (Claude Code) |
+| `--codex` | `.agents/skills` (Codex) |
+| `--global` | the home directory instead of the current project |
+
+Run it again after upgrading the package: existing `df-ps-*` skill folders are replaced with the new versions.
 
 ## Example workflow
 
