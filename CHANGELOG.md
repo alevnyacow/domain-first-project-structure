@@ -1,3 +1,10 @@
+# [2.18.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.17.1...v2.18.0) (2026-10-14)
+
+
+### Features
+
+* skills ([91a4aaa](https://github.com/alevnyacow/domain-first-project-structure/commit/91a4aaa0a09bf599536b8eb75d9431a3e831c4f7))
+
 ## [2.17.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.17.0...v2.17.1) (2026-10-12)
 
 
