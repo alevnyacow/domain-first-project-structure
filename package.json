@@ -20,6 +20,7 @@
         "df-skills": "./bin/df-skills.mjs"
     },
     "main": "./dist/index.cjs",
+    "homepage": "https://domain-first-landing.vercel.app/scaffolder/",
     "types": "./dist/index.d.ts",
     "files": [
         "dist",

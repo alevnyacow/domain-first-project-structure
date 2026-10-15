@@ -1,413 +1,38 @@
-# @domain-first/project-structure
+# Domain First Project Structure
 
-**Spend less time setting up files. Spend more time building your domain.**
+<p>
+    <img src="https://img.shields.io/npm/v/%40domain-first%2Fproject-structure" alt="version">
+    <img src="https://img.shields.io/badge/TypeScript-ready-3178C6?logo=typescript&logoColor=white?style=for-the-badge" alt="TypeScript ready">
+    <img src="https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release" alt="semver">
+    <img src="https://img.shields.io/npm/l/%40domain-first%2Fproject-structure" alt="license">
+</p>
 
-An interactive CLI for growing TypeScript applications around business domains. Scaffold bounded contexts, aggregates, use cases, commands, queries, adapters, REST endpoints, and React modules with a consistent structure.
+Spend less time setting up files. Spend more time building your domain.
 
-Choose what you need, answer a few prompts, and get the source files, optional test skeletons, and wiring to start implementing the feature.
+## What is it?
 
-```bash
-npm install --save-dev @domain-first/project-structure
+In most TypeScript codebases you choose between convenience and architecture. Clear boundaries and roles around the domain mean more files, more contracts and more wiring, so under deadline pressure the logic ends up wherever it is quickest to write it. The boundaries blur one shortcut at a time.
+
+Domain First Project Structure removes that choice: **the cleanest path is also the shortest one**. An interactive CLI asks which bounded context, layer and role a new piece of code has, and generates it in its place, with contracts, implementations, test skeletons and wiring that respect the boundaries. Dependencies are offered only where the layers allow them. Doing it right takes a few prompts; doing it wrong takes extra effort. It knows the `@domain-first` packages: types, errors, handlers, wire and handlers-rest. The generated files belong to your project; you write the business rules.
+
+```
+npm i -D @domain-first/project-structure
 npx df-ps
 ```
 
-[Quick start](#quick-start) · [Project structure](#project-structure) · [Generators](#generators) · [Configuration](#configuration) · [Agent skills](#agent-skills) · [Example workflow](#example-workflow)
+## API
 
-## Why use it?
+The full technical specification lives in [API.md](./API.md).
 
-Adding an aggregate often means adding a repository contract, infrastructure implementations, tests, and dependency wiring too. Repeating that setup by hand takes time and lets conventions drift.
+## Guide
 
-`df-ps` turns those recurring decisions into a guided workflow:
+### How to initialize a project
 
-- **Keep the team consistent.** Give each kind of component a predictable home, filename, and class name.
-- **Grow feature by feature.** Add a bounded context or a single component as the application evolves.
-- **Keep business code organized.** Group code by bounded context, with domain, application, infrastructure, and presentation layers inside it.
-- **Prepare for multiple implementations.** Generate primary and test implementations of repositories, execution commands, queries, and application ports.
-- **Use the integrations you need.** Enable templates for the `@domain-first` packages in your project and optional React scaffolding.
+Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits.
 
-The generated files belong to your project. Fill in the business rules, schemas, dependencies, and integration code as you would with any other source file.
-
-## Quick start
-
-Run the CLI inside a project that has a `package.json`. For a new project, create one with `npm init -y` first. Use Node.js 22.13+ within the Node 22 release line, or Node.js 24+.
-
-### 1. Install and initialize
-
-```bash
-npm install --save-dev @domain-first/project-structure
+```
 npx df-ps
 ```
-
-You can also run it without adding it as a development dependency:
-
-```bash
-npm exec --package=@domain-first/project-structure -- df-ps
-```
-
-On the first run, the CLI asks for:
-
-| Setting                            | What to enter                                                                                        |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Root folder                        | The source directory, such as `src` or `src/server`. Default: `src`.                                 |
-| `@domain-first` packages           | The integrations to use in generated templates.                                                      |
-| Default persistence implementation | A label such as `prisma`, used as the suggested implementation for execution commands and queries.   |
-| React                              | Whether to show the React module menu.                                                               |
-| Unit tests                         | Whether to generate tests, and which module to import test helpers from. Suggested module: `vitest`. |
-
-Setup writes `domain-first.project-structure.config.json` beside your `package.json` and creates shared helpers for the selected `wire` and `errors` integrations. That first run then exits.
-
-The CLI uses the nearest `package.json` found by walking up from the current directory. In a monorepo, run it inside the package you want to scaffold.
-
-### 2. Create a bounded context
-
-Run `npx df-ps` again, choose **Scaffold new bounded context**, and enter a name such as `sales`.
-
-### 3. Add a component
-
-Run `npx df-ps`, choose **Bounded Context: sales**, select a layer, and choose a generator. For example:
-
-```text
-Bounded Context: sales → Domain → New Aggregate
-```
-
-Each invocation performs one scaffolding operation. Run the command again to add the next component. Folders are created as needed.
-
-## Project structure
-
-A bounded context groups a business area and its implementation. Within it, each layer has a specific role:
-
-| Location          | Purpose                                                                                               |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `domain/`         | Aggregates, repository contracts, domain services, and business errors.                               |
-| `application/`    | Use cases, commands, queries, ports, and application services.                                        |
-| `infrastructure/` | Concrete repositories, adapters, execution handlers, and infrastructure services.                     |
-| `presentation/`   | REST endpoints and presentation services.                                                             |
-| `wiring/`         | Factories that construct components and select implementations, when `@domain-first/wire` is enabled. |
-
-The **Shared Layer** menu provides cross-context errors, entities and value objects, application ports, and domain, application, infrastructure, and presentation services under `<rootFolder>/shared`.
-
-A project using handler and wiring integrations can grow into this structure:
-
-```text
-src/
-├── bounded-contexts/
-│   └── sales/
-│       ├── domain/
-│       │   ├── aggregates/order/
-│       │   ├── errors/
-│       │   └── services/
-│       ├── application/
-│       │   ├── commands/          # execution/ and orchestration/
-│       │   ├── queries/           # execution/ and orchestration/
-│       │   ├── ports/
-│       │   ├── services/
-│       │   └── use-cases/
-│       ├── infrastructure/
-│       │   ├── application-adapters/
-│       │   ├── commands/
-│       │   ├── queries/
-│       │   ├── repositories/
-│       │   └── services/
-│       ├── presentation/
-│       │   ├── rest/
-│       │   └── services/
-│       └── wiring/
-├── shared/
-└── presentation/
-    ├── rest/
-    └── react/
-        ├── pages/
-        ├── widgets/
-        ├── ui-kit/
-        └── hooks/
-```
-
-This is an example of the accumulated output; creating a context alone creates its directory and, when enabled, its error namespace.
-
-## Generators
-
-Choose a bounded context, then a layer:
-
-| Layer / menu option                       | Generated output                                                                                                                                                                                                         |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Domain → New Aggregate                    | Aggregate root and barrel export; optional repository contract, primary and test implementations, tests, and repository wiring.                                                                                          |
-| Domain → New Entity / New Value Object    | Entity or value object class with tests, in the `entities/` or `value-objects/` folder of a chosen aggregate (exported from its barrel) or of the context's `domain/`. Also in the Shared Layer, under `shared/domain/`. |
-| Domain → Errors                           | Errors in the context namespace, nested namespaces, and exports. Uses `@domain-first/errors`.                                                                                                                            |
-| Domain → New Service                      | Domain service class, with optional tests and wiring.                                                                                                                                                                    |
-| Application → New Use Case                | Use case class; handler schemas and `handle` when enabled; optional tests and wiring.                                                                                                                                    |
-| Application → New Command / New Query     | Execution or orchestration templates, with optional tests and wiring.                                                                                                                                                    |
-| Application → New Port                    | Abstract port and an adapter implementation, with an optional test adapter, tests, and wiring.                                                                                                                           |
-| Application → New Service                 | Application service class, with optional tests and wiring.                                                                                                                                                               |
-| Infrastructure → New Service              | Infrastructure service class, with optional tests and wiring.                                                                                                                                                            |
-| Presentation → New Service                | Presentation service class, with optional tests and wiring.                                                                                                                                                              |
-| Presentation → New Handlers-REST Endpoint | Endpoint class for a controller, method, and relative path; wiring and handler exports when enabled. Requires `@domain-first/handlers-rest` to appear in the menu.                                                       |
-
-### Commands and queries
-
-Both generators offer two modes:
-
-- **Execution (with infrastructure implementation):** creates an abstract application contract and a concrete implementation under `infrastructure/commands/<implementation>` or `infrastructure/queries/<implementation>`. You can add a separate implementation for tests.
-- **Orchestrator (no infrastructure implementation):** creates an application class under `application/commands/orchestration` or `application/queries/orchestration`, ready for coordinating other operations.
-
-With `@domain-first/handlers`, templates include input/output schemas and a typed handler contract or `defineHandler` implementation. Execution contracts go in the corresponding `execution/` directory; without that integration, they go directly in `application/commands` or `application/queries`.
-
-### Wiring and tests
-
-With `@domain-first/wire`, generators create `wireClass` factories. Repositories, execution commands, queries, and ports use the shared `envBranchedWire` helper to choose an implementation based on `NODE_ENV`:
-
-| Environment   | Implementation                                                               |
-| ------------- | ---------------------------------------------------------------------------- |
-| `test`        | The test implementation, if requested; otherwise the primary implementation. |
-| `development` | The primary implementation. Also used when `NODE_ENV` is unset.              |
-| `production`  | The primary implementation.                                                  |
-
-Implementation names such as `prisma`, `api`, `in-memory`, and `mock` determine names and locations for generated classes. Add the database queries, API calls, or in-memory behavior yourself. As the last step, generators that create a wiring factory offer to pick its dependencies from wired modules of the same bounded context and the Shared Layer. Each selected module is added to the factory's dependency list and to the constructor, for example `private readonly userRepository: UserRepository`. Environment-branched factories (repositories, execution commands and queries, ports) wire each implementation in isolation: you pick dependencies separately for each one, for example for `PrismaUserRepository` and then for `InMemoryUserRepository`. Each list starts with a **Suggested** group when infrastructure modules match the implementation name: `prisma-infrastructure-service` for a `prisma` implementation, or `in-memory-db-infrastructure-service` for an `in-memory` one. To add dependencies to an existing module later, select **Wire dependency** in the bounded context or Shared Layer menu. Environment-branched modules are listed there once per implementation, such as `UserRepository (prisma)` and `UserRepository (in-memory)`, and only the chosen one is changed.
-
-The list depends on the layer of the class being built:
-
-| Layer          | Can depend on             |
-| -------------- | ------------------------- |
-| Domain         | Domain                    |
-| Application    | Domain, application       |
-| Infrastructure | Domain, infrastructure    |
-| Presentation   | Application, presentation |
-
-Some kinds of modules have narrower rules. From the application layer, application services can use only ports. Use cases can't use other use cases, and repository implementations can't use other repositories. Execution commands and queries can't use other commands or queries. From the application layer, orchestration commands and queries can use only execution commands and queries. Repository, execution command, execution query, and port implementations belong to infrastructure: they implement application modules but can't take them as dependencies. REST endpoints are not offered as dependencies. Their dependencies are chosen when they are generated (see REST endpoints) and are not available in **Wire dependency**.
-
-When `testingLibrary` is configured, supported generators always add `.spec.ts` files. These start with construction or wiring checks; extend them with tests for your business behavior. Repository, command, query, and port test templates reference wiring factories, so use the wiring integration or adapt those tests to your own construction setup.
-
-### REST endpoints
-
-Select an existing controller or create one, choose `get`, `post`, `patch`, `delete`, or `put`, and enter a relative path. For example, context `sales`, controller `orders`, path `recent`, and method `get` produce:
-
-```text
-src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts
-```
-
-The route metadata uses `/sales/orders/recent`. With `@domain-first/wire`, the generator then asks for the endpoint generator, picked from presentation services of the bounded context and the Shared Layer (services with `endpoint` in the name are suggested first), and for the handler, picked from queries, commands, and use cases of the bounded context. The endpoint's constructor gets the chosen types, and its wiring factory gets their factories. In `get handle()`, call the generating method of the chosen service yourself, for example `this.endpointGenerator.generate(...)` for `readonly generate = createEndpoint(...)(adapter)`. Without wiring, or when there is nothing to pick, the endpoint keeps the `EndpointGenerator` type and a `never` handler placeholder for you to replace.
-
-With wiring enabled, the generator also adds endpoint factories and exports collected as `restHandlers` in `<rootFolder>/presentation/rest/index.ts`. Connect these handlers to your HTTP server.
-
-### React modules
-
-Enable `useReact` and choose **Scaffold React module** from the main menu. Modules are created under `<rootFolder>/presentation/react`.
-
-| Generator                      | Output                                                                                                                                                                         |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| New page                       | `pages/<name>-page.tsx` with a typed props object and a component.                                                                                                             |
-| New widget → monolithic        | `widgets/<name>/<name>-widget.tsx` with props and rendering in one file, re-exported from `index.ts`.                                                                          |
-| New widget → with separated ui | `<name>-widget.tsx`, `types.ts`, `ui/<name>-widget-ui.tsx`, `hooks/use-<name>-ui-model.ts`, and `index.ts`; with `storybookFramework`, also `ui/<name>-widget-ui.stories.tsx`. |
-| New widget → headless          | `<name>-widget.tsx`, types, a UI-model hook, and `index.ts`; the rendering component is supplied through the `UI` prop.                                                        |
-| New UI-kit component           | `ui-kit/<name>/<name>.tsx` with a typed props object and a component, re-exported from `index.ts`; with `storybookFramework`, also `<name>.stories.tsx`.                       |
-| New shared hook                | `hooks/use-<name>.ts` with an app-wide hook, such as `use-debounce`; a leading `use-` in the name is not repeated.                                                             |
-
-Page and widget names can include folders split by `/`. For example, a page named `admin/panel/users` is created at `pages/admin/panel/admin-panel-users-page.tsx` as `AdminPanelUsersPage`, and a widget with the same name at `widgets/admin/panel/users/admin-panel-users-widget.tsx` as `AdminPanelUsersWidget` with the story title `Widgets/Admin/Panel/Users`. The widget folder uses only the last segment; file names and code names use the whole path.
-
-To move or rename a page or a widget, choose **Move or rename page** or
-**Move or rename widget**, pick it from the list and enter a new name with
-folders. A widget moves with its whole folder (assets included), and a page with
-the files next to it that share its name, such as `<name>-page.module.css`. File
-names, `<Name>Page`, `<Name>Widget…` and `use<Name>UIModel` follow the new name,
-and so does a generated story title. Imports of the module are updated across
-the project, both relative ones and `tsconfig.json` `paths` aliases such as `@/`;
-files importing it through barrels (`export * from` / `export { … } from`) get
-the renamed classes too, and relative imports inside the module are adjusted to its new location. The CLI
-lists the files to move and to update and asks before writing; emptied folders
-are removed. Entering the same name renames files made before file names used
-the whole path, for example `pages/admin/users-page.tsx` to
-`pages/admin/admin-users-page.tsx`.
-
-### Project integrations
-
-Choose **Add integration → Storybook (React + Vite)** to configure Storybook.
-The integration creates `main.ts` and `preview.ts` under
-`<rootFolder>/presentation/react/.storybook`, enables React scaffolding and sets
-`storybookFramework` to `@storybook/react-vite` for future generated stories.
-It uses relative story paths and configures the Vite alias `@` to the absolute
-project root (the directory containing `package.json`), computed at runtime
-from the config location. Add project CSS to `preview.ts` with relative imports
-or `@/` imports. The setup includes `@vitejs/plugin-react`.
-
-It adds these package scripts, with paths adjusted to your `rootFolder`:
-
-```json
-{
-    "storybook": "storybook dev -p 6006 -c \"src/presentation/react/.storybook\"",
-    "build-storybook": "storybook build -c \"src/presentation/react/.storybook\" -o \"src/presentation/react/storybook-static\""
-}
-```
-
-Existing unrelated scripts and package fields are preserved. If a script name
-already has a different command, choose to keep it, replace it, or use another
-name. Identical generated configs and scripts are skipped on subsequent runs;
-changed config files use the usual overwrite confirmation. Cancelling before
-writing leaves all files unchanged.
-
-After writing, the CLI prints only npm commands for missing dependencies. It
-does not install packages or execute scripts. Install commands omit version constraints for Storybook, its React + Vite
-framework, Vite and the React plugin; existing dependency versions are preserved
-and must be compatible with those packages. Generate a
-UI-kit component or a widget with separated UI to add your first story. The
-static build goes to `<rootFolder>/presentation/react/storybook-static`; the
-integration adds this directory to the project `.gitignore` without duplicating
-the entry on subsequent runs.
-
-### Missing domain-first packages
-
-Choose **Add integration → Missing domain-first packages** to compare
-`domainFirstPackages` in the configuration with `dependencies`, `devDependencies`
-and `optionalDependencies` in the project's `package.json`. The CLI prints one
-`npm i` command for missing packages, without version constraints. If none are
-missing, it prints nothing. This
-checks declared dependencies, not the contents of `node_modules`, and does not
-modify files or install packages.
-
-### Prisma 8 (PostgreSQL)
-
-Choose **Add integration → Prisma 8 (PostgreSQL, RC)**. The preset creates
-`<rootFolder>/shared/infrastructure/prisma/prisma.config.ts` and a starter
-`contract.prisma`. Existing contracts are preserved, including your models.
-
-You can optionally create `PrismaInfrastructureService` in
-`shared/infrastructure/services`; it exposes `orm`, uses the Temporal polyfill,
-and reuses the client across development hot reloads. When `@domain-first/wire`
-is enabled, the integration also creates its wiring factory. A separate prompt
-lets you make `prisma` the default persistence implementation.
-
-The integration adds three scripts, all pointing to the generated config:
-
-- `prisma:emit`: emit `contract.json` and `contract.d.ts`.
-- `prisma:migration:plan`: emit the contract, then plan a migration.
-- `prisma:migration:apply`: apply migrations and advance the `db` ref.
-
-Script conflicts use the same keep/replace/rename flow as Storybook. File changes
-are staged until overwrite confirmation; no packages are installed and no
-commands connect to the database during scaffolding.
-
-The printed install commands omit version constraints for `prisma`,
-`@prisma/cli-engine`, `@prisma/orm-postgres`, `temporal-polyfill`, and `dotenv`. Already declared dependencies are kept.
-The CLI also reminds you to add `!<rootFolder>/shared/infrastructure/prisma` to
-your linter ignores. This is a PostgreSQL
-preset for Prisma 8 RC, not a Prisma 7 migration tool.
-
-After installing dependencies, configure `DATABASE_URL` (the CLI loads `.env`;
-your application must load its runtime environment), add your models to the
-contract and run the emit script before compiling or importing the service.
-Use Node.js 22.18+, TypeScript 5.9+, ESM and JSON import support. Review planned
-migrations before running the apply script. Generated contract files and
-migration history are managed by Prisma, not by this scaffolder.
-
-### Vitest
-
-Choose **Add integration → Vitest**. The integration creates `vitest.config.ts`
-in the project root (the directory containing `package.json`) with
-`resolve.tsconfigPaths` and V8 coverage for `<rootFolder>/bounded-contexts` and
-`<rootFolder>/shared`. Specs, infrastructure, REST presentation and wiring are
-excluded from coverage. When `@domain-first/handlers-next` is declared, the
-config also inlines it so Vitest can resolve its `next/headers` import.
-
-It sets `testingLibrary` to `vitest`, so generators scaffold unit tests; if
-another testing library is configured, the CLI asks before replacing it. It also
-adds `/coverage/` to the project `.gitignore` and these package scripts:
-
-```json
-{
-    "test": "vitest run --reporter=dot --silent=passed-only",
-    "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only"
-}
-```
-
-Script conflicts and overwrite confirmation work as in the other integrations.
-The printed install command omits version constraints for `vitest` and
-`@vitest/coverage-v8`; already declared dependencies are kept.
-`resolve.tsconfigPaths` requires Vite 8+. The config excludes `specs/e2e`, which
-belongs to Playwright.
-
-### Playwright
-
-Choose **Add integration → Playwright**. The integration creates
-`playwright.config.ts` in the project root with `testDir: './specs/e2e'`, an
-HTML reporter, traces on retry, screenshots and videos on failure, and projects
-for Chromium, Firefox, WebKit, Mobile Chrome and Mobile Safari, all running on
-Playwright's own browser builds.
-The web server runs `npm run dev` at `http://localhost:3000` and is reused
-outside CI; adjust `baseURL` and `webServer.url` for another port.
-
-A mock example goes to `specs/e2e/home`: `home.e2e.spec.ts` and a `README.MD`
-with its user stories. Existing example files are never overwritten. The
-integration adds a `test:e2e` script (`playwright test`) and ignores
-`/test-results/`, `/playwright-report/`, `/blob-report/`, `/playwright/.cache/`
-and `/playwright/.auth/` in `.gitignore`.
-
-After writing, the CLI prints `npm install --save-dev @playwright/test` if the
-package is missing and `npx playwright install --with-deps` for the browsers and
-their system dependencies. Then run `npm run test:e2e`.
-
-### OpenAPI
-
-Choose **Add integration → OpenAPI**. The item is listed only when
-`domainFirstPackages` includes `@domain-first/handlers-rest`. The integration asks for the route prefix
-your HTTP server serves `restHandlers` under (`/api` by default) and for the
-document path (`public/openapi.json` when `next` is declared, otherwise
-`openapi.json`). It creates `scripts/generate-openapi.ts` in the project root,
-which passes `restHandlers` from `<rootFolder>/presentation/rest` to
-`generateOpenAPI` from `@domain-first/handlers-rest`. The document title comes from the package name. It adds this package script:
-
-```json
-{
-    "openapi": "tsx --env-file-if-exists=.env scripts/generate-openapi.ts"
-}
-```
-
-`.env` is loaded because wiring imported through `restHandlers` may read the
-environment. Script conflicts and overwrite confirmation work as in the other
-integrations. After writing, the CLI prints `npm install --save-dev tsx` when
-`tsx` is missing. The script needs `@domain-first/handlers-rest` 7.0.2+, where
-OpenAPI paths start with `/` without a leading empty prefix segment; when the
-package is missing or older (the installed version is checked first, then the
-declared range), the CLI prints `npm install @domain-first/handlers-rest@^7.0.2`. `restHandlers`
-are created with the first REST endpoint generated with `@domain-first/wire`;
-until then, the CLI reminds you about it. Run `npm run openapi` after adding or
-changing endpoints, then regenerate your API client, if you have one.
-
-### Orval (React Query client)
-
-Choose **Add integration → Orval (React Query client)**. The item is listed only
-when `domainFirstPackages` includes `@domain-first/handlers-rest` and `useReact`
-is enabled. The integration asks for the OpenAPI document path; the default is
-read from `scripts/generate-openapi.ts` created by the OpenAPI integration. It
-creates:
-
-- `<rootFolder>/presentation/react/data-layer/orval.config.ts`: TanStack Query
-  v5 hooks on `fetch`, split by tags into `data-layer/orval`, with schemas in
-  its `model` folder. Orval resolves paths relative to the config, so they
-  point to the OpenAPI document and the data layer from there. When `next` is
-  declared, request URLs start with `NEXT_PUBLIC_API_BASE_URL`.
-- `data-layer/api-client/mutator.ts`: `customInstance`, which every generated
-  request goes through. It calls `fetch` and throws `ApiError` with the status
-  and the parsed body on non-2xx responses; the hooks type that body per
-  endpoint. Add auth headers, token refresh and other shared request logic here.
-- `data-layer/query-provider.tsx`: `QueryProvider` with one `QueryClient` per
-  browser session. Wrap your app in it.
-
-The mutator and the provider are starting points and are never overwritten.
-
-The generated `data-layer/orval/` folder is added to `.gitignore`, and this
-package script is added, with the path adjusted to your `rootFolder`:
-
-```json
-{
-    "client:orval": "orval --config \"src/presentation/react/data-layer/orval.config.ts\""
-}
-```
-
-After writing, the CLI prints `npm install @tanstack/react-query` and
-`npm install --save-dev orval` for missing packages. Run `npm run openapi`, then
-`npm run client:orval`, and import hooks and types from `data-layer/orval`.
-
-## Configuration
-
-The project configuration is stored in `domain-first.project-structure.config.json`. Commit it to share generation settings with your team. For example:
 
 ```json
 {
@@ -416,67 +41,29 @@ The project configuration is stored in `domain-first.project-structure.config.js
         "@domain-first/types",
         "@domain-first/errors",
         "@domain-first/handlers",
-        "@domain-first/wire",
-        "@domain-first/handlers-rest"
+        "@domain-first/wire"
     ],
     "defaultPersistenceLayerImplementation": "prisma",
-    "useReact": true,
-    "storybookFramework": "@storybook/react-vite",
+    "useReact": false,
     "testingLibrary": "vitest"
 }
 ```
 
-| Field                                   | Effect                                                                                                                                                                                                                            |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rootFolder`                            | Base path for generated source, relative to the project root.                                                                                                                                                                     |
-| `domainFirstPackages`                   | Explicit list of integrations used by templates. An empty array selects basic class templates where supported.                                                                                                                    |
-| `defaultPersistenceLayerImplementation` | Suggested implementation label for execution commands and queries.                                                                                                                                                                |
-| `useReact`                              | Shows or hides the React module menu.                                                                                                                                                                                             |
-| `storybookFramework`                    | Storybook framework package imported by generated stories (`Meta`, `StoryObj`), e.g. `@storybook/react-vite`. Omit this field to skip stories for UI-kit components and widget UI. Asked during setup only when React is enabled. |
-| `testingLibrary`                        | Module imported by generated tests. Omit this field to disable test generation. Templates expect helpers such as `describe`, `test`, `expect`, and `beforeEach`.                                                                  |
+Commit the config to share it with your team. Every next run performs one operation from the menu.
 
-### Package integrations
+### How to create a bounded context
 
-| Package                       | What it enables                                                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `@domain-first/types`         | Aggregate roots extending `domainType()`.                                                                          |
-| `@domain-first/errors`        | Context and shared error namespaces initialized during setup/context creation. Error generation uses this package. |
-| `@domain-first/handlers`      | Handler contracts, `defineHandler`, and input/output schema placeholders for use cases, commands, and queries.     |
-| `@domain-first/wire`          | Construction factories and environment-based implementation selection.                                             |
-| `@domain-first/handlers-rest` | The REST endpoint generator using `EndpointGenerator`.                                                             |
+Choose **Scaffold new bounded context** and enter a name, such as `sales`. With `@domain-first/errors`, its error namespace is created too.
 
-Select the packages you intend to use and install them in your application separately. The CLI reads this list from configuration; it does not detect or install dependencies. React and your testing library also need their own project setup.
-
-You can edit the configuration for future runs. Existing files are left as they are when you edit settings; enabling `wire` or `errors` later also requires adding the shared helpers that initial setup would create, plus context error namespaces where needed.
-
-## Agent skills
-
-The package ships skills that teach coding agents to plan features, scaffold components with `df-ps`, and implement the generated code. Copy them into your project:
-
-```bash
-npx df-skills
+```text
+src/bounded-contexts/sales/domain/errors/index.ts   // SalesErrors = errorNamespace('sales')
 ```
 
-Choose the agents and whether to install into the project or your home directory. Or pass flags:
+Use lowercase kebab-case for every name: `place-order` becomes `PlaceOrderUseCase`.
 
-| Flag | Installs into |
-| --- | --- |
-| `--claude` | `.claude/skills` (Claude Code) |
-| `--codex` | `.agents/skills` (Codex) |
-| `--global` | the home directory instead of the current project |
+### How to add an aggregate
 
-Run it again after upgrading the package: existing `df-ps-*` skill folders are replaced with the new versions.
-
-## Example workflow
-
-To start an order feature, enable `@domain-first/wire` during initialization and run `npx df-ps` for each step:
-
-1. Choose **Scaffold new bounded context** and name it `sales`.
-2. Choose **Bounded Context: sales → Domain → New Aggregate**, name it `order`, and add a repository with `prisma` and an `in-memory` test implementation.
-3. Choose **Application → New Use Case** within `sales` and name it `place-order`.
-4. Implement the aggregate's rules, repository operations, and use case; connect their dependencies in the generated wiring files.
-
-The key files from these selections are:
+Choose **Bounded Context: sales → Domain → New Aggregate**, name it `order`, and add a repository with a `prisma` implementation and an `in-memory` test one.
 
 ```text
 src/bounded-contexts/sales/
@@ -484,20 +71,116 @@ src/bounded-contexts/sales/
 │   ├── index.ts
 │   ├── order.aggregate-root.ts
 │   └── order-repository.ts
-├── application/use-cases/
-│   └── place-order-use-case.ts
 ├── infrastructure/repositories/
 │   ├── prisma/prisma-order-repository.ts
 │   └── in-memory/in-memory-order-repository.ts
-└── wiring/
-    ├── repositories/wire-order-repository.ts
-    └── use-cases/wire-place-order-use-case.ts
+└── wiring/repositories/wire-order-repository.ts
 ```
 
-Use lowercase kebab-case for entered names, such as `place-order` and `payment-gateway`. Names are used in paths, and class and variable names are derived from their hyphen-separated words: `place-order` becomes `PlaceOrderUseCase` for a use case.
+Entities and value objects go into an aggregate (**New Entity**, **New Value Object**) or into the context's `domain/`.
 
-Nothing is written until a run finishes. If the run would replace existing files, the CLI lists them and asks `Overwrite them?` (default: No). Answering No, or interrupting the CLI at any prompt, leaves the project unchanged. Lines added to existing barrels, error files, and wiring indexes are not overwrites and are never duplicated. Use a new name for a new component, and review the generated changes before continuing implementation.
+### How to add a use case, a command or a query
+
+Choose **Application → New Use Case**, **New Command** or **New Query**. With `@domain-first/handlers`, the class gets schema placeholders and a `handle` built with `defineHandler`.
+
+```ts
+export class PlaceOrderUseCase {
+    constructor() {}
+
+    static inputSchema = {};
+    static outputSchema = {};
+
+    handle = defineHandler({
+        inputSchema: PlaceOrderUseCase.inputSchema,
+        outputSchema: PlaceOrderUseCase.outputSchema,
+        handler: async (input) => {
+            return {};
+        },
+    });
+}
+```
+
+Commands and queries come in two modes. **Execution** creates an abstract contract in `application/` and implementations in `infrastructure/`, like a repository. **Orchestrator** creates one application class that coordinates execution commands and queries.
+
+### How to switch implementations
+
+With `@domain-first/wire`, repositories, execution commands and queries, and ports get one factory per implementation, selected by `NODE_ENV`:
+
+```ts
+export const wireOrderRepository = envBranchedWire({
+    test: wireInMemoryImplementation,
+    development: wirePrismaImplementation,
+    production: wirePrismaImplementation,
+});
+```
+
+Tests get the test implementation, everything else gets the primary one.
+
+### How to wire dependencies
+
+As the last step, generators with wiring offer the modules the new one may depend on, from the same bounded context and the Shared Layer. Each choice is added to the factory and to the constructor:
+
+```ts
+export class PlaceOrderUseCase {
+    constructor(private readonly orderRepository: OrderRepository) {}
+}
+
+export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [
+    wireOrderRepository,
+]);
+```
+
+Only the dependencies that respect the layers are offered: a use case can't take another use case, the domain can't take the application. To add a dependency later, choose **Wire dependency** in the context menu.
+
+### How to add errors
+
+Choose **Domain → Errors** to add an error to the context namespace, create a nested namespace, or add an error to it.
+
+```ts
+export const OutOfStockSalesError =
+    SalesErrors.define("out-of-stock");
+```
+
+### How to share code between contexts
+
+Bounded contexts don't import each other. Put cross-context errors, entities, value objects, ports and services into the **Shared Layer** (`src/shared`). Its modules are offered as dependencies in every context.
+
+### How to add a REST endpoint
+
+With `@domain-first/handlers-rest`, choose **Presentation → New Handlers-REST Endpoint**, pick or create a controller, a method and a relative path. Context `sales`, controller `orders`, path `recent` and `get` give:
+
+```text
+src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts   // GET /sales/orders/recent
+```
+
+With wiring, the endpoint takes an endpoint generator and a handler you pick from the context, and all endpoints are collected as `restHandlers` in `src/presentation/rest/index.ts`. Connect them to your HTTP server.
+
+### How to scaffold React modules
+
+With `useReact`, choose **Scaffold React module**: pages, widgets (monolithic, with separated UI, or headless), UI-kit components with Storybook stories, and shared hooks. Names may include folders:
+
+```text
+admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPanelUsersPage)
+```
+
+**Move or rename page** and **Move or rename widget** move the files and update every import in the project.
+
+### How to add tooling
+
+Choose **Add integration** to configure Storybook, Prisma 8, Vitest, Playwright, OpenAPI generation or an Orval React Query client. Integrations add config files, package scripts and `.gitignore` entries, then print the install commands. Nothing is installed or run for you.
+
+**Missing domain-first packages** prints the `npm i` command for packages from the config that are not in `package.json`.
+
+### How to teach your coding agent
+
+The package ships skills that teach coding agents to plan features, scaffold with `df-ps` and implement the generated code.
+
+```
+npx df-skills --claude
+```
+
+Run it again after upgrading the package to get the new versions.
 
 ## License
 
-[MIT](./LICENSE)
+MIT
