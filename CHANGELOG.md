@@ -1,3 +1,10 @@
+## [2.18.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.18.0...v2.18.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* readme, api.md ([7d36dc0](https://github.com/alevnyacow/domain-first-project-structure/commit/7d36dc089c0c38218b6d465254586611303e7585))
+
 # [2.18.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.17.1...v2.18.0) (2026-10-14)
 
 
