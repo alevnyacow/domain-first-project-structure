@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.0.0...v3.1.0) (2026-10-16)
+
+
+### Features
+
+* next prompt, adapter auto detecting ([82e405b](https://github.com/alevnyacow/domain-first-project-structure/commit/82e405b2cd63f85af183777179bff533123ea822))
+
 # [3.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.18.1...v3.0.0) (2026-10-16)
 
 
