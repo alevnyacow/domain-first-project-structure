@@ -79,7 +79,7 @@ Moving or renaming a page or widget is a df-ps run too (`Move or rename page` / 
 
 ### 3. New dependencies only through df-ps
 
-With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-ps`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Endpoint generator:` / `Handler:` picks for an endpoint. Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-ps` added.
+With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-ps`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-ps` added.
 
 - List each module's dependencies in the plan as run options (`deps: OrderRepository`), with a `Wire dependency` run for existing modules.
 - A dependency the CLI doesn't offer is forbidden by the wiring rules (layer, kind, or another context): change the design (a port, an execution query or command, an infrastructure service) instead of adding it by hand.

@@ -4,11 +4,17 @@ import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
-export const scaffoldNewPresentationService = async (
-    boundedContextFolder: Folder
+/**
+ * Creates the service class, its spec and its factory. Returns the
+ * factory file, or undefined without wiring.
+ */
+export const createPresentationService = (
+    boundedContextFolder: Folder,
+    name: string,
+    classFile?: (className: string) => string
 ) => {
-    const name = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
+    const className = `${naming.ClassName}PresentationService`;
 
     const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
 
@@ -28,8 +34,9 @@ export const scaffoldNewPresentationService = async (
     ]);
     presentationServicesFolder.createFile(
         `${naming.fileName}-presentation-service.ts`,
-        `
-export class ${naming.ClassName}PresentationService {
+        classFile?.(className) ??
+            `
+export class ${className} {
 
 }
             `.trim()
@@ -63,7 +70,7 @@ describe('${naming.withSpaces}', () => {
     }
 
     if (withWiring) {
-        const wireFile = wiringFolder.createFile(
+        return wiringFolder.createFile(
             `wire-${naming.fileName}-presentation-service.ts`,
             `
 import { wireClass } from '@domain-first/wire'
@@ -75,7 +82,19 @@ export const wire${naming.ClassName}PresentationService = wireClass(
 )
             `.trim()
         );
+    }
 
+    return undefined;
+};
+
+export const scaffoldNewPresentationService = async (
+    boundedContextFolder: Folder
+) => {
+    const name = await input({ message: 'Name: ' });
+
+    const wireFile = createPresentationService(boundedContextFolder, name);
+
+    if (wireFile) {
         await wireNewModuleDependencies(boundedContextFolder, wireFile);
     }
 };

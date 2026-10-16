@@ -28,7 +28,7 @@ The full technical specification lives in [API.md](./API.md).
 
 ### How to initialize a project
 
-Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits.
+Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint).
 
 ```
 npx df-ps
@@ -153,7 +153,41 @@ With `@domain-first/handlers-rest`, choose **Presentation → New Handlers-REST 
 src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts   // GET /sales/orders/recent
 ```
 
-With wiring, the endpoint takes an endpoint generator and a handler you pick from the context, and all endpoints are collected as `restHandlers` in `src/presentation/rest/index.ts`. Connect them to your HTTP server.
+Every endpoint uses the one endpoint generator of the project, `RestEndpointGeneratorPresentationService` in `src/shared/presentation/services/`. Initialization scaffolds it as a regular Shared Layer presentation service (class, spec and wire):
+
+```ts
+export class RestEndpointGeneratorPresentationService {
+    get withoutGuards(): EndpointGenerator {
+        return createEndpoint({
+            errorStatuses: {
+                400: {
+                    checks: this.invalidRequestChecks,
+                    description: 'Invalid request'
+                }
+            }
+        })(this.adapter) as EndpointGenerator
+    }
+
+    /**
+     * Default checks of an invalid request, to spread into a generator's
+     * own checks.
+     */
+    private get invalidRequestChecks(): ErrorStatuses[number]['checks'] {
+        return [RequestParsingError.is, InputMappingError.is]
+    }
+
+    /**
+     * The adapter of your HTTP framework.
+     */
+    private get adapter(): Adapter<any[], any> {
+        throw new Error('REST adapter is not set')
+    }
+}
+```
+
+Set `adapter` to the adapter of your HTTP framework. Each generating method is a getter returning `EndpointGenerator`: add one per kind of endpoint (for example `withAuth`, with its `context` and error statuses). Reuse the default checks there and add your own: `checks: [...this.invalidRequestChecks, MyError.is]`. A new endpoint calls `this.endpointGenerator(...)` and doesn't compile on purpose: choose the getter yourself in its `get handle()`, e.g. `this.endpointGenerator.withoutGuards(...)`.
+
+With wiring, the endpoint takes the generator and a handler you pick from the context's queries, commands and use cases, and all endpoints are collected as `restHandlers` in `src/presentation/rest/index.ts`. Connect them to your HTTP server.
 
 ### How to scaffold React modules
 

@@ -102,15 +102,15 @@ Edits the wire and the implementation classes in place; this never triggers `Ove
 
 ## Presentation → New Handlers-REST Endpoint (context only, needs handlers-rest)
 
-Prompts: controller (select: existing | `New controller` → name) → method (`get` `post` `patch` `delete` `put`) → relative path (may be empty: `default`) → {wire} `Endpoint generator:` (select: presentation services of `<C>` and the Shared Layer, `(shared)` suffix; those with `endpoint` in the name come first under `Suggested`; skipped if there are none) → {wire} `Handler:` (select: queries, commands, and use cases of `<C>`, grouped; skipped if there are none).
+Prompts: controller (select: existing | `New controller` → name) → method (`get` `post` `patch` `delete` `put`) → relative path (may be empty: `default`) → {wire} `Handler:` (select: queries, commands, and use cases of `<C>`, grouped; skipped if there are none).
 
-`… pick:Presentation "pick:New Handlers" "pick:New controller" text:orders pick:get text:recent pick:RestEndpointGenerator pick:GetRecentOrders`
-`… pick:Presentation "pick:New Handlers" pick:orders pick:post default pick:RestEndpointGenerator pick:PlaceOrder`
+`… pick:Presentation "pick:New Handlers" "pick:New controller" text:orders pick:get text:recent pick:GetRecentOrders`
+`… pick:Presentation "pick:New Handlers" pick:orders pick:post default pick:PlaceOrder`
 
 For `sales`, `orders`, `get`, `recent`:
 
-- `<C>/presentation/rest/orders/recent/GET.ts`: `class OrdersRecentGetEndpoint(endpointGenerator, handler)`, route `['sales','orders','recent']`. With the picks: `endpointGenerator: RestEndpointGeneratorPresentationService` and `handler: GetRecentOrdersUseCase`, both `import type`. Without a pick: `EndpointGenerator` from handlers-rest and `handler: never`. `get handle()` calls `this.endpointGenerator(...)` either way: with a picked service, choose its generating method there (`this.endpointGenerator.generate(...)`).
-- {wire} `<C>/wiring/presentation/rest/orders/wire-orders-recent-get-endpoint.ts` (`[wireRestEndpointGeneratorPresentationService, wireGetRecentOrdersUseCase]`; `[]` without a generator) + a line in that folder's `index.ts`
+- `<C>/presentation/rest/orders/recent/GET.ts`: `class OrdersRecentGetEndpoint(endpointGenerator, handler)`, route `['sales','orders','recent']`. `endpointGenerator: RestEndpointGeneratorPresentationService` (the Shared Layer generator from initialization) and `handler: GetRecentOrdersUseCase` (`never` without a pick), both `import type`. `get handle()` calls `this.endpointGenerator(...)`, which doesn't compile until a generating getter is picked (`this.endpointGenerator.withoutGuards(...)`); that's expected, not a generator bug. Projects without the generator file get `EndpointGenerator` from handlers-rest.
+- {wire} `<C>/wiring/presentation/rest/orders/wire-orders-recent-get-endpoint.ts` (`[wireRestEndpointGeneratorPresentationService, wireGetRecentOrdersUseCase]`; `[]` without the generator file) + a line in that folder's `index.ts`
 - {wire}, new controller only: `<C>/wiring/presentation/rest/index.ts`, `<rootFolder>/presentation/rest/wires.ts` (lines appended), `<rootFolder>/presentation/rest/index.ts` (`restHandlers`, created once)
 
 The same controller, path, and method replace the existing endpoint (after `Overwrite them?`).

@@ -332,12 +332,6 @@ export const isSuggestedFor = (
         `-${implementation}-`
     );
 
-/**
- * A likely endpoint generator: a service with `endpoint` in its name.
- */
-export const isSuggestedEndpointGenerator = (candidate: WiredModule) =>
-    candidate.typeName.toLowerCase().includes('endpoint');
-
 export const canDependOn = (consumer: WiredModule, candidate: WiredModule) =>
     visibleLayers[consumer.implementationsLayer].includes(candidate.layer) &&
     (kindRules[consumer.kind]?.(candidate, consumer) ?? true);

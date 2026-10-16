@@ -4,7 +4,8 @@ import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { relativeImport } from '../wiring';
-import { promptEndpointDependencies } from './wire-dependency';
+import { findRestEndpointGenerator } from './rest-endpoint-generator';
+import { promptEndpointHandler } from './wire-dependency';
 
 export const scaffoldNewHandlersRestEndpoint = async (
     boundedContextFolder: Folder
@@ -107,12 +108,15 @@ export const restHandlers = restWires.map(x => x().handle)
         );
 
     /**
-     * With wiring, the user picks both constructor parameters from wired
-     * modules; otherwise they stay placeholders.
+     * The generator is the Shared Layer one; with wiring, the user picks
+     * the handler from wired modules, otherwise it stays a placeholder.
      */
-    const { endpointGenerator, handler } = withWiring
-        ? await promptEndpointDependencies(boundedContextFolder)
-        : { endpointGenerator: undefined, handler: undefined };
+    const endpointGenerator = findRestEndpointGenerator(
+        boundedContextFolder.subitem(['..', '..', 'shared'])
+    );
+    const handler = withWiring
+        ? await promptEndpointHandler(boundedContextFolder)
+        : undefined;
 
     const endpointFile = path.join(
         endpointFolder.path,
@@ -120,7 +124,9 @@ export const restHandlers = restWires.map(x => x().handle)
     );
 
     /**
-     * Endpoint class.
+     * Endpoint class. With the Shared Layer generator, `get handle()` calls
+     * the service itself and doesn't compile until the user picks one of
+     * its generating getters.
      */
     endpointFolder.createFile(
         `${method.toUpperCase()}.ts`,

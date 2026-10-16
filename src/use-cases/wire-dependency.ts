@@ -6,7 +6,6 @@ import {
     availableDependencies,
     findWiredModules,
     implementationType,
-    isSuggestedEndpointGenerator,
     isSuggestedFor,
     readWiredModule,
     type WiredClass,
@@ -201,39 +200,15 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
 };
 
 /**
- * The endpoint's constructor parameters: an endpoint generator from the
- * presentation services of the context and the Shared Layer, and a
- * handler from the context's queries, commands, and use cases. Either is
- * undefined when there is nothing to choose from.
+ * The endpoint's handler, from the context's queries, commands, and use
+ * cases. Undefined when there is nothing to choose from.
  */
-export const promptEndpointDependencies = async (
-    boundedContextFolder: Folder
-) => {
-    const options = contextAndSharedModules(boundedContextFolder);
-    const generators = options.filter(
-        (x) => x.module.kind === 'presentation-services'
-    );
+export const promptEndpointHandler = async (boundedContextFolder: Folder) => {
     const handlers = findWiredModules(boundedContextFolder.path)
         .filter((x) => ['queries', 'commands', 'use-cases'].includes(x.kind))
         .map((x) => ({ module: x, label: x.typeName }));
 
-    const endpointGenerator = generators.length
-        ? (
-              await select({
-                  message: 'Endpoint generator:',
-                  choices: groupedChoices(
-                      generators,
-                      generators.filter((x) =>
-                          isSuggestedEndpointGenerator(x.module)
-                      )
-                  ),
-                  pageSize: groupedPageSize,
-                  loop: false
-              })
-          ).module
-        : undefined;
-
-    const handler = handlers.length
+    return handlers.length
         ? (
               await select({
                   message: 'Handler:',
@@ -243,6 +218,4 @@ export const promptEndpointDependencies = async (
               })
           ).module
         : undefined;
-
-    return { endpointGenerator, handler };
 };

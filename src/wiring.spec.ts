@@ -7,7 +7,6 @@ import {
     addImport,
     addWireDependencies,
     canDependOn,
-    isSuggestedEndpointGenerator,
     isSuggestedFor,
     type Layer,
     readWiredModule,
@@ -472,23 +471,5 @@ describe('readWiredModule', () => {
             'PrismaUserRepository',
             'InMemoryUserRepository'
         ]);
-    });
-});
-
-describe('isSuggestedEndpointGenerator', () => {
-    test('suggests services with endpoint in the name', () => {
-        const service = (typeName: string) => ({
-            ...wiredModule('presentation-services', 'presentation'),
-            typeName
-        });
-
-        expect(
-            isSuggestedEndpointGenerator(
-                service('RestEndpointGeneratorPresentationService')
-            )
-        ).toBe(true);
-        expect(
-            isSuggestedEndpointGenerator(service('ProfilePresentationService'))
-        ).toBe(false);
     });
 });

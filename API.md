@@ -118,6 +118,7 @@ Runs when `domain-first.project-structure.config.json` is missing in the project
 | `domain-first.project-structure.config.json`          | Always       | The [configuration](#configuration-file), tab-indented                          |
 | `<rootFolder>/shared/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
 | `<rootFolder>/shared/domain/errors/index.ts`          | With `errors` | `export const SharedErrors = errorNamespace('shared')`                         |
+| `<rootFolder>/shared/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
 
 ### Main menu
 
@@ -394,7 +395,6 @@ Bounded contexts only, with `handlers-rest`.
 | `Name:`                           | New controller                                | Controller name                                                              |
 | `Method:`                         |                                               | `get`, `post`, `patch`, `delete`, `put`                                      |
 | `Relative path (split by "/"):`   |                                               | Path below the controller; may be empty. `:param` segments are path parameters |
-| `Endpoint generator:`             | With `wire` and at least one candidate        | Presentation services of the context and the Shared Layer; those with `endpoint` in the name are listed under **Suggested** |
 | `Handler:`                        | With `wire` and at least one candidate        | Wired queries, commands and use cases of the context                         |
 
 **Output**
@@ -411,7 +411,20 @@ Bounded contexts only, with `handlers-rest`.
 - Path parameters are named `_param_` in folder and class names, since `:` is not allowed there. The route keeps `:param`.
 - The class name joins the controller, path segments, method and `Endpoint` in class form: `orders/recent` with `get` gives `OrdersRecentGetEndpoint`.
 - The route is `{ method, path: ['<context>', '<controller>', ...segments] }`, and the tag is `'<context>: <controller>'`.
-- The constructor takes `endpointGenerator` and `handler`. Without a chosen generator, their types are `EndpointGenerator` from `@domain-first/handlers-rest` and `never`. `get handle()` calls `this.endpointGenerator(this.handler.handle, { route, tags })`; adjust it to the API of the chosen service.
+- The constructor takes `endpointGenerator: RestEndpointGeneratorPresentationService`, the [endpoint generator](#endpoint-generator) of the Shared Layer, and `handler`, the chosen handler or `never` without one. `get handle()` calls `this.endpointGenerator(this.handler.handle, { route, tags })`, which doesn't compile on purpose: the user picks a generating getter of the service, e.g. `this.endpointGenerator.withoutGuards(...)`.
+- In projects without the generator file, the generator type is `EndpointGenerator` from `@domain-first/handlers-rest` and the wire takes no dependencies.
+
+#### Endpoint generator
+
+`RestEndpointGeneratorPresentationService`, created during [initialization](#initialization) with `handlers-rest`, is the one generator every endpoint uses.
+
+| Member                        | Kind            | Content                                                                                      |
+| ----------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
+| `withoutGuards`               | Getter          | `createEndpoint({ errorStatuses: { 400: { checks: this.invalidRequestChecks, description: 'Invalid request' } } })(this.adapter) as EndpointGenerator` |
+| `invalidRequestChecks`        | Private getter  | Default `400` checks: `RequestParsingError` and `InputMappingError`                          |
+| `adapter`                     | Private getter  | `Adapter<any[], any>`; throws `REST adapter is not set` until replaced                       |
+
+Further generating methods are getters typed as `EndpointGenerator`; they spread the default checks into their own: `checks: [...this.invalidRequestChecks, ...]`.
 
 **Example**
 
@@ -450,7 +463,7 @@ Any other value makes the wire throw `NonExistingBranchError` from `@domain-firs
 
 ### Dependency selection
 
-The last step of every generator that creates a factory, except REST endpoints, which select their two dependencies [themselves](#new-handlers-rest-endpoint).
+The last step of every generator that creates a factory, except REST endpoints, which take the [endpoint generator](#endpoint-generator) and select their handler [themselves](#new-handlers-rest-endpoint).
 
 - Candidates are the wired modules of the context and of the Shared Layer, the latter labelled `(shared)`. A module is any `wire*` factory found under `wiring/`.
 - Candidates are filtered by the [dependency rules](#dependency-rules), excluding the module itself and modules it already depends on.

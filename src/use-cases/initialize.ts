@@ -2,6 +2,7 @@ import { checkbox, confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { Folder } from '../file-system';
 import { ProjectRoot } from '../project-root';
+import { scaffoldRestEndpointGenerator } from './rest-endpoint-generator';
 
 export const initializeUseCase = async () => {
     const rootFolderName = await input({
@@ -86,5 +87,11 @@ import { errorNamespace } from '@domain-first/errors'
 export const SharedErrors = errorNamespace('shared')
             `.trim()
             );
+    }
+
+    if (domainFirstPackages.includes('@domain-first/handlers-rest')) {
+        scaffoldRestEndpointGenerator(
+            rootFolder.subitem([rootFolderName, 'shared'])
+        );
     }
 };
