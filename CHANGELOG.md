@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.18.1...v3.0.0) (2026-10-16)
+
+
+### Features
+
+* scaffolder ([a44e39f](https://github.com/alevnyacow/domain-first-project-structure/commit/a44e39f5dac7d387c0270c475078af894bc72777))
+
+
+### BREAKING CHANGES
+
+* new skills, new cli format
+
 ## [2.18.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v2.18.0...v2.18.1) (2026-10-15)
 
 
