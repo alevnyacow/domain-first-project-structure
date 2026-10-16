@@ -28,7 +28,7 @@ The full technical specification lives in [API.md](./API.md).
 
 ### How to initialize a project
 
-Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint).
+Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint); if `next` is among your dependencies, it offers to connect `nextAdapter` from `@domain-first/handlers-next` right away and prints the install command for it when it's missing.
 
 ```
 npx df-ps
@@ -156,36 +156,34 @@ src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts   // GET /sale
 Every endpoint uses the one endpoint generator of the project, `RestEndpointGeneratorPresentationService` in `src/shared/presentation/services/`. Initialization scaffolds it as a regular Shared Layer presentation service (class, spec and wire):
 
 ```ts
+/**
+ * The adapter of your HTTP framework.
+ */
+const adapter = undefined as unknown as Adapter<any[], any>
+
 export class RestEndpointGeneratorPresentationService {
+    /**
+     * Default errors of a client request, to spread into a generator's
+     * own checks.
+     */
+    private get defaultClientRequestErrors(): ErrorStatuses[number]['checks'] {
+        return [RequestParsingError.is, InputMappingError.is]
+    }
+
     get withoutGuards(): EndpointGenerator {
         return createEndpoint({
             errorStatuses: {
                 400: {
-                    checks: this.invalidRequestChecks,
+                    checks: this.defaultClientRequestErrors,
                     description: 'Invalid request'
                 }
             }
-        })(this.adapter) as EndpointGenerator
-    }
-
-    /**
-     * Default checks of an invalid request, to spread into a generator's
-     * own checks.
-     */
-    private get invalidRequestChecks(): ErrorStatuses[number]['checks'] {
-        return [RequestParsingError.is, InputMappingError.is]
-    }
-
-    /**
-     * The adapter of your HTTP framework.
-     */
-    private get adapter(): Adapter<any[], any> {
-        throw new Error('REST adapter is not set')
+        })(adapter) as EndpointGenerator
     }
 }
 ```
 
-Set `adapter` to the adapter of your HTTP framework. Each generating method is a getter returning `EndpointGenerator`: add one per kind of endpoint (for example `withAuth`, with its `context` and error statuses). Reuse the default checks there and add your own: `checks: [...this.invalidRequestChecks, MyError.is]`. A new endpoint calls `this.endpointGenerator(...)` and doesn't compile on purpose: choose the getter yourself in its `get handle()`, e.g. `this.endpointGenerator.withoutGuards(...)`.
+Set the module-level `adapter` constant above the class to the adapter of your HTTP framework; the class uses it through closure. If you connected the Next adapter during initialization, the file imports `nextAdapter` from `@domain-first/handlers-next` instead, with nothing to set. Each generating method is a getter returning `EndpointGenerator`: add one per kind of endpoint (for example `withAuth`, with its `context` and error statuses). Reuse the default checks there and add your own: `checks: [...this.defaultClientRequestErrors, MyError.is]`. A new endpoint calls `this.endpointGenerator(...)` and doesn't compile on purpose: choose the getter yourself in its `get handle()`, e.g. `this.endpointGenerator.withoutGuards(...)`.
 
 With wiring, the endpoint takes the generator and a handler you pick from the context's queries, commands and use cases, and all endpoints are collected as `restHandlers` in `src/presentation/rest/index.ts`. Connect them to your HTTP server.
 

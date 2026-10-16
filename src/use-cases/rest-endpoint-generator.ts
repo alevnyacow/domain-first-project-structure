@@ -7,49 +7,55 @@ const name = 'rest-endpoint-generator';
 /**
  * The one endpoint generator of the project: a Shared Layer presentation
  * service, scaffolded like any other. Every generating method is a getter
- * typed as `EndpointGenerator`.
+ * typed as `EndpointGenerator`. With `withNextAdapter`, the adapter is
+ * `nextAdapter` of `@domain-first/handlers-next` instead of a placeholder.
  */
-export const scaffoldRestEndpointGenerator = (sharedFolder: Folder) =>
-    createPresentationService(sharedFolder, name, (className) =>
-        `
+export const scaffoldRestEndpointGenerator = (
+    sharedFolder: Folder,
+    { withNextAdapter = false }: { withNextAdapter?: boolean } = {}
+) =>
+    createPresentationService(sharedFolder, name, (className) => {
+        const adapter = withNextAdapter ? 'nextAdapter' : 'adapter';
+        return `
 import {
-    type Adapter,
-    type EndpointGenerator,
+${withNextAdapter ? '' : '    type Adapter,\n'}    type EndpointGenerator,
     type ErrorStatuses,
     createEndpoint,
     InputMappingError,
     RequestParsingError
 } from '@domain-first/handlers-rest'
+${
+    withNextAdapter
+        ? `import { nextAdapter } from '@domain-first/handlers-next'`
+        : `
+/**
+ * The adapter of your HTTP framework.
+ */
+const adapter = undefined as unknown as Adapter<any[], any>`
+}
 
 export class ${className} {
+    /**
+     * Default errors of a client request, to spread into a generator's
+     * own checks.
+     */
+    private get defaultClientRequestErrors(): ErrorStatuses[number]['checks'] {
+        return [RequestParsingError.is, InputMappingError.is]
+    }
+
     get withoutGuards(): EndpointGenerator {
         return createEndpoint({
             errorStatuses: {
                 400: {
-                    checks: this.invalidRequestChecks,
+                    checks: this.defaultClientRequestErrors,
                     description: 'Invalid request'
                 }
             }
-        })(this.adapter) as EndpointGenerator
-    }
-
-    /**
-     * Default checks of an invalid request, to spread into a generator's
-     * own checks.
-     */
-    private get invalidRequestChecks(): ErrorStatuses[number]['checks'] {
-        return [RequestParsingError.is, InputMappingError.is]
-    }
-
-    /**
-     * The adapter of your HTTP framework.
-     */
-    private get adapter(): Adapter<any[], any> {
-        throw new Error('REST adapter is not set')
+        })(${adapter}) as EndpointGenerator
     }
 }
-`.trim()
-    );
+`.trim();
+    });
 
 /**
  * The generator's type and factory, or undefined in projects initialized

@@ -1,10 +1,30 @@
+import nodePath from 'node:path';
 import { checkbox, confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
-import { Folder } from '../file-system';
+import { File, Folder } from '../file-system';
 import { ProjectRoot } from '../project-root';
 import { scaffoldRestEndpointGenerator } from './rest-endpoint-generator';
 
-export const initializeUseCase = async () => {
+/**
+ * Whether the project's manifest lists `name` among its dependencies.
+ */
+const hasDependency = (root: string, name: string) => {
+    const manifestFile = new File(nodePath.join(root, 'package.json'));
+    if (!manifestFile.exists) return false;
+    const manifest = JSON.parse(manifestFile.data);
+    return [
+        manifest.dependencies,
+        manifest.devDependencies,
+        manifest.optionalDependencies
+    ].some((dependencies) => dependencies && Object.hasOwn(dependencies, name));
+};
+
+/**
+ * Initializes the project and returns the steps left to the user.
+ */
+export const initializeUseCase = async (): Promise<string[]> => {
+    const nextSteps: string[] = [];
+
     const rootFolderName = await input({
         message: 'Root folder (use "/" for inner folders):',
         default: 'src'
@@ -20,6 +40,11 @@ export const initializeUseCase = async () => {
             '@domain-first/handlers-rest'
         ]
     });
+
+    const withNextAdapter =
+        domainFirstPackages.includes('@domain-first/handlers-rest') &&
+        hasDependency(new ProjectRoot().path, 'next') &&
+        (await confirm({ message: 'Use Next adapter for REST endpoints' }));
 
     const defaultPersistenceLayerImplementation = await input({
         message: 'Default persistence layer implementation:'
@@ -91,7 +116,17 @@ export const SharedErrors = errorNamespace('shared')
 
     if (domainFirstPackages.includes('@domain-first/handlers-rest')) {
         scaffoldRestEndpointGenerator(
-            rootFolder.subitem([rootFolderName, 'shared'])
+            rootFolder.subitem([rootFolderName, 'shared']),
+            { withNextAdapter }
         );
+
+        if (
+            withNextAdapter &&
+            !hasDependency(path, '@domain-first/handlers-next')
+        ) {
+            nextSteps.push('npm i @domain-first/handlers-next');
+        }
     }
+
+    return nextSteps;
 };

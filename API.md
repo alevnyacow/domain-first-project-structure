@@ -104,6 +104,7 @@ Runs when `domain-first.project-structure.config.json` is missing in the project
 | -------------------------------------------- | -------- | ----------------------- | --------------------------------------- |
 | `Root folder (use "/" for inner folders):`   | input    | `src`                   | `rootFolder`                            |
 | `@domain-first packages`                     | checkbox | none selected           | `domainFirstPackages`                   |
+| `Use Next adapter for REST endpoints` (only with `handlers-rest` and `next` in `package.json`) | confirm |  |  |
 | `Default persistence layer implementation:`  | input    | empty                   | `defaultPersistenceLayerImplementation` |
 | `Use React`                                  | confirm  |                         | `useReact`                              |
 | `Use Storybook` (only with React)            | confirm  |                         |                                         |
@@ -119,6 +120,8 @@ Runs when `domain-first.project-structure.config.json` is missing in the project
 | `<rootFolder>/shared/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
 | `<rootFolder>/shared/domain/errors/index.ts`          | With `errors` | `export const SharedErrors = errorNamespace('shared')`                         |
 | `<rootFolder>/shared/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
+
+With the Next adapter confirmed and `@domain-first/handlers-next` missing from `package.json`, initialization prints `npm i @domain-first/handlers-next` after writing the files.
 
 ### Main menu
 
@@ -420,11 +423,11 @@ Bounded contexts only, with `handlers-rest`.
 
 | Member                        | Kind            | Content                                                                                      |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
-| `withoutGuards`               | Getter          | `createEndpoint({ errorStatuses: { 400: { checks: this.invalidRequestChecks, description: 'Invalid request' } } })(this.adapter) as EndpointGenerator` |
-| `invalidRequestChecks`        | Private getter  | Default `400` checks: `RequestParsingError` and `InputMappingError`                          |
-| `adapter`                     | Private getter  | `Adapter<any[], any>`; throws `REST adapter is not set` until replaced                       |
+| `adapter`                     | Module constant | `Adapter<any[], any>`, declared above the class; `undefined` until replaced, used by the class through closure. With the Next adapter: `import { nextAdapter } from '@domain-first/handlers-next'` instead, and the getters pass `nextAdapter` |
+| `defaultClientRequestErrors`  | Private getter  | Default `400` checks: `RequestParsingError` and `InputMappingError`; declared first in the class |
+| `withoutGuards`               | Getter          | `createEndpoint({ errorStatuses: { 400: { checks: this.defaultClientRequestErrors, description: 'Invalid request' } } })(adapter) as EndpointGenerator` |
 
-Further generating methods are getters typed as `EndpointGenerator`; they spread the default checks into their own: `checks: [...this.invalidRequestChecks, ...]`.
+Further generating methods are getters typed as `EndpointGenerator`; they spread the default checks into their own: `checks: [...this.defaultClientRequestErrors, ...]`.
 
 **Example**
 

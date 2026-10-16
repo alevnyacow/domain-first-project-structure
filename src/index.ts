@@ -3,6 +3,7 @@
 import { select } from '@inquirer/prompts';
 import { ConfigFile } from './config-file';
 import { Folder } from './file-system';
+import { printNextSteps } from './print-next-steps';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
 import {
@@ -34,7 +35,10 @@ const main = async () => {
      * If no config file was found, initialize a project.
      */
     if (!ConfigFile.exists) {
-        await initializeUseCase();
+        const nextSteps = await initializeUseCase();
+        if (await savePendingChanges()) {
+            printNextSteps(nextSteps);
+        }
         return;
     }
 
