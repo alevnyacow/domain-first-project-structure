@@ -1,3 +1,10 @@
+## [3.2.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.2.0...v3.2.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* `.of` in unit tests for entities and vos (including aggregate roots), ([ac234b2](https://github.com/alevnyacow/domain-first-project-structure/commit/ac234b2a60aef8d745d513d12cc73d92bf7a8059))
+
 # [3.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.1.0...v3.2.0) (2026-10-17)
 
 
