@@ -2,6 +2,7 @@ import nodePath from 'node:path';
 import { checkbox, confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File, Folder } from '../file-system';
+import { scaffoldInMemoryDb } from '../in-memory-db';
 import { ProjectRoot } from '../project-root';
 import { scaffoldRestEndpointGenerator } from './rest-endpoint-generator';
 
@@ -50,6 +51,10 @@ export const initializeUseCase = async (): Promise<string[]> => {
         message: 'Default persistence layer implementation:'
     });
 
+    const withInMemoryDb = await confirm({
+        message: 'Scaffold in-memory DB for test implementations'
+    });
+
     const useReact = await confirm({ message: 'Use React' });
 
     let storybookFramework: string | undefined;
@@ -78,6 +83,7 @@ export const initializeUseCase = async (): Promise<string[]> => {
         rootFolder: rootFolderName,
         domainFirstPackages,
         defaultPersistenceLayerImplementation,
+        withInMemoryDb,
         useReact,
         storybookFramework,
         testingLibrary
@@ -98,6 +104,10 @@ export const envBranchedWire = branchedWire(() => {
 });
 `.trim()
         );
+    }
+
+    if (withInMemoryDb) {
+        scaffoldInMemoryDb(rootFolder.subitem([rootFolderName, 'shared']));
     }
 
     if (domainFirstPackages.includes('@domain-first/errors')) {

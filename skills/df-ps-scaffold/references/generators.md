@@ -21,6 +21,7 @@ Prompts: name → `With Repository` → if yes: implementation (default = config
 - `<C>/domain/aggregates/n/`: `n.aggregate-root.ts` (`class N extends domainType()` {types}), `index.ts`, spec; with repository: `n-repository.ts` (`abstract class NRepository`), spec
 - `<C>/infrastructure/repositories/I/I-n-repository.ts` per implementation (`class INRepository implements NRepository`)
 - {wire} `<C>/wiring/repositories/wire-n-repository.ts` (env-branched)
+- With `withInMemoryDb` in the config, the `in-memory` implementation is not empty: `private readonly data: InMemoryDbInfrastructureService['ns']`, set in the constructor from its `inMemoryDbInfrastructureService` parameter; `ns = this.section<N>('NS');` is added to `<rootFolder>/shared/infrastructure/services/in-memory-db-infrastructure-service.ts` if missing (`N` needs an `id`), and {wire} its `wireClass` already has `wireInMemoryDbInfrastructureService`, so `Dependencies for InMemoryNRepository:` doesn't list it.
 
 ## Domain → New Entity / New Value Object (context and Shared Layer)
 
@@ -77,6 +78,7 @@ Execution:
 - `<C>/application/commands/execution/n-command.ts`: abstract `NCommand` ({handlers} schemas + abstract `handle: Handler<…>`), spec
 - `<C>/infrastructure/commands/I/I-n-command.ts` per implementation (`extends NCommand`, implements `handle`)
 - {wire} `<C>/wiring/commands/wire-n-command.ts` (env-branched)
+- With `withInMemoryDb` in the config, the `in-memory` implementation gets the whole DB: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`, {wire} already in its `wireClass`. No section is added.
 
 Orchestrator: `<C>/application/commands/orchestration/n-command.ts` (concrete class), spec, {wire} `wire-n-command.ts`.
 

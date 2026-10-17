@@ -1,6 +1,14 @@
 import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import {
+    addInMemoryDbSection,
+    inMemoryDbSectionMembers,
+    inMemoryDbTypeImport,
+    passInMemoryDb,
+    usesInMemoryDb,
+    wireInMemoryDb
+} from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -123,12 +131,37 @@ describe('${aggregateNaming.withSpaces}', () => {
 
         for (const implementation of implementationTypes) {
             const naming = new UnknownFormatNaming(implementation);
+            const repositoryFolder = infrastructureRepositoriesFolder.subitem([
+                naming.fileName
+            ]);
+            const repositoryFileName = `${naming.fileName}-${aggregateName}-repository.ts`;
 
-            infrastructureRepositoriesFolder
-                .subitem([naming.fileName])
-                .createFile(
-                    `${naming.fileName}-${aggregateName}-repository.ts`,
+            /**
+             * An in-memory repository keeps its aggregates in their own
+             * section of the shared in-memory DB.
+             */
+            if (usesInMemoryDb(implementation)) {
+                const section = addInMemoryDbSection(
+                    aggregateNaming,
+                    aggregatesFolder.path
+                );
+                repositoryFolder.createFile(
+                    repositoryFileName,
                     `
+${inMemoryDbTypeImport(repositoryFolder.subitem([repositoryFileName]).path)}
+import { ${aggregateNaming.ClassName}Repository } from '../../../domain/aggregates/${aggregateName}'
+
+export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implements ${aggregateNaming.ClassName}Repository {
+    ${inMemoryDbSectionMembers(section, false)}
+}
+                        `.trim()
+                );
+                continue;
+            }
+
+            repositoryFolder.createFile(
+                repositoryFileName,
+                `
 import { ${aggregateNaming.ClassName}Repository } from '../../../domain/aggregates/${aggregateName}'
 
 export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implements ${aggregateNaming.ClassName}Repository {
@@ -136,14 +169,14 @@ export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implement
 }
 
                         `.trim()
-                );
+            );
         }
 
         if (scaffoldUnitTests) {
             const implementationNaming = new UnknownFormatNaming(
                 infrastructureImplementationType
             );
-            aggregatesFolder.createFile(
+            const specFile = aggregatesFolder.createFile(
                 `${aggregateNaming.fileName}-repository.spec.ts`,
                 `
 import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
@@ -169,6 +202,18 @@ describe('${aggregateNaming.withSpaces} repository', () => {
 })
                 `.trim()
             );
+
+            if (
+                !ConfigFile.Instance.data.domainFirstPackages.includes(
+                    '@domain-first/wire'
+                ) &&
+                usesInMemoryDb(infrastructureImplementationType)
+            ) {
+                passInMemoryDb(
+                    specFile,
+                    `${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository`
+                );
+            }
         }
 
         if (
@@ -212,6 +257,15 @@ export const wire${aggregateNaming.ClassName}Repository = envBranchedWire({
 })
     `.trim()
                 );
+
+            for (const implementation of implementationTypes.filter(
+                usesInMemoryDb
+            )) {
+                wireInMemoryDb(
+                    wireFile,
+                    `${new UnknownFormatNaming(implementation).ClassName}${aggregateNaming.ClassName}Repository`
+                );
+            }
 
             await wireNewModuleDependencies(boundedContextFolder, wireFile);
         }

@@ -106,6 +106,7 @@ Runs when `domain-first.project-structure.config.json` is missing in the project
 | `@domain-first packages`                     | checkbox | none selected           | `domainFirstPackages`                   |
 | `Use Next adapter for REST endpoints` (only with `handlers-rest` and `next` in `package.json`) | confirm |  |  |
 | `Default persistence layer implementation:`  | input    | empty                   | `defaultPersistenceLayerImplementation` |
+| `Scaffold in-memory DB for test implementations` | confirm |                      | `withInMemoryDb`                        |
 | `Use React`                                  | confirm  |                         | `useReact`                              |
 | `Use Storybook` (only with React)            | confirm  |                         |                                         |
 | `Storybook framework package:`               | input    | `@storybook/react-vite` | `storybookFramework`                    |
@@ -119,6 +120,7 @@ Runs when `domain-first.project-structure.config.json` is missing in the project
 | `domain-first.project-structure.config.json`          | Always       | The [configuration](#configuration-file), tab-indented                          |
 | `<rootFolder>/shared/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
 | `<rootFolder>/shared/domain/errors/index.ts`          | With `errors` | `export const SharedErrors = errorNamespace('shared')`                         |
+| `<rootFolder>/shared/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its spec and wire as for [New Service](#new-service) |
 | `<rootFolder>/shared/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
 
 With the Next adapter confirmed and `@domain-first/handlers-next` missing from `package.json`, initialization prints `npm i @domain-first/handlers-next` after writing the files.
@@ -145,6 +147,16 @@ After choosing a bounded context or the Shared Layer, the CLI asks for a layer a
 | `Presentation`    | `New Handlers-REST Endpoint` (with `handlers-rest`), `New Service`           | `New Service`                                        |
 | `Wire dependency` | With `wire`: [Wire dependency](#wire-dependency)                             | With `wire`: [Wire dependency](#wire-dependency)     |
 
+### In-memory DB
+
+`InMemoryDbInfrastructureService` keeps data of test implementations in `globalThis`, so every instance sees the same data during a test run. Data is split into sections, declared as fields:
+
+```ts
+orders = this.section<Order>('ORDERS');
+```
+
+A section has `all(predicate?)`, `first(predicate)`, `withId(id)`, `lastAddedItem()`, `save(item)`, `deleteById(id)` and `delete(predicate)`. Ids are compared with their `equals`, `same`, `isSame` or `isEqual` method when they have one, with `Object.is` otherwise; pass a comparison as the second argument of `section` to override it. For items without an `id`, use `section<T, TId>(key)` and save `[id, item]` pairs.
+
 ## Configuration file
 
 `domain-first.project-structure.config.json` in the project root. It is read on every run and validated with a strict schema: an invalid file makes the CLI throw.
@@ -160,6 +172,7 @@ type Config = {
         | '@domain-first/handlers-rest'
     >;
     defaultPersistenceLayerImplementation: string;
+    withInMemoryDb?: boolean;
     useReact: boolean;
     storybookFramework?: string;
     testingLibrary?: string;
@@ -179,6 +192,7 @@ type Config = {
         "@domain-first/handlers-rest"
     ],
     "defaultPersistenceLayerImplementation": "prisma",
+    "withInMemoryDb": true,
     "useReact": true,
     "storybookFramework": "@storybook/react-vite",
     "testingLibrary": "vitest"
@@ -192,6 +206,7 @@ type Config = {
 | `rootFolder`                            | Base path of generated source, relative to the project root. May contain inner folders: `src/server`.                                       |
 | `domainFirstPackages`                   | Integrations used by templates. See [Package integrations](#package-integrations). An empty array selects plain class templates.             |
 | `defaultPersistenceLayerImplementation` | Default implementation label for repositories, execution commands and execution queries.                                                     |
+| `withInMemoryDb`                        | `in-memory` implementations of repositories, execution commands and execution queries get the shared [in-memory DB](#in-memory-db). Omitted: they are generated empty. |
 | `useReact`                              | Shows `Scaffold React module` in the main menu and enables the Orval integration.                                                            |
 | `storybookFramework`                    | Package that generated stories import `Meta` and `StoryObj` from. Omitted: no stories are generated.                                         |
 | `testingLibrary`                        | Module that generated tests import `describe`, `test`, `expect` and `beforeEach` from. Omitted: no tests are generated.                      |
@@ -278,6 +293,20 @@ Bounded contexts only.
 | `domain/aggregates/<name>/<name>-repository.spec.ts`                   | With repository and tests | Wiring test with `wire`, construction test of the primary implementation otherwise |
 | `wiring/repositories/wire-<name>-repository.ts`                        | With repository and `wire` | `wire<Name>Repository` built with [`envBranchedWire`](#envbranchedwire) |
 
+With the [in-memory DB](#in-memory-db), an `in-memory` implementation keeps the aggregate's section of it:
+
+```ts
+export class InMemoryOrderRepository implements OrderRepository {
+    private readonly data: InMemoryDbInfrastructureService['orders']
+
+    constructor(inMemoryDbInfrastructureService: InMemoryDbInfrastructureService) {
+        this.data = inMemoryDbInfrastructureService.orders
+    }
+}
+```
+
+The section `orders = this.section<Order>('ORDERS');` is added to `InMemoryDbInfrastructureService` unless it is there, and the implementation's `wireClass` gets `wireInMemoryDbInfrastructureService`. `section<Order>` needs an `id` in `Order`.
+
 ### New Entity and New Value Object
 
 **Prompts**
@@ -357,6 +386,8 @@ Bounded contexts only. Both generators are identical except for the folder (`com
 | `infrastructure/<kind>/<impl>/<impl>-<name>-<suffix>.ts`             | Per implementation | `class <Impl><Name><Suffix> extends <Name><Suffix>`; with `handlers`, `handle = defineHandler(...)` |
 | `application/<kind>/execution/<name>-<suffix>.spec.ts`               | With tests         | Wiring test with `wire`, construction test of the primary implementation otherwise      |
 | `wiring/<kind>/wire-<name>-<suffix>.ts`                              | With `wire`        | `wire<Name><Suffix>` built with [`envBranchedWire`](#envbranchedwire)                   |
+
+With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the whole DB, with no section added: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`, wired with `wireInMemoryDbInfrastructureService`.
 
 **Orchestrator (no infrastructure implementation)**
 

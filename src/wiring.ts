@@ -588,6 +588,27 @@ export const addConstructorParameters = (
 };
 
 /**
+ * Appends a member at the end of the class body.
+ */
+export const addClassMember = (
+    source: string,
+    className: string,
+    member: string
+) => {
+    const classMatch = new RegExp(`class\\s+${className}\\b[^{]*\\{`).exec(
+        codeOnly(source)
+    );
+    if (!classMatch) {
+        throw new Error(`Class ${className} not found`);
+    }
+    const bodyStart = classMatch.index + classMatch[0].length;
+    const bodyEnd = closingIndex(source, bodyStart - 1);
+    const body = source.slice(bodyStart, bodyEnd).trimEnd();
+    const separator = body.trim() ? '\n\n' : '\n';
+    return `${source.slice(0, bodyStart)}${body}${separator}    ${member}\n${source.slice(bodyEnd)}`;
+};
+
+/**
  * Brackets of the dependency list of `wireClass(className, [...])`.
  */
 const wireListRange = (source: string, className: string) => {

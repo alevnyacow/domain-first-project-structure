@@ -1,6 +1,12 @@
 import { confirm, input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import {
+    injectInMemoryDb,
+    passInMemoryDb,
+    usesInMemoryDb,
+    wireInMemoryDb
+} from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -63,13 +69,15 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
         for (const implementation of implementationTypes) {
             const formatNaming = new UnknownFormatNaming(implementation);
 
-            infrastructureFolder.subitem([formatNaming.fileName]).createFile(
-                `${formatNaming.fileName}-${naming.fileName}-query.ts`,
-                ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/handlers'
-                )
-                    ? /** Implementation with @domain-first/handlers */
-                      `
+            const implementationFile = infrastructureFolder
+                .subitem([formatNaming.fileName])
+                .createFile(
+                    `${formatNaming.fileName}-${naming.fileName}-query.ts`,
+                    ConfigFile.Instance.data.domainFirstPackages.includes(
+                        '@domain-first/handlers'
+                    )
+                        ? /** Implementation with @domain-first/handlers */
+                          `
 import { defineHandler } from '@domain-first/handlers'
 import { ${naming.ClassName}Query } from '../../../application/queries/execution/${naming.fileName}-query'
 
@@ -87,7 +95,7 @@ export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.
     })
 }
         `.trim()
-                    : /** Implementation without @domain-first/handlers */ `
+                        : /** Implementation without @domain-first/handlers */ `
 import { ${naming.ClassName}Query } from '../../../application/queries/execution/${naming.fileName}-query'
 
 export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.ClassName}Query {
@@ -96,7 +104,14 @@ export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.
     }
 }
     `.trim()
-            );
+                );
+
+            if (usesInMemoryDb(implementation)) {
+                injectInMemoryDb(
+                    implementationFile,
+                    `${formatNaming.ClassName}${naming.ClassName}Query`
+                );
+            }
         }
 
         if (
@@ -131,7 +146,7 @@ export abstract class ${naming.ClassName}Query {
             const implementationNaming = new UnknownFormatNaming(
                 implementationType
             );
-            queriesFolder.subitem(['execution']).createFile(
+            const specFile = queriesFolder.subitem(['execution']).createFile(
                 `${naming.fileName}-query.spec.ts`,
                 `
 import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
@@ -157,6 +172,13 @@ describe('${naming.withSpaces} query', () => {
 })
                 `.trim()
             );
+
+            if (!withWiring && usesInMemoryDb(implementationType)) {
+                passInMemoryDb(
+                    specFile,
+                    `${implementationNaming.ClassName}${naming.ClassName}Query`
+                );
+            }
         }
 
         if (
@@ -200,6 +222,15 @@ export const wire${naming.ClassName}Query = envBranchedWire({
 })
     `.trim()
                 );
+
+            for (const implementation of implementationTypes.filter(
+                usesInMemoryDb
+            )) {
+                wireInMemoryDb(
+                    wireFile,
+                    `${new UnknownFormatNaming(implementation).ClassName}${naming.ClassName}Query`
+                );
+            }
 
             await wireNewModuleDependencies(boundedContextFolder, wireFile);
         }

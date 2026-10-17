@@ -1,6 +1,12 @@
 import { confirm, input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import {
+    injectInMemoryDb,
+    passInMemoryDb,
+    usesInMemoryDb,
+    wireInMemoryDb
+} from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -63,13 +69,15 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
         for (const implementation of implementationTypes) {
             const formatNaming = new UnknownFormatNaming(implementation);
 
-            infrastructureFolder.subitem([formatNaming.fileName]).createFile(
-                `${formatNaming.fileName}-${naming.fileName}-command.ts`,
-                ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/handlers'
-                )
-                    ? /** Implementation with @domain-first/handlers */
-                      `
+            const implementationFile = infrastructureFolder
+                .subitem([formatNaming.fileName])
+                .createFile(
+                    `${formatNaming.fileName}-${naming.fileName}-command.ts`,
+                    ConfigFile.Instance.data.domainFirstPackages.includes(
+                        '@domain-first/handlers'
+                    )
+                        ? /** Implementation with @domain-first/handlers */
+                          `
 import { defineHandler } from '@domain-first/handlers'
 import { ${naming.ClassName}Command } from '../../../application/commands/execution/${naming.fileName}-command'
 
@@ -87,7 +95,7 @@ export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${namin
     })
 }
         `.trim()
-                    : /** Implementation without @domain-first/handlers */ `
+                        : /** Implementation without @domain-first/handlers */ `
 import { ${naming.ClassName}Command } from '../../../application/commands/execution/${naming.fileName}-command'
 
 export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${naming.ClassName}Command {
@@ -96,7 +104,14 @@ export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${namin
     }
 }
     `.trim()
-            );
+                );
+
+            if (usesInMemoryDb(implementation)) {
+                injectInMemoryDb(
+                    implementationFile,
+                    `${formatNaming.ClassName}${naming.ClassName}Command`
+                );
+            }
         }
 
         if (
@@ -131,7 +146,7 @@ export abstract class ${naming.ClassName}Command {
             const implementationNaming = new UnknownFormatNaming(
                 implementationType
             );
-            commandsFolder.subitem(['execution']).createFile(
+            const specFile = commandsFolder.subitem(['execution']).createFile(
                 `${naming.fileName}-command.spec.ts`,
                 `
 import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
@@ -157,6 +172,13 @@ describe('${naming.withSpaces} command', () => {
 })
                 `.trim()
             );
+
+            if (!withWiring && usesInMemoryDb(implementationType)) {
+                passInMemoryDb(
+                    specFile,
+                    `${implementationNaming.ClassName}${naming.ClassName}Command`
+                );
+            }
         }
 
         if (
@@ -200,6 +222,15 @@ export const wire${naming.ClassName}Command = envBranchedWire({
 })
     `.trim()
                 );
+
+            for (const implementation of implementationTypes.filter(
+                usesInMemoryDb
+            )) {
+                wireInMemoryDb(
+                    wireFile,
+                    `${new UnknownFormatNaming(implementation).ClassName}${naming.ClassName}Command`
+                );
+            }
 
             await wireNewModuleDependencies(boundedContextFolder, wireFile);
         }

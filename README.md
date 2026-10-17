@@ -28,7 +28,7 @@ The full technical specification lives in [API.md](./API.md).
 
 ### How to initialize a project
 
-Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint); if `next` is among your dependencies, it offers to connect `nextAdapter` from `@domain-first/handlers-next` right away and prints the install command for it when it's missing.
+Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, whether to scaffold a shared in-memory DB for test implementations, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint); if `next` is among your dependencies, it offers to connect `nextAdapter` from `@domain-first/handlers-next` right away and prints the install command for it when it's missing.
 
 ```
 npx df-ps
@@ -44,6 +44,7 @@ npx df-ps
         "@domain-first/wire"
     ],
     "defaultPersistenceLayerImplementation": "prisma",
+    "withInMemoryDb": true,
     "useReact": false,
     "testingLibrary": "vitest"
 }

@@ -17,6 +17,7 @@ const configSchema = z.object({
         ])
     ),
     defaultPersistenceLayerImplementation: z.string(),
+    withInMemoryDb: z.boolean().optional(),
     useReact: z.boolean(),
     storybookFramework: z.string().optional(),
     testingLibrary: z.string().optional()
