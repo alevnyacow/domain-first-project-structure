@@ -1,3 +1,10 @@
+## [3.3.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.3.1...v3.3.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* in-memory db can import domain types of any bounded context ([9be45d9](https://github.com/alevnyacow/domain-first-project-structure/commit/9be45d914ffe5393ebc17625d2ba364b216865a0))
+
 ## [3.3.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.3.0...v3.3.1) (2026-10-17)
 
 
