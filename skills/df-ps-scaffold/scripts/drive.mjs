@@ -13,7 +13,7 @@
  *   yes | no       confirm prompt
  *   toggle:<n,..>  checkbox prompt: toggle 1-based items (headers not counted),
  *                  moving with the arrow keys, then press Enter
- *   none           checkbox prompt: submit with nothing selected
+ *   none           checkbox prompt: submit as is (pre-checked items stay checked)
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';

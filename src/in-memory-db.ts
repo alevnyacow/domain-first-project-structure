@@ -7,7 +7,8 @@ import {
     addConstructorParameters,
     addImport,
     addWireDependencies,
-    relativeImport
+    relativeImport,
+    type WiredModule
 } from './wiring';
 
 /**
@@ -279,6 +280,25 @@ export const inMemoryDbSectionMembers = (field: string, derived: boolean) =>
         ${derived ? 'super()\n        ' : ''}this.data = ${parameterName}.${field}
     }
 `.trim();
+
+/**
+ * Puts one section of the in-memory DB in place of the implementation's
+ * empty constructor.
+ */
+export const keepInMemoryDbSection = (classFile: File, field: string) => {
+    classFile.update(
+        addImport(classFile.data, inMemoryDbTypeImport(classFile.path)).replace(
+            'constructor() {}',
+            inMemoryDbSectionMembers(field, false)
+        )
+    );
+};
+
+/**
+ * Whether the wired module is the in-memory DB.
+ */
+export const isInMemoryDb = (module: WiredModule) =>
+    module.wireName === wireName;
 
 /**
  * Injects the whole in-memory DB into the implementation's constructor.

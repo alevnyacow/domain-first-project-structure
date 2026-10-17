@@ -29,14 +29,18 @@ const kindTitles: Record<string, string> = {
 };
 
 /**
- * Choices under a header per kind of module, suggested ones first and
- * only there; the order inside a group is kept.
+ * Choices under a header per kind of module, suggested ones first, only
+ * there and checked; the order inside a group is kept.
  */
 const groupedChoices = <T extends Option>(items: T[], suggested: T[] = []) => {
     const suggestedChoices = suggested.length
         ? [
               new Separator('── Suggested'),
-              ...suggested.map((x) => ({ name: x.label, value: x }))
+              ...suggested.map((x) => ({
+                  name: x.label,
+                  value: x,
+                  checked: true
+              }))
           ]
         : [];
     const kinds = [
@@ -69,6 +73,15 @@ const groupedPageSize = 20;
 type Option = { module: WiredModule; label: string };
 
 /**
+ * Wires a chosen dependency in its own way. Returns false to leave it to
+ * the default wiring.
+ */
+export type CustomWiring = (
+    implementation: WiredClass,
+    dependency: WiredModule
+) => boolean;
+
+/**
  * Wired modules of the context, then of the Shared Layer (labelled).
  */
 const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
@@ -99,7 +112,8 @@ const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
 const promptDependencies = async (
     boundedContextFolder: Folder,
     consumer: WiredModule,
-    implementations: WiredClass[] = consumer.implementations
+    implementations: WiredClass[] = consumer.implementations,
+    customWiring?: CustomWiring
 ) => {
     const options = contextAndSharedModules(boundedContextFolder);
     let asked = false;
@@ -135,12 +149,12 @@ const promptDependencies = async (
             loop: false
         });
 
-        if (dependencies.length) {
-            wireDependencies(
-                consumer,
-                implementation,
-                dependencies.map((x) => x.module)
-            );
+        const defaultWired = dependencies
+            .map((x) => x.module)
+            .filter((x) => !customWiring?.(implementation, x));
+
+        if (defaultWired.length) {
+            wireDependencies(consumer, implementation, defaultWired);
         }
     }
 
@@ -152,11 +166,17 @@ const promptDependencies = async (
  */
 export const wireNewModuleDependencies = async (
     boundedContextFolder: Folder,
-    wireFile: File
+    wireFile: File,
+    customWiring?: CustomWiring
 ) => {
     const consumer = readWiredModule(wireFile.path, boundedContextFolder.path);
     if (consumer) {
-        await promptDependencies(boundedContextFolder, consumer);
+        await promptDependencies(
+            boundedContextFolder,
+            consumer,
+            consumer.implementations,
+            customWiring
+        );
     }
 };
 

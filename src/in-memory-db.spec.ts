@@ -20,6 +20,14 @@ rstest.mock('@inquirer/prompts', () => ({
 }));
 
 /**
+ * Dependency questions keep what is checked, unless an answer unchecks
+ * all of it.
+ */
+const checkedChoices = (
+    choices: Array<{ value?: unknown; checked?: boolean }>
+) => choices.filter((x) => x.checked).map((x) => x.value);
+
+/**
  * Answers by prompt message, so the order of questions doesn't matter.
  */
 const answer = (answers: Record<string, unknown>) => {
@@ -34,9 +42,11 @@ const answer = (answers: Record<string, unknown>) => {
     rstest.mocked(select).mockImplementation(reply as any);
     rstest
         .mocked(checkbox)
-        .mockImplementation((async ({ message }: { message: string }) =>
+        .mockImplementation((async ({ message, choices }: any) =>
             message.startsWith('Dependencies')
-                ? []
+                ? message in answers
+                    ? answers[message]
+                    : checkedChoices(choices)
                 : reply({ message })) as any);
 };
 
@@ -135,8 +145,8 @@ test('an in-memory repository takes its section in the constructor', () => {
             'bounded-contexts/users/infrastructure/repositories/in-memory/in-memory-user-repository.ts'
         )
     ).toBe(
-        `import type { InMemoryDbInfrastructureService } from '../../../../../shared/infrastructure/services/in-memory-db-infrastructure-service'
-import { UserRepository } from '../../../domain/aggregates/user'
+        `import { UserRepository } from '../../../domain/aggregates/user'
+import type { InMemoryDbInfrastructureService } from '../../../../../shared/infrastructure/services/in-memory-db-infrastructure-service'
 
 export class InMemoryUserRepository implements UserRepository {
     private readonly data: InMemoryDbInfrastructureService['users']
@@ -257,4 +267,34 @@ test('without the flag, in-memory implementations stay empty', async () => {
             'bounded-contexts/users/infrastructure/repositories/in-memory/in-memory-user-repository.ts'
         )
     ).toContain('constructor() {}');
+});
+
+test('an unchecked in-memory DB leaves the in-memory repository empty', async () => {
+    const unchecked = await createProject(['@domain-first/wire']);
+    answer({
+        'Aggregate name:': 'user',
+        'With Repository': true,
+        'Repository infrastructure implementation type:': 'prisma',
+        'Add a test implementation for Repository': true,
+        'Test Repository infrastructure implementation type:': 'in-memory',
+        'Dependencies for InMemoryUserRepository:': []
+    });
+    await scaffoldNewAggregateUseCase(unchecked.context);
+    writePendingChanges();
+
+    expect(
+        unchecked.read(
+            'bounded-contexts/users/infrastructure/repositories/in-memory/in-memory-user-repository.ts'
+        )
+    ).toContain('constructor() {}');
+    expect(
+        unchecked.read(
+            'bounded-contexts/users/wiring/repositories/wire-user-repository.ts'
+        )
+    ).toContain('wireClass(InMemoryUserRepository, [])');
+    expect(
+        unchecked.read(
+            'shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+        )
+    ).not.toContain('this.section<');
 });

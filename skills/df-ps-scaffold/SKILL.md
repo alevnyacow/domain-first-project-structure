@@ -112,7 +112,7 @@ node scripts/drive.mjs "pick:Bounded Context: sales" pick:Domain "pick:New Aggre
 | `pick:<label>`         | select   | Types a **prefix of the choice text** + Enter. Aborts before submitting if the highlighted choice doesn't match. |
 | `text:<v>` / `default` | input    | Types a value / accepts the default.                                                                             |
 | `yes` / `no`           | confirm  |                                                                                                                  |
-| `toggle:1,3` / `none`  | checkbox | Init, `Dependencies:`, `Dependencies for <Implementation>:`.                                                     |
+| `toggle:1,3` / `none`  | checkbox | Init, `Dependencies:`, `Dependencies for <Implementation>:`. `Suggested` items come checked: toggling unchecks. |
 
 Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the planned files. "Still waiting for input" means too few steps; nothing was written. If the raw output ends at `Overwrite them?`, the run would replace files the plan didn't flag: show the user the listed files and ask, never just add `yes`. If prompts get out of sync, retry with `--delay 1200`.
 

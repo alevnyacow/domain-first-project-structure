@@ -1,10 +1,12 @@
 import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
-import type { Folder } from '../file-system';
+import { File, type Folder } from '../file-system';
 import {
     addInMemoryDbSection,
     inMemoryDbSectionMembers,
     inMemoryDbTypeImport,
+    isInMemoryDb,
+    keepInMemoryDbSection,
     passInMemoryDb,
     usesInMemoryDb,
     wireInMemoryDb
@@ -33,11 +35,16 @@ export const scaffoldNewAggregateUseCase = async (
         aggregateName
     ]);
 
+    /**
+     * Domain types close their constructors: instances come from `of`.
+     */
+    const withTypes = ConfigFile.Instance.data.domainFirstPackages.includes(
+        '@domain-first/types'
+    );
+
     aggregatesFolder.createFile(
         `${aggregateNaming.fileName}.aggregate-root.ts`,
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/types'
-        )
+        withTypes
             ? /**
                * Content with domain-first types integration
                */
@@ -68,11 +75,11 @@ import { ${aggregateNaming.ClassName} } from './${aggregateNaming.fileName}.aggr
 let ${aggregateNaming.variableName}: ${aggregateNaming.ClassName}
 
 beforeEach(() => {
-    ${aggregateNaming.variableName} = new ${aggregateNaming.ClassName}()
+    ${aggregateNaming.variableName} = ${withTypes ? `${aggregateNaming.ClassName}.of({})` : `new ${aggregateNaming.ClassName}()`}
 })
 
 describe('${aggregateNaming.withSpaces}', () => {
-    test('can be instantiated via constructor', () => {
+    test('can be instantiated via ${withTypes ? 'of' : 'constructor'}', () => {
         expect(${aggregateNaming.variableName}).toBeDefined()
     })
 })
@@ -140,7 +147,16 @@ describe('${aggregateNaming.withSpaces}', () => {
              * An in-memory repository keeps its aggregates in their own
              * section of the shared in-memory DB.
              */
-            if (usesInMemoryDb(implementation)) {
+            /**
+             * With wiring, the in-memory DB is a suggested dependency
+             * instead, so it can be left out.
+             */
+            if (
+                usesInMemoryDb(implementation) &&
+                !ConfigFile.Instance.data.domainFirstPackages.includes(
+                    '@domain-first/wire'
+                )
+            ) {
                 const section = addInMemoryDbSection(
                     aggregateNaming,
                     aggregatesFolder.path
@@ -258,16 +274,28 @@ export const wire${aggregateNaming.ClassName}Repository = envBranchedWire({
     `.trim()
                 );
 
-            for (const implementation of implementationTypes.filter(
-                usesInMemoryDb
-            )) {
-                wireInMemoryDb(
-                    wireFile,
-                    `${new UnknownFormatNaming(implementation).ClassName}${aggregateNaming.ClassName}Repository`
-                );
-            }
-
-            await wireNewModuleDependencies(boundedContextFolder, wireFile);
+            /**
+             * An in-memory repository keeps only its aggregate's section
+             * of the in-memory DB.
+             */
+            await wireNewModuleDependencies(
+                boundedContextFolder,
+                wireFile,
+                (implementation, dependency) => {
+                    if (!isInMemoryDb(dependency)) {
+                        return false;
+                    }
+                    keepInMemoryDbSection(
+                        new File(implementation.file),
+                        addInMemoryDbSection(
+                            aggregateNaming,
+                            aggregatesFolder.path
+                        )
+                    );
+                    wireInMemoryDb(wireFile, implementation.className);
+                    return true;
+                }
+            );
         }
     }
 };

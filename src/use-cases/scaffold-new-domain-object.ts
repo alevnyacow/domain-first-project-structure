@@ -38,11 +38,16 @@ export const scaffoldNewDomainObject = async (
 
     const fileName = `${naming.fileName}.${kind}`;
 
+    /**
+     * Domain types close their constructors: instances come from `of`.
+     */
+    const withTypes = ConfigFile.Instance.data.domainFirstPackages.includes(
+        '@domain-first/types'
+    );
+
     folder.createFile(
         `${fileName}.ts`,
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/types'
-        )
+        withTypes
             ? /**
                * Content with domain-first types integration
                */
@@ -79,11 +84,11 @@ import { ${naming.ClassName} } from './${fileName}'
 let ${naming.variableName}: ${naming.ClassName}
 
 beforeEach(() => {
-    ${naming.variableName} = new ${naming.ClassName}()
+    ${naming.variableName} = ${withTypes ? `${naming.ClassName}.of({})` : `new ${naming.ClassName}()`}
 })
 
 describe('${naming.withSpaces}', () => {
-    test('can be instantiated via constructor', () => {
+    test('can be instantiated via ${withTypes ? 'of' : 'constructor'}', () => {
         expect(${naming.variableName}).toBeDefined()
     })
 })

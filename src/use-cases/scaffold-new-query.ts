@@ -4,8 +4,7 @@ import type { Folder } from '../file-system';
 import {
     injectInMemoryDb,
     passInMemoryDb,
-    usesInMemoryDb,
-    wireInMemoryDb
+    usesInMemoryDb
 } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
@@ -106,7 +105,11 @@ export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.
     `.trim()
                 );
 
-            if (usesInMemoryDb(implementation)) {
+            /**
+             * With wiring, the in-memory DB is a suggested dependency
+             * instead, so it can be left out.
+             */
+            if (!withWiring && usesInMemoryDb(implementation)) {
                 injectInMemoryDb(
                     implementationFile,
                     `${formatNaming.ClassName}${naming.ClassName}Query`
@@ -222,15 +225,6 @@ export const wire${naming.ClassName}Query = envBranchedWire({
 })
     `.trim()
                 );
-
-            for (const implementation of implementationTypes.filter(
-                usesInMemoryDb
-            )) {
-                wireInMemoryDb(
-                    wireFile,
-                    `${new UnknownFormatNaming(implementation).ClassName}${naming.ClassName}Query`
-                );
-            }
 
             await wireNewModuleDependencies(boundedContextFolder, wireFile);
         }

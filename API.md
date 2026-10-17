@@ -287,7 +287,7 @@ Bounded contexts only.
 | ---------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------- |
 | `domain/aggregates/<name>/<name>.aggregate-root.ts`                    | Always          | `class <Name>`; extends `domainType()` with `types`                                     |
 | `domain/aggregates/<name>/index.ts`                                    | Always          | Barrel of the aggregate root, and of the repository contract when one is created        |
-| `domain/aggregates/<name>/<name>.aggregate-root.spec.ts`               | With tests      | Construction test                                                                       |
+| `domain/aggregates/<name>/<name>.aggregate-root.spec.ts`               | With tests      | Creation test: `<Name>.of({})` with `types`, the constructor otherwise                  |
 | `domain/aggregates/<name>/<name>-repository.ts`                        | With repository | `abstract class <Name>Repository`                                                       |
 | `infrastructure/repositories/<impl>/<impl>-<name>-repository.ts`       | With repository, per implementation | `class <Impl><Name>Repository implements <Name>Repository`          |
 | `domain/aggregates/<name>/<name>-repository.spec.ts`                   | With repository and tests | Wiring test with `wire`, construction test of the primary implementation otherwise |
@@ -307,6 +307,8 @@ export class InMemoryOrderRepository implements OrderRepository {
 
 The section `orders = this.section<Order>('ORDERS');` is added to `InMemoryDbInfrastructureService` unless it is there, and the implementation's `wireClass` gets `wireInMemoryDbInfrastructureService`. `section<Order>` needs an `id` in `Order`.
 
+With `wire`, this is the checked **Suggested** choice of `Dependencies for InMemoryOrderRepository:` (see [Dependency selection](#dependency-selection)). Unchecked, the implementation stays empty and no section is added.
+
 ### New Entity and New Value Object
 
 **Prompts**
@@ -325,7 +327,7 @@ The section `orders = this.section<Order>('ORDERS');` is added to `InMemoryDbInf
 
 - The class extends `domainType()` with `types`.
 - With an aggregate, `export * from './<entities|value-objects>/<file>'` is added to the aggregate's `index.ts` if missing.
-- With tests, a construction test is created next to the file. No wiring is created.
+- With tests, a creation test is created next to the file: `<Name>.of({})` with `types`, since domain types close their constructors, and the constructor otherwise. No wiring is created.
 
 ### Errors
 
@@ -387,7 +389,7 @@ Bounded contexts only. Both generators are identical except for the folder (`com
 | `application/<kind>/execution/<name>-<suffix>.spec.ts`               | With tests         | Wiring test with `wire`, construction test of the primary implementation otherwise      |
 | `wiring/<kind>/wire-<name>-<suffix>.ts`                              | With `wire`        | `wire<Name><Suffix>` built with [`envBranchedWire`](#envbranchedwire)                   |
 
-With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the whole DB, with no section added: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`, wired with `wireInMemoryDbInfrastructureService`.
+With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the whole DB, with no section added: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`, wired with `wireInMemoryDbInfrastructureService`. With `wire`, this is the checked **Suggested** choice of its dependency question; unchecked, the implementation stays empty.
 
 **Orchestrator (no infrastructure implementation)**
 
@@ -502,7 +504,7 @@ The last step of every generator that creates a factory, except REST endpoints, 
 - Candidates are the wired modules of the context and of the Shared Layer, the latter labelled `(shared)`. A module is any `wire*` factory found under `wiring/`.
 - Candidates are filtered by the [dependency rules](#dependency-rules), excluding the module itself and modules it already depends on.
 - Choices are grouped by kind: Repositories, Domain services, Ports, Application services, Queries, Commands, Use cases, Infrastructure services, Presentation services.
-- An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). Infrastructure modules whose file name contains the implementation label as whole words are listed first under **Suggested**: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`.
+- An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). Infrastructure modules whose file name contains the implementation label as whole words are listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck one to leave it out.
 - When there are no candidates, nothing is asked.
 
 Each selected module is added, in order:
@@ -547,7 +549,7 @@ REST endpoints are never offered as dependencies.
 With tests, the generators create one `.spec.ts` per class:
 
 - It imports `describe`, `test`, `expect` and `beforeEach` from `testingLibrary`.
-- With `wire`, it builds the module through its factory (`can be wired`). Otherwise it calls the constructor; for modules with implementations, the primary implementation's constructor (`can be created via constructor`).
+- With `wire`, it builds the module through its factory (`can be wired`). Otherwise it calls the constructor; for modules with implementations, the primary implementation's constructor (`can be created via constructor`). Aggregate roots, entities and value objects with `types` are created with `<Name>.of({})` (`can be instantiated via of`).
 - It only checks that the instance is defined. Business tests are yours to add.
 
 Repository, command, query and port tests reference wiring factories with `wire`. Without it, they reference the primary implementation directly.
