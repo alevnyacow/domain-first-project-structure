@@ -337,11 +337,13 @@ Requires `@domain-first/errors` in the project: the generated code imports from 
 
 | Choice                               | Prompt             | Change                                                                                                               |
 | ------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `New error without namespace`        | `Error name:`      | Adds `export const <Name><Context>Error = <Context>Errors.define('<name>')` to `index.ts`                             |
-| `New error in namespace <namespace>` | `Error name:`      | Adds `export const <Name><Namespace><Context>Error = <Namespace><Context>Errors.define('<name>')` to `<namespace>.ts` |
-| `New namespace`                      | `Namespace name:`  | Creates `<namespace>.ts` with `<Namespace><Context>Errors = errorNamespace('<context>').subnamespace('<namespace>')` and adds `export * from './<namespace>'` to `index.ts` |
+| `New error without namespace`        | `Error name:`      | Adds `export class <Name><Suffix> extends <Context>Errors.define('<name>') {}` to `index.ts`                          |
+| `New error in namespace <namespace>` | `Error name:`      | Adds `export class <Namespace><Name><Suffix> extends <Namespace><Scope>Errors.define('<name>') {}` to `<namespace>.ts` |
+| `New namespace`                      | `Namespace name:`  | Creates `<namespace>.ts` with `<Namespace><Scope>Errors = errorNamespace('<context>').subnamespace('<namespace>')` and adds `export * from './<namespace>'` to `index.ts` |
 
-`<Context>` is the class form of the context folder name: `Shared` in the Shared Layer. One choice is listed per `.ts` file in `domain/errors/` other than `index.ts`. Lines are added only if missing, and an existing namespace file is never replaced.
+Names don't repeat the context: inside a bounded context `<Suffix>` and `<Scope>` are empty (`OutOfStock`, `PaymentDeclined`, `PaymentErrors`). In the Shared Layer `<Suffix>` is `SharedError` and `<Scope>` is `Shared` (`TimeoutSharedError`, `PaymentDeclinedSharedError`, `PaymentSharedErrors`). `<Context>` is the class form of the context folder name: `Shared` in the Shared Layer. The namespace name comes first in errors of a namespace.
+
+An error extends the namespace of the file it is added to, as that file exports it (`export const X = errorNamespace(...)`), so namespace files of other names keep working. One choice is listed per `.ts` file in `domain/errors/` other than `index.ts`. Lines are added only if missing, and an existing namespace file is never replaced.
 
 ### New Service
 

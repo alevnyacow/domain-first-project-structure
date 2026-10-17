@@ -138,9 +138,10 @@ Only the dependencies that respect the layers are offered: a use case can't take
 Choose **Domain → Errors** to add an error to the context namespace, create a nested namespace, or add an error to it.
 
 ```ts
-export const OutOfStockSalesError =
-    SalesErrors.define("out-of-stock");
+export class OutOfStock extends SalesErrors.define('out-of-stock') {}
 ```
+
+Names don't repeat the context: an error of the `payment` namespace in `sales` is `PaymentDeclined`. In the Shared Layer they end with `SharedError`: `TimeoutSharedError`.
 
 ### How to share code between contexts
 

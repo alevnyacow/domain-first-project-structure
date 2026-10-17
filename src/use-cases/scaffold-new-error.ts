@@ -1,12 +1,46 @@
 import { input, select } from '@inquirer/prompts';
-import type { Folder } from '../file-system';
+import { ConfigFile } from '../config-file';
+import { type File, Folder } from '../file-system';
+import { ProjectRoot } from '../project-root';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+
+/**
+ * Inside a context its name is implied, so names get no suffix. In the
+ * Shared Layer they end with `Shared`, and errors with `SharedError`.
+ */
+const errorNames = (boundedContextFolder: Folder) => {
+    const isShared =
+        boundedContextFolder.path ===
+        new Folder(new ProjectRoot().path).subitem([
+            ConfigFile.Instance.data.rootFolder,
+            'shared'
+        ]).path;
+
+    return {
+        namespace: (namespaceName: string) =>
+            `${namespaceName}${isShared ? 'Shared' : ''}Errors`,
+        error: (errorName: string) =>
+            `${errorName}${isShared ? 'SharedError' : ''}`
+    };
+};
+
+/**
+ * The namespace the file exports, so files of older naming keep working.
+ */
+const exportedNamespace = (file: File, fallback: string) =>
+    /export\s+const\s+(\w+)\s*=\s*errorNamespace\b/.exec(file.data)?.[1] ??
+    fallback;
+
+const errorClass = (className: string, namespace: string, code: string) =>
+    `export class ${className} extends ${namespace}.define('${code}') {}`;
 
 export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
     const currentErrorFolder = boundedContextFolder.subitem([
         'domain',
         'errors'
     ]);
+    const names = errorNames(boundedContextFolder);
+    const contextNaming = new UnknownFormatNaming(boundedContextFolder.name);
 
     const currentErrorNamespaces = currentErrorFolder.content.fileNames.filter(
         (x) => x !== 'index'
@@ -26,12 +60,18 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
     if (selectedVariant === 'New error without namespace') {
         const errorName = await input({ message: 'Error name:' });
         const naming = new UnknownFormatNaming(errorName);
-        currentErrorFolder
-            .file('index.ts')
-            .addLineIfMissing(
-                `export const ${naming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Error = ${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${naming.fileName}')`,
-                '\n\n'
-            );
+        const indexFile = currentErrorFolder.file('index.ts');
+        indexFile.addLineIfMissing(
+            errorClass(
+                names.error(naming.ClassName),
+                exportedNamespace(
+                    indexFile,
+                    `${contextNaming.ClassName}Errors`
+                ),
+                naming.fileName
+            ),
+            '\n\n'
+        );
         return;
     }
 
@@ -50,7 +90,7 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
                 `
 import { errorNamespace } from '@domain-first/errors'
 
-export const ${ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors = errorNamespace('${boundedContextFolder.name}').subnamespace('${fileName}')
+export const ${names.namespace(ClassName)} = errorNamespace('${boundedContextFolder.name}').subnamespace('${fileName}')
 `.trim()
             );
         }
@@ -73,11 +113,20 @@ export const ${ClassName}${new UnknownFormatNaming(boundedContextFolder.name).Cl
     });
 
     const { ClassName, fileName } = new UnknownFormatNaming(errorName);
+    const namespaceFile = currentErrorFolder.file(`${namespace}.ts`);
 
-    currentErrorFolder
-        .file(`${namespace}.ts`)
-        .addLineIfMissing(
-            `export const ${ClassName}${namespaceNaming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Error = ${namespaceNaming.ClassName}${new UnknownFormatNaming(boundedContextFolder.name).ClassName}Errors.define('${fileName}')`,
-            '\n\n'
-        );
+    /**
+     * The namespace goes first: `PaymentDeclined`, not `DeclinedPayment`.
+     */
+    namespaceFile.addLineIfMissing(
+        errorClass(
+            names.error(`${namespaceNaming.ClassName}${ClassName}`),
+            exportedNamespace(
+                namespaceFile,
+                names.namespace(namespaceNaming.ClassName)
+            ),
+            fileName
+        ),
+        '\n\n'
+    );
 };

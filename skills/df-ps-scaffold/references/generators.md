@@ -42,9 +42,10 @@ First prompt (select): `New error without namespace` | `New namespace` | `New er
 `… pick:Domain pick:Errors "pick:New error in namespace order" text:not-found`
 `… pick:Domain pick:Errors "pick:New error without" text:order-closed`
 
-- Without namespace: appends `export const NCtxError = CtxErrors.define('n')` to `<C>/domain/errors/index.ts`
-- New namespace: `<C>/domain/errors/ns.ts` (`NsCtxErrors = errorNamespace('ctx').subnamespace('ns')`) + `export * from './ns'` in `index.ts`
-- In namespace: appends `NNsCtxError = NsCtxErrors.define('n')` to `ns.ts`
+- Without namespace: appends `export class N extends CtxErrors.define('n') {}` to `<C>/domain/errors/index.ts`
+- New namespace: `<C>/domain/errors/ns.ts` (`NsErrors = errorNamespace('ctx').subnamespace('ns')`) + `export * from './ns'` in `index.ts`
+- In namespace: appends `export class NsN extends NsErrors.define('n') {}` to `ns.ts` (namespace first), extending the namespace the file exports
+- Shared Layer: errors end with `SharedError`, namespaces with `SharedErrors`: `NSharedError`, `NsSharedErrors`, `NsNSharedError`
 
 Re-running is safe: an existing namespace file is kept, and a line already in the file isn't added again.
 
