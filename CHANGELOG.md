@@ -1,3 +1,10 @@
+# [3.3.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.2.2...v3.3.0) (2026-10-17)
+
+
+### Features
+
+* swagger ([88e1fea](https://github.com/alevnyacow/domain-first-project-structure/commit/88e1fea45cf6bb52875bdbbd78e7cda822030b95))
+
 ## [3.2.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.2.1...v3.2.2) (2026-10-17)
 
 
