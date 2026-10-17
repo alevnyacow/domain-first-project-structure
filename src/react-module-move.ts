@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { File } from './file-system';
 import { NestedName } from './nested-name';
+import { stripJsonComments } from './tsconfig';
 
 export type ReactModuleKind = 'page' | 'widget';
 
@@ -143,14 +144,6 @@ export const validateMove = (
 };
 
 type TsconfigAlias = { prefix: string; target: string };
-
-const stripJsonComments = (source: string) =>
-    source
-        .replace(
-            /("(?:\\.|[^"\\])*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
-            (_, text) => (text ? text : '')
-        )
-        .replace(/,(\s*[}\]])/g, '$1');
 
 /**
  * Wildcard `paths` of the root tsconfig, e.g. `@/*` → `./*`.

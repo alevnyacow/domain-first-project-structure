@@ -26,7 +26,8 @@ let sequence = 0;
 const setup = (
     rootFolder: string,
     manifest: Record<string, unknown>,
-    answers: string[]
+    answers: string[],
+    useReact = false
 ) => {
     const project = path.join(root, String(sequence++));
     fs.mkdirSync(project);
@@ -40,7 +41,7 @@ const setup = (
             rootFolder,
             domainFirstPackages: [],
             defaultPersistenceLayerImplementation: 'api',
-            useReact: false
+            useReact
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
@@ -188,6 +189,82 @@ generateOpenAPI(handlers, {
         'npm run openapi — generate the OpenAPI document from restHandlers in openapi.json',
         'restHandlers appear in presentation/rest/index.ts with the first REST endpoint generated with @domain-first/wire'
     ]);
+});
+
+test('without React, the Swagger UI page is not offered', async () => {
+    setup('.', { name: 'demo' }, ['/api', 'openapi.json']);
+    rstest.mocked(confirm).mockResolvedValue(false);
+    await addOpenapi();
+    expect(
+        rstest.mocked(confirm).mock.calls.map(([{ message }]) => message)
+    ).not.toContain('Add a Swagger UI page?');
+});
+
+test('with React, adds a Swagger UI page for the document', async () => {
+    const { project } = setup(
+        'src',
+        {
+            name: 'demo',
+            dependencies: {
+                '@domain-first/handlers-rest': '*',
+                'swagger-ui-react': '*'
+            },
+            devDependencies: { tsx: '*' }
+        },
+        ['/api', 'public/openapi.json'],
+        true
+    );
+    rstest.mocked(confirm).mockResolvedValueOnce(false);
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
+    const steps = await addOpenapi();
+    writePendingChanges();
+
+    expect(
+        fs.readFileSync(
+            path.join(project, 'src/presentation/react/pages/swagger-page.tsx'),
+            'utf8'
+        )
+    ).toBe(
+        `import 'swagger-ui-react/swagger-ui.css'
+import SwaggerUI from 'swagger-ui-react'
+import spec from '../../../../public/openapi.json' with { type: 'json' }
+import { type FC } from 'react'
+
+export type SwaggerPageProps = {}
+
+export const SwaggerPage: FC<SwaggerPageProps> = (props) => {
+    return <SwaggerUI displayOperationId spec={spec} />
+}`
+    );
+    expect(steps).toContain('npm install --save-dev @types/swagger-ui-react');
+    expect(steps).not.toContain('npm install swagger-ui-react');
+    expect(steps).toContain(
+        'SwaggerPage from src/presentation/react/pages/swagger-page.tsx shows public/openapi.json once it is generated — render it on a route of your app'
+    );
+});
+
+test('the Swagger UI page asks for resolveJsonModule unless it is set', async () => {
+    const hint =
+        'set "resolveJsonModule": true in compilerOptions of tsconfig.json — the Swagger UI page imports the OpenAPI document as JSON';
+    const run = async (tsconfig: string) => {
+        const { project } = setup(
+            '.',
+            { name: 'demo' },
+            ['/api', 'openapi.json'],
+            true
+        );
+        fs.writeFileSync(path.join(project, 'tsconfig.json'), tsconfig);
+        rstest.mocked(confirm).mockResolvedValueOnce(false);
+        rstest.mocked(confirm).mockResolvedValueOnce(true);
+        const steps = await addOpenapi();
+        discardPendingChanges();
+        return steps;
+    };
+
+    expect(await run('{ "compilerOptions": {} }')).toContain(hint);
+    expect(
+        await run('{ "compilerOptions": { "resolveJsonModule": true } }')
+    ).not.toContain(hint);
 });
 
 test('resolves endpoint files under the root folder', () => {

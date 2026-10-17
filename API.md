@@ -702,13 +702,15 @@ Listed with `handlers-rest`.
 
 | Item     | Value                                                                                                                         |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` when `next` is declared, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes) |
-| Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`                        |
+| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` when `next` is declared, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `useReact`, `Add a Swagger UI page?` (default: Yes) |
+| Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`; with the Swagger UI page, `<rootFolder>/presentation/react/pages/swagger-page.tsx` |
 | Scripts  | `openapi`: `tsx --env-file-if-exists=.env scripts/generate-openapi.ts`                                                        |
-| Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`               |
-| Notes    | A reminder when `<rootFolder>/presentation/rest/index.ts` does not exist yet                                                 |
+| Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev) |
+| Notes    | A reminder when `<rootFolder>/presentation/rest/index.ts` does not exist yet; with the Swagger UI page, a reminder to render it on a route, and one to set `resolveJsonModule` when `tsconfig.json` doesn't enable it |
 
 The script passes `restHandlers` from `<rootFolder>/presentation/rest` to `generateOpenAPI`. The document title is the package name in title case followed by `API`. `.env` is loaded because the wiring may read the environment.
+
+The Swagger UI page is a [page](#new-page) like any other, `SwaggerPage`, not bound to a framework's router. It imports `swagger-ui-react/swagger-ui.css` and the document at `OpenAPI document path:` as JSON (`with { type: 'json' }`), and renders `<SwaggerUI displayOperationId spec={spec} />`. It compiles once `npm run openapi` has written the document, with `resolveJsonModule` enabled. The CLI reads `compilerOptions.resolveJsonModule` from `tsconfig.json` through its `extends` chain (relative paths and packages; the nearest config wins) and prints a reminder when the option isn't `true`. When a config of the chain is missing or can't be read, it prints nothing. `tsconfig.json` itself is never changed.
 
 With TSDoc extraction, each endpoint's metadata is filled from the class passed as `this.handler` (the first argument of the generator call):
 

@@ -3,6 +3,8 @@ import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
+import { compilerOption } from '../tsconfig';
+import { reactPageContent } from '../use-cases/scaffold-react-page';
 import { openapiExtractor, openapiExtractorPath } from './openapi-extractor';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
@@ -12,6 +14,30 @@ export const defaultOpenapiPath = (withNext: boolean) =>
     withNext ? 'public/openapi.json' : 'openapi.json';
 
 const extractorPackages = ['ts-morph', '@microsoft/tsdoc'];
+
+export const swaggerPagePath = (rootFolder: string) =>
+    path.posix.join(
+        rootFolder.replaceAll('\\', '/'),
+        'presentation/react/pages/swagger-page.tsx'
+    );
+
+/**
+ * A React page rendering the OpenAPI document with Swagger UI.
+ */
+export const swaggerPage = (rootFolder: string, outputPath: string) => {
+    const specImport = path.posix.relative(
+        path.posix.dirname(swaggerPagePath(rootFolder)),
+        outputPath
+    );
+    return reactPageContent('Swagger', {
+        imports: [
+            "import 'swagger-ui-react/swagger-ui.css'",
+            "import SwaggerUI from 'swagger-ui-react'",
+            `import spec from '${specImport.startsWith('.') ? specImport : `./${specImport}`}' with { type: 'json' }`
+        ],
+        body: '<SwaggerUI displayOperationId spec={spec} />'
+    });
+};
 
 export const openapiScripts = {
     // Wiring imported through `restHandlers` may read the environment
@@ -110,6 +136,13 @@ export const addOpenapi = async (): Promise<string[]> => {
         default: true
     });
 
+    const withSwaggerPage =
+        ConfigFile.Instance.data.useReact &&
+        (await confirm({
+            message: 'Add a Swagger UI page?',
+            default: true
+        }));
+
     const selected = await addPackageScripts(manifestFile, openapiScripts);
 
     if (withExtractor) {
@@ -132,6 +165,22 @@ export const addOpenapi = async (): Promise<string[]> => {
         generatorFile.data = content;
     }
 
+    if (withSwaggerPage) {
+        const pageFile = new File(path.join(root, swaggerPagePath(rootFolder)));
+        const page = swaggerPage(rootFolder, splitPath(outputPath).join('/'));
+        if (!pageFile.exists || pageFile.data !== page) {
+            pageFile.data = page;
+        }
+    }
+
+    /**
+     * The page imports the document as JSON. An unreadable config gives
+     * no hint, since its value is unknown.
+     */
+    const resolveJsonModule = withSwaggerPage
+        ? compilerOption(path.join(root, 'tsconfig.json'), 'resolveJsonModule')
+        : true;
+
     const hasRestHandlers = new File(
         path.join(root, rootFolder, 'presentation', 'rest', 'index.ts')
     ).exists;
@@ -146,9 +195,25 @@ export const addOpenapi = async (): Promise<string[]> => {
         ...(missingExtractorPackages.length
             ? [`npm install --save-dev ${missingExtractorPackages.join(' ')}`]
             : []),
+        ...(withSwaggerPage && !dependencies['swagger-ui-react']
+            ? ['npm install swagger-ui-react']
+            : []),
+        ...(withSwaggerPage && !dependencies['@types/swagger-ui-react']
+            ? ['npm install --save-dev @types/swagger-ui-react']
+            : []),
+        ...(resolveJsonModule === true || resolveJsonModule === null
+            ? []
+            : [
+                  'set "resolveJsonModule": true in compilerOptions of tsconfig.json — the Swagger UI page imports the OpenAPI document as JSON'
+              ]),
         ...describeScripts(selected, {
             openapi: `generate the OpenAPI document from restHandlers in ${splitPath(outputPath).join('/')}`
         }),
+        ...(withSwaggerPage
+            ? [
+                  `SwaggerPage from ${swaggerPagePath(rootFolder)} shows ${splitPath(outputPath).join('/')} once it is generated — render it on a route of your app`
+              ]
+            : []),
         ...(hasRestHandlers
             ? []
             : [
