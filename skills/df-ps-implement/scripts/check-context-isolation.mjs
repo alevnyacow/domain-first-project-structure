@@ -7,7 +7,10 @@
  * rootFolder defaults to `rootFolder` in domain-first.project-structure.config.json.
  *
  * Bounded contexts never import each other (no exceptions).
- * Allowed: shared/** may import any context's domain/errors; presentation/react/** may only
+ * Allowed: shared/** may import any context's domain/errors; the shared in-memory DB
+ * (shared/infrastructure/services/in-memory-db-infrastructure-service.ts) may also import any
+ * context's domain models: domain/aggregates/** (barrels included, `*-repository` files not),
+ * domain/entities/**, domain/value-objects/**; presentation/react/** may only
  * `import type` from a context's presentation/rest/; presentation/react/ui-kit/** imports
  * nothing from bounded contexts, widgets or pages.
  * Widgets never import each other: a file of one widget (the nearest folder under widgets/
@@ -36,6 +39,13 @@ const sharedDir = path.join(root, 'shared');
 const reactDir = path.join(root, 'presentation', 'react');
 const uiKitDir = path.join(reactDir, 'ui-kit');
 const widgetsDir = path.join(reactDir, 'widgets');
+const inMemoryDbFile = path.join(sharedDir, 'infrastructure', 'services', 'in-memory-db-infrastructure-service.ts');
+
+// Domain models of a context: aggregate roots, entities and value objects, not repository contracts.
+const isDomainModel = (target, layer, part) =>
+    layer === 'domain' &&
+    ['aggregates', 'entities', 'value-objects'].includes(part) &&
+    !/-repository(\.tsx?)?$/.test(path.basename(target));
 
 // tsconfig `paths` → [{ prefix, wildcard, targets }]
 const readTsconfig = (file) => {
@@ -157,12 +167,13 @@ for (const file of scanned) {
     for (const imp of importsOf(file)) {
         if (!imp.target) continue;
         const [targetContext, layer, part] = inside(contextsDir, imp.target) ?? [];
+        const allowedInMemoryDbImport = file === inMemoryDbFile && isDomainModel(imp.target, layer, part);
 
         if (ownContext) {
             if (targetContext && targetContext !== ownContext) report(`[${ownContext}] imports another context:`, file, imp);
         } else if (inside(sharedDir, file)) {
-            if (targetContext && !(layer === 'domain' && part === 'errors')) {
-                report('[shared] imports a bounded context outside its domain/errors:', file, imp);
+            if (targetContext && !(layer === 'domain' && part === 'errors') && !allowedInMemoryDbImport) {
+                report('[shared] imports a bounded context outside its domain/errors (and domain models for the in-memory DB):', file, imp);
             }
         } else if (inside(uiKitDir, file)) {
             const [area] = inside(reactDir, imp.target) ?? [];
