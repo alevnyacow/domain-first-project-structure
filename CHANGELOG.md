@@ -1,3 +1,10 @@
+## [3.3.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.3.0...v3.3.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* simplified errors scaffolding format ([2d0e315](https://github.com/alevnyacow/domain-first-project-structure/commit/2d0e31528068f0d8e7efa6dfa8db35b3ff1e639e))
+
 # [3.3.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.2.2...v3.3.0) (2026-10-17)
 
 
