@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.1.0...v3.2.0) (2026-10-17)
+
+
+### Features
+
+* in-memory db implementation out of the box ([79cd77a](https://github.com/alevnyacow/domain-first-project-structure/commit/79cd77ae14ff73e8b278586ae3e8fc72fd89681e))
+
 # [3.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.0.0...v3.1.0) (2026-10-16)
 
 
