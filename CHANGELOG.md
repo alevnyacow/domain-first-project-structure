@@ -1,3 +1,10 @@
+## [3.2.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.2.1...v3.2.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* infrastructure can use application ports ([f3ada8a](https://github.com/alevnyacow/domain-first-project-structure/commit/f3ada8a5c32a109883f2728f1d993d8b227a477f))
+
 ## [3.2.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.2.0...v3.2.1) (2026-10-17)
 
 
