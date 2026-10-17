@@ -53,6 +53,7 @@ Example: `order-confirmation` prepares a message and calls the injected `mailer`
 | Use case / application service | Use case = one action with `handle`. Application service = helper used by use cases. |
 | Use case / orchestrator | Use case = action exposed outside. Orchestrator = reusable operation called by use cases. |
 | Application / infrastructure service | Used by use cases → application. Only by adapters/repositories → infrastructure. |
+| Logic infrastructure needs from an application service | Infrastructure never sees application services. Pure logic without ports → domain service. Logic over ports → infrastructure calls the ports directly. Technical (mapping, retries, external API formats) → infrastructure service. |
 | Clock | Always a port (`clock`, usually in Shared Layer). |
 
 ## React page, widget, UI-kit component or shared hook

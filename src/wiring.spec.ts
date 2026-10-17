@@ -189,7 +189,7 @@ describe('canDependOn', () => {
         expect(canDependOn(domainService, repository)).toBe(true);
         expect(canDependOn(domainService, port)).toBe(false);
         expect(canDependOn(infrastructureService, useCase)).toBe(false);
-        expect(canDependOn(infrastructureService, port)).toBe(false);
+        expect(canDependOn(infrastructureService, port)).toBe(true);
         expect(canDependOn(presentationService, useCase)).toBe(true);
         expect(canDependOn(presentationService, repository)).toBe(false);
     });
@@ -208,15 +208,30 @@ describe('canDependOn', () => {
         };
 
         expect(canDependOn(repositoryImplementations, repository)).toBe(false);
-        expect(canDependOn(repositoryImplementations, port)).toBe(false);
+        expect(canDependOn(repositoryImplementations, port)).toBe(true);
         expect(
             canDependOn(repositoryImplementations, infrastructureService)
         ).toBe(true);
     });
 
+    test('infrastructure uses only ports from application', () => {
+        const adapters = {
+            ...wiredModule('application-ports', 'application'),
+            implementationsLayer: 'infrastructure' as const
+        };
+
+        expect(canDependOn(adapters, port)).toBe(true);
+        expect(canDependOn(adapters, query)).toBe(false);
+        expect(canDependOn(adapters, useCase)).toBe(false);
+        expect(canDependOn(adapters, applicationService)).toBe(false);
+        expect(canDependOn(infrastructureService, executionCommand)).toBe(
+            false
+        );
+    });
+
     test('execution commands and queries use no commands or queries', () => {
-        // The application layer here keeps the layer rule, which already
-        // hides application from infrastructure, out of the check.
+        // The application layer here keeps the infrastructure layer rule,
+        // which allows only ports from application, out of the check.
         const consumer = {
             ...wiredModule('commands', 'application'),
             typeFile: '/c/application/commands/execution/x-command.ts'

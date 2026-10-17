@@ -19,10 +19,10 @@ export const visibleLayers: Record<Layer, Layer[]> = {
     domain: ['domain'],
     application: ['domain', 'application'],
     /**
-     * Infrastructure implements application modules but never takes them
-     * as dependencies.
+     * From the application layer, infrastructure takes only ports: see
+     * `layerRules`.
      */
-    infrastructure: ['domain', 'infrastructure'],
+    infrastructure: ['domain', 'application', 'infrastructure'],
     presentation: ['application', 'presentation']
 };
 
@@ -285,6 +285,20 @@ const commandOrQueryRule = (candidate: WiredModule, consumer: WiredModule) =>
         ? !isCommandOrQuery(candidate)
         : candidate.layer !== 'application' || isExecution(candidate);
 
+/**
+ * Narrower rules for some layers of consumers' implementations.
+ */
+const layerRules: Partial<Record<Layer, (candidate: WiredModule) => boolean>> =
+    {
+        /**
+         * Infrastructure implements application modules and uses only
+         * their ports.
+         */
+        infrastructure: (candidate) =>
+            candidate.layer !== 'application' ||
+            candidate.kind === 'application-ports'
+    };
+
 const kindRules: Record<
     string,
     (candidate: WiredModule, consumer: WiredModule) => boolean
@@ -334,6 +348,7 @@ export const isSuggestedFor = (
 
 export const canDependOn = (consumer: WiredModule, candidate: WiredModule) =>
     visibleLayers[consumer.implementationsLayer].includes(candidate.layer) &&
+    (layerRules[consumer.implementationsLayer]?.(candidate) ?? true) &&
     (kindRules[consumer.kind]?.(candidate, consumer) ?? true);
 
 /**

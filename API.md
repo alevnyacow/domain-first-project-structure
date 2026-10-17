@@ -525,17 +525,18 @@ Prints `No wired modules here yet.` when there are no modules, and `No dependenc
 
 The layer of a candidate is where its type lives. The layer of a consumer is where its implementation lives: repository, execution command, execution query and port implementations belong to infrastructure.
 
-| Consumer layer | Can depend on             |
-| -------------- | ------------------------- |
-| Domain         | Domain                    |
-| Application    | Domain, application       |
-| Infrastructure | Domain, infrastructure    |
-| Presentation   | Application, presentation |
+| Consumer layer | Can depend on                         |
+| -------------- | ------------------------------------- |
+| Domain         | Domain                                |
+| Application    | Domain, application                   |
+| Infrastructure | Domain, application, infrastructure   |
+| Presentation   | Application, presentation             |
 
 Narrower rules on top of the layer rules:
 
 | Consumer                         | Rule                                                                         |
 | -------------------------------- | ---------------------------------------------------------------------------- |
+| Infrastructure                   | From the application layer, only ports, of the context and the Shared Layer  |
 | Application service              | From the application layer, only ports                                       |
 | Use case                         | No use cases                                                                 |
 | Repository implementation        | No repositories                                                              |
