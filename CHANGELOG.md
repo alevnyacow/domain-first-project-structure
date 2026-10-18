@@ -1,3 +1,15 @@
+# [4.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.3.2...v4.0.0) (2026-10-18)
+
+
+### Features
+
+* new errors format (+ skills) ([b425efd](https://github.com/alevnyacow/domain-first-project-structure/commit/b425efd25cf60a1c7e6893436741e851f3f45cf9))
+
+
+### BREAKING CHANGES
+
+* rest-endpoint-generator scaffolds for errors >= 9.0.0
+
 ## [3.3.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.3.1...v3.3.2) (2026-10-17)
 
 
