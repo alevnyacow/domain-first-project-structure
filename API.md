@@ -459,10 +459,10 @@ Bounded contexts only, with `handlers-rest`.
 | Member                        | Kind            | Content                                                                                      |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
 | `adapter`                     | Module constant | `Adapter<any[], any>`, declared above the class; `undefined` until replaced, used by the class through closure. With the Next adapter: `import { nextAdapter } from '@domain-first/handlers-next'` instead, and the getters pass `nextAdapter` |
-| `defaultClientRequestErrors`  | Private getter  | Default `400` checks: `RequestParsingError` and `InputMappingError`; declared first in the class |
-| `withoutGuards`               | Getter          | `createEndpoint({ errorStatuses: { 400: { checks: this.defaultClientRequestErrors, description: 'Invalid request' } } })(adapter) as EndpointGenerator` |
+| `defaultClientRequestErrors`  | Private getter  | `ErrorMapping[]` with the default `400` mapping: `httpStatus(400, { code: 'INVALID_REQUEST', description: 'Invalid request', message: (error) => error.message, match: [RequestParsingError, InputMappingError] })`; declared first in the class |
+| `withoutGuards`               | Getter          | `createEndpoint({ errors: this.defaultClientRequestErrors })(adapter) as EndpointGenerator` |
 
-Further generating methods are getters typed as `EndpointGenerator`; they spread the default checks into their own: `checks: [...this.defaultClientRequestErrors, ...]`.
+Further generating methods are getters typed as `EndpointGenerator`; they spread the default mappings into their own: `errors: [httpError(MyError, 404), ...this.defaultClientRequestErrors]`.
 
 **Example**
 

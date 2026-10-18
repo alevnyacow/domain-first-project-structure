@@ -70,3 +70,15 @@ test('imports the Next adapter instead of the placeholder', () => {
     expect(content).not.toContain('const adapter');
     expect(content).not.toContain('type Adapter');
 });
+
+test('maps default client request errors with handlers-rest 9 errors', () => {
+    const content = generate();
+    expect(content).toContain('type ErrorMapping');
+    expect(content).toContain(
+        'match: [RequestParsingError, InputMappingError]'
+    );
+    expect(content).toContain('message: (error) => error.message');
+    expect(content).toContain('errors: this.defaultClientRequestErrors');
+    expect(content).not.toContain('errorStatuses');
+    expect(content).not.toContain('ErrorStatuses');
+});

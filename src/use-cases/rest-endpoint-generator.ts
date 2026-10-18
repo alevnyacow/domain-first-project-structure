@@ -19,8 +19,9 @@ export const scaffoldRestEndpointGenerator = (
         return `
 import {
 ${withNextAdapter ? '' : '    type Adapter,\n'}    type EndpointGenerator,
-    type ErrorStatuses,
+    type ErrorMapping,
     createEndpoint,
+    httpStatus,
     InputMappingError,
     RequestParsingError
 } from '@domain-first/handlers-rest'
@@ -37,20 +38,22 @@ const adapter = undefined as unknown as Adapter<any[], any>`
 export class ${className} {
     /**
      * Default errors of a client request, to spread into a generator's
-     * own checks.
+     * own error mappings.
      */
-    private get defaultClientRequestErrors(): ErrorStatuses[number]['checks'] {
-        return [RequestParsingError.is, InputMappingError.is]
+    private get defaultClientRequestErrors(): ErrorMapping[] {
+        return [
+            httpStatus(400, {
+                code: 'INVALID_REQUEST',
+                description: 'Invalid request',
+                message: (error) => error.message,
+                match: [RequestParsingError, InputMappingError]
+            })
+        ]
     }
 
     get withoutGuards(): EndpointGenerator {
         return createEndpoint({
-            errorStatuses: {
-                400: {
-                    checks: this.defaultClientRequestErrors,
-                    description: 'Invalid request'
-                }
-            }
+            errors: this.defaultClientRequestErrors
         })(${adapter}) as EndpointGenerator
     }
 }
