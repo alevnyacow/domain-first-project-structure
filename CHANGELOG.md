@@ -1,3 +1,10 @@
+# [4.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.1.0...v4.2.0) (2026-10-18)
+
+
+### Features
+
+* configurable dependency and lint rules ([1071fdf](https://github.com/alevnyacow/domain-first-project-structure/commit/1071fdf705c1af19c281df74162a47689b860d55))
+
 # [4.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.0.0...v4.1.0) (2026-10-18)
 
 
