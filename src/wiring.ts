@@ -278,12 +278,16 @@ const isExecution = (module: WiredModule) =>
 
 /**
  * Execution ones use no commands or queries; orchestration ones use only
- * execution commands and queries from the application layer.
+ * execution commands and queries from the application layer, and
+ * orchestration queries, which only read, only execution queries (plus
+ * repositories from domain, whose writing methods they must not call).
  */
 const commandOrQueryRule = (candidate: WiredModule, consumer: WiredModule) =>
     isExecution(consumer)
         ? !isCommandOrQuery(candidate)
-        : candidate.layer !== 'application' || isExecution(candidate);
+        : candidate.layer !== 'application' ||
+          (isExecution(candidate) &&
+              (consumer.kind === 'commands' || candidate.kind === 'queries'));
 
 /**
  * Narrower rules for some layers of consumers' implementations.

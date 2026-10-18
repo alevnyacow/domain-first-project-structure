@@ -101,7 +101,7 @@ export class PlaceOrderUseCase {
 }
 ```
 
-Commands and queries come in two modes. **Execution** creates an abstract contract in `application/` and implementations in `infrastructure/`, like a repository. **Orchestrator** creates one application class that coordinates execution commands and queries.
+Commands and queries come in two modes. **Execution** creates an abstract contract in `application/` and implementations in `infrastructure/`, like a repository. **Orchestrator** creates one application class that coordinates execution commands and queries (an orchestrator query, execution queries and repositories only, reading methods only). A query only reads and never changes data; any change is a command.
 
 ### How to switch implementations
 
@@ -206,6 +206,14 @@ admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPane
 Choose **Add integration** to configure Storybook, Prisma 8, Vitest, Playwright, OpenAPI generation or an Orval React Query client. Integrations add config files, package scripts and `.gitignore` entries, then print the install commands. Nothing is installed or run for you.
 
 **Missing domain-first packages** prints the `npm i` command for packages from the config that are not in `package.json`.
+
+### How to check the rules
+
+```
+npx df-lint
+```
+
+It reports what breaks the Domain-First rules: imports between bounded contexts, imports against the layers, queries using commands, wired dependencies the CLI wouldn't offer, React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
 
 ### How to teach your coding agent
 

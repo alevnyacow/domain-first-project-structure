@@ -19,7 +19,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 | 9 | Data or behavior of **another context**? | **Execution query** (read) / **execution command** (write) in this context (see below) |
 | 10 | Leaves this context's code and storage: external system or time? | **Port** (+ adapters) |
 | 11 | One read/write on this context's own storage that isn't "load/save one aggregate" (read model, report, bulk update)? | **Execution command** (write) / **query** (read) |
-| 12 | A reusable read/write composed of other commands/queries/ports? | **Orchestrator command / query** |
+| 12 | A reusable read/write composed of other commands/queries? | **Orchestrator command** (execution commands and queries) / **query** (execution queries and repositories only, calling only their reading methods) |
 | 13 | A rule at the junction of several entities / value objects not all belonging to one aggregate (a discount from purchase history and the current discount), no I/O? | **Domain service**, always |
 | 14 | Application logic reused by 2+ use cases, with any external interaction delegated to injected ports? | **Application service** |
 | 15 | A technical helper used only by infrastructure code? | **Infrastructure service** |
@@ -47,7 +47,7 @@ Example: `order-confirmation` prepares a message and calls the injected `mailer`
 | --- | --- |
 | Port / repository | Own aggregate's persistence → repository. External system → port. |
 | Port / execution command, query | Own storage or another context → command/query. External system → port. |
-| Query / command | A query reads; it may have side effects, but only idempotent ones: repeating it changes nothing further (filling a cache, creating default settings if missing). Any other state change → command. A command may return data (the created order, the new balance). |
+| Query / command | A query only reads: it never changes any state, not even idempotently (no cache filling, no default settings created if missing), and never calls a command. Any state change → command. A command may return data (the created order, the new balance); an orchestrator command may also use execution queries. An orchestrator query may load aggregates through a repository, but never calls its writing methods (`save`, `delete`): the wiring can't forbid it, so it's on the developer. |
 | Domain service / entity, value object method | One entity / value object → its method. The junction of several → always a domain service, unless they all belong to one aggregate → a method on that aggregate. |
 | Domain / application service | Stated without requests, permissions, responses, scenarios → domain. Otherwise application. |
 | Use case / application service | Use case = one action with `handle`. Application service = helper used by use cases. |

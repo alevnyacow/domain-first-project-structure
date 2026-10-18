@@ -16,7 +16,7 @@ Follow this order for every request:
 5. If the task creates files, show the work plan and **stop until it's approved** (rule 1).
 6. Run the generators in plan order with the driver; check each output.
 7. Implement with `df-ps-implement`, in its order: domain → application → schema tool runs (migrations) → infrastructure → endpoints → other tool runs (OpenAPI, API client) → React.
-8. Run `df-ps-implement/scripts/check-context-isolation.mjs` and the project's tsc/lint/tests.
+8. Run `npx df-lint` and the project's tsc/lint/tests.
 9. Report against the plan.
 
 ## Mandatory rules

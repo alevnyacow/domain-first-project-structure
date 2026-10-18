@@ -17,7 +17,8 @@
     },
     "bin": {
         "df-ps": "./dist/index.js",
-        "df-skills": "./bin/df-skills.mjs"
+        "df-skills": "./bin/df-skills.mjs",
+        "df-lint": "./dist/lint.js"
     },
     "main": "./dist/index.cjs",
     "homepage": "https://domain-first-landing.vercel.app/scaffolder/",

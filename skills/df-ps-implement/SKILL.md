@@ -31,10 +31,19 @@ A file in context A imports **nothing** from context B: no types (`import type` 
 Check before reporting done; fix every finding:
 
 ```bash
-node <this-skill-dir>/scripts/check-context-isolation.mjs [rootFolder]
+npx df-lint [rootFolder]
 ```
 
-Run it from the project root; `rootFolder` defaults to the config's. It resolves relative paths and tsconfig `paths` aliases, and checks `import`/`export … from`, side-effect imports, `import()`, and `require()`. It also reports a widget importing another widget (a widget = the nearest folder under `presentation/react/widgets/` with a `*-widget.tsx`, nested widgets included).
+Run it from the project root; `rootFolder` defaults to the config's. It resolves relative paths and tsconfig `paths` aliases, checks `import`/`export … from`, side-effect imports, `import()` and `require()`, and reports:
+
+- imports across contexts, and from `shared/` or React outside the exceptions above;
+- imports against the layers ("Ground rules"; specs excluded);
+- a widget importing another widget (a widget = the nearest folder under `presentation/react/widgets/` with a `*-widget.tsx`, nested widgets included), UI-kit importing widgets, pages or contexts, shared hooks importing UI-kit, widgets, pages or contexts;
+- a query importing a command of its context (`application/`, `infrastructure/` or `wiring/` `queries/` → `commands/`);
+- wired dependencies the CLI would never offer ("Wiring" below, `df-ps-scaffold` rule 3);
+- `new Date()` / `Date.now()` in domain or application (use the `clock` port).
+
+It exits with 1 when anything is found.
 
 ## Domain
 
@@ -58,7 +67,7 @@ export class Order extends domainType(
 ## Application
 
 - Use cases, commands, queries ({handlers}): the member is `handle = defineHandler({ inputSchema, outputSchema, handler })`. Replace the static `{}` schemas with real ones and write the logic in the `handler` callback; dependencies come through the constructor. Execution: the abstract contract holds the static schemas and `abstract handle`; each infrastructure implementation defines `handle` with the contract's schemas and writes only its `handler` callback. Orchestrator: a concrete class composing injected contracts. Call with `x.handle(input)` (returns a result) or `x.handle.unsafe(input)` (throws).
-- What a query or command may change: "Commonly confused" in `df-ps-scaffold/references/choosing-components.md`. Data a command returns goes in its output schema.
+- A query only reads: it never changes data (not even idempotently) and never uses a command; an orchestrator query may use a repository, but calls only its reading methods (never `save`/`delete`); see "Commonly confused" in `df-ps-scaffold/references/choosing-components.md`. Data a command returns goes in its output schema.
 - Ports: abstract members in the port, one implementation per adapter (`api` real, `mock`/`fake` deterministic). Use the shared `clock` port instead of `new Date()`.
 - Services: what each kind may contain and call is in `choosing-components.md` (steps 13–16, "Port or service?"). Domain services take and return domain types. Application services have no `handle`.
 

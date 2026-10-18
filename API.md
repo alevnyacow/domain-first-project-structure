@@ -46,6 +46,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Missing domain-first packages](#missing-domain-first-packages)
     - [Package scripts](#package-scripts)
 - [`df-skills`](#df-skills)
+- [`df-lint`](#df-lint)
 - [Runtime semantics](#runtime-semantics)
 
 Notation used below:
@@ -62,7 +63,7 @@ Notation used below:
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-ps`, `df-skills`                                     |
+| Binaries       | `df-ps`, `df-skills`, `df-lint`                          |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
@@ -75,10 +76,12 @@ Notation used below:
 | ----------- | ----------------------------------------------------------------------- | ------------------------- |
 | `df-ps`     | Initializes a project, scaffolds components, adds integrations          | [`df-ps`](#df-ps)         |
 | `df-skills` | Copies the bundled agent skills into a project or the home directory    | [`df-skills`](#df-skills) |
+| `df-lint`   | Reports code that breaks the Domain-First rules                         | [`df-lint`](#df-lint)     |
 
 ```bash
 npx df-ps
 npx df-skills [--claude] [--codex] [--global]
+npx df-lint [rootFolder]
 ```
 
 ## `df-ps`
@@ -543,7 +546,8 @@ Narrower rules on top of the layer rules:
 | Use case                         | No use cases                                                                 |
 | Repository implementation        | No repositories                                                              |
 | Execution command or query       | No commands or queries                                                       |
-| Orchestration command or query   | From the application layer, only execution commands and queries              |
+| Orchestration command            | From the application layer, only execution commands and queries              |
+| Orchestration query              | From the application layer, only execution queries; repositories stay available, and only their reading methods may be called |
 
 REST endpoints are never offered as dependencies.
 
@@ -783,6 +787,26 @@ npx df-skills [options]
 | `df-ps-scaffold`        | Generates components with `df-ps`                                                         |
 | `df-ps-implement`       | Fills in the generated code                                                              |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |
+
+## `df-lint`
+
+Reports code that breaks the Domain-First rules, grouped by rule, as `file:line: statement`. Exits with `1` when anything is found, `0` otherwise, so it fits CI and pre-commit hooks.
+
+```bash
+npx df-lint [rootFolder]
+```
+
+`rootFolder` defaults to the one in the configuration file, or `src` without it. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
+
+| Rule                       | Reported                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Context isolation          | A bounded context importing another one                                                                    |
+| Shared Layer               | `shared/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
+| Layers                     | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and execution contracts, or presentation or wiring; presentation importing infrastructure. Specs are not checked |
+| Queries only read          | A query's contract, implementation or wire importing a command of its context                              |
+| React                      | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
+| Wiring                     | A wired dependency the [dependency rules](#dependency-rules) never offer                                   |
+| Clock                      | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
 
 ## Runtime semantics
 

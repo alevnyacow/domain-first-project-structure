@@ -243,14 +243,30 @@ describe('canDependOn', () => {
         expect(canDependOn(consumer, repository)).toBe(true);
     });
 
-    test('orchestration commands and queries use only execution ones', () => {
+    test('orchestration commands use only execution commands and queries', () => {
+        const orchestrationCommand = {
+            ...wiredModule('commands', 'application'),
+            typeFile: '/c/application/commands/orchestration/x-command.ts'
+        };
+
+        expect(canDependOn(orchestrationCommand, executionQuery)).toBe(true);
+        expect(canDependOn(orchestrationCommand, executionCommand)).toBe(true);
+        expect(canDependOn(orchestrationCommand, query)).toBe(false);
+        expect(canDependOn(orchestrationCommand, port)).toBe(false);
+        expect(canDependOn(orchestrationCommand, applicationService)).toBe(
+            false
+        );
+        expect(canDependOn(orchestrationCommand, repository)).toBe(true);
+    });
+
+    test('orchestration queries use only execution queries', () => {
         const orchestrationQuery = {
             ...wiredModule('queries', 'application'),
             typeFile: '/c/application/queries/orchestration/x-query.ts'
         };
 
         expect(canDependOn(orchestrationQuery, executionQuery)).toBe(true);
-        expect(canDependOn(orchestrationQuery, executionCommand)).toBe(true);
+        expect(canDependOn(orchestrationQuery, executionCommand)).toBe(false);
         expect(canDependOn(orchestrationQuery, query)).toBe(false);
         expect(canDependOn(orchestrationQuery, port)).toBe(false);
         expect(canDependOn(orchestrationQuery, applicationService)).toBe(false);
