@@ -1,14 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { LintCheck } from './config-file';
+import {
+    type DependencyRules,
+    defaultDependencyRules,
+    fileModuleKind
+} from './dependency-rules';
 import { compilerOption } from './tsconfig';
 import {
     canDependOn,
     findWiredModules,
+    moduleKindOf,
     type WiredModule,
     wiredDependencyNames
 } from './wiring';
 
 export type Violation = {
+    /**
+     * The check that found it, which `rules.lint` can turn off.
+     */
+    check: LintCheck;
     /**
      * The broken rule, as printed above its violations.
      */
@@ -167,18 +178,24 @@ const layerImportRules: Record<
     }
 };
 
-const isKindFile = (segments: string[] | undefined, kind: string) =>
-    Boolean(
-        segments &&
-            ['application', 'infrastructure', 'wiring'].includes(segments[0]) &&
-            segments[1] === kind
-    );
+const baseName = (file: string) => path.basename(file).replace(/\.[^.]+$/, '');
 
 /**
- * Checks imports: bounded context isolation, layers, React modules, and
- * queries that use commands.
+ * An implementation importing its own contract:
+ * `prisma-order-repository` → `order-repository`.
  */
-const importViolations = (projectRoot: string, rootFolder: string) => {
+const isOwnContract = (file: string, target: string) =>
+    baseName(file).endsWith(`-${baseName(target)}`);
+
+/**
+ * Checks imports: bounded context isolation, layers, dependency rules
+ * between module files, and React modules.
+ */
+const importViolations = (
+    projectRoot: string,
+    rootFolder: string,
+    rules: DependencyRules
+) => {
     const root = path.resolve(projectRoot, rootFolder);
     const contextsFolder = path.join(root, 'bounded-contexts');
     const sharedFolder = path.join(root, 'shared');
@@ -252,8 +269,9 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
         const source = fs.readFileSync(file, 'utf8');
         const from = locate(file);
         const ownContext = inside(contextsFolder, file)?.[0];
-        const report = (rule: string, imported: Import) =>
+        const report = (check: LintCheck, rule: string, imported: Import) =>
             violations.push({
+                check,
                 rule,
                 file,
                 line: imported.line,
@@ -271,6 +289,7 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
             if (ownContext) {
                 if (targetContext && targetContext !== ownContext) {
                     report(
+                        'context-isolation',
                         `[${ownContext}] imports another context:`,
                         imported
                     );
@@ -285,6 +304,7 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
                         isDomainModel(to.segments, target));
                 if (!allowed) {
                     report(
+                        'shared-layer',
                         '[shared] imports a bounded context outside its domain/errors (and domain models for the in-memory DB):',
                         imported
                     );
@@ -296,6 +316,7 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
                     : ['ui-kit', 'widgets', 'pages'];
                 if (targetContext || forbidden.includes(area)) {
                     report(
+                        'react',
                         inside(uiKitFolder, file)
                             ? '[presentation/react/ui-kit] imports a bounded context, widget or page:'
                             : '[presentation/react/hooks] a shared hook imports a bounded context, UI-kit, widget or page:',
@@ -311,6 +332,7 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
                 )
             ) {
                 report(
+                    'react',
                     '[presentation/react] imports a context other than `import type` from presentation/rest:',
                     imported
                 );
@@ -320,6 +342,7 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
             const targetWidget = widgetOf(target);
             if (ownWidget && targetWidget && targetWidget !== ownWidget) {
                 report(
+                    'react',
                     '[presentation/react/widgets] a widget imports another widget:',
                     imported
                 );
@@ -328,19 +351,34 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
             if (!from || !to) {
                 continue;
             }
-            if (
-                to.owner === from.owner &&
-                isKindFile(from.segments, 'queries') &&
-                isKindFile(to.segments, 'commands')
-            ) {
-                report(
-                    `[${from.owner}] a query imports a command (queries only read):`,
-                    imported
-                );
+            if (isSpec(file)) {
+                continue;
+            }
+            /**
+             * Between module files the dependency rules decide which kinds
+             * meet; the layers decide the rest, and that only
+             * infrastructure and wiring see implementations.
+             */
+            const fromKind = fileModuleKind(from.segments);
+            const toKind = fileModuleKind(to.segments);
+            if (fromKind && toKind) {
+                if (
+                    !rules[fromKind].has(toKind) &&
+                    !(fromKind === toKind && isOwnContract(file, target))
+                ) {
+                    report(
+                        'dependencies',
+                        `[${from.owner}] ${fromKind} may not use ${toKind} (dependency rules):`,
+                        imported
+                    );
+                }
+                if (to.segments[0] !== 'infrastructure') {
+                    continue;
+                }
             }
             const layerRule = layerImportRules[from.segments[0]];
-            if (layerRule && !isSpec(file) && !layerRule.allows(to.segments)) {
-                report(`[${from.owner}] ${layerRule.rule}`, imported);
+            if (layerRule && !layerRule.allows(to.segments)) {
+                report('layers', `[${from.owner}] ${layerRule.rule}`, imported);
             }
         }
     }
@@ -351,7 +389,11 @@ const importViolations = (projectRoot: string, rootFolder: string) => {
  * Checks each wired dependency against the rules the CLI offers
  * dependencies by.
  */
-const wiringViolations = (projectRoot: string, rootFolder: string) => {
+const wiringViolations = (
+    projectRoot: string,
+    rootFolder: string,
+    rules: DependencyRules
+) => {
     const root = path.resolve(projectRoot, rootFolder);
     const sharedFolder = path.join(root, 'shared');
     const contextsFolder = path.join(root, 'bounded-contexts');
@@ -393,15 +435,16 @@ const wiringViolations = (projectRoot: string, rootFolder: string) => {
                 );
                 for (const dependency of dependencies) {
                     const candidate = visible.get(dependency);
-                    if (!candidate || canDependOn(consumer, candidate)) {
+                    if (!candidate || canDependOn(consumer, candidate, rules)) {
                         continue;
                     }
                     const index = source.indexOf(dependency, listStart);
                     violations.push({
-                        rule: `[${name}] wiring: a dependency the CLI never offers (layer or kind rules):`,
+                        check: 'dependencies',
+                        rule: `[${name}] wiring: a dependency the dependency rules don't allow:`,
                         file: consumer.wireFile,
                         line: lineAt(source, index),
-                        text: `${implementation.className} ← ${candidate.typeName} (${candidate.kind})`
+                        text: `${implementation.className} (${moduleKindOf(consumer) ?? consumer.kind}) ← ${candidate.typeName} (${moduleKindOf(candidate) ?? candidate.kind})`
                     });
                 }
             }
@@ -436,6 +479,7 @@ const clockViolations = (projectRoot: string, rootFolder: string) => {
                 ...source.matchAll(/\bnew\s+Date\s*\(\s*\)|\bDate\.now\s*\(/g)
             ].map(
                 (match): Violation => ({
+                    check: 'clock',
                     rule: 'domain or application reads the current time directly (use the clock port):',
                     file,
                     line: lineAt(source, match.index),
@@ -445,11 +489,24 @@ const clockViolations = (projectRoot: string, rootFolder: string) => {
         });
 };
 
-export const lintProject = (projectRoot: string, rootFolder: string) => [
-    ...importViolations(projectRoot, rootFolder),
-    ...wiringViolations(projectRoot, rootFolder),
-    ...clockViolations(projectRoot, rootFolder)
-];
+export type LintOptions = {
+    rules?: DependencyRules;
+    /**
+     * Checks turned off with `false`; the others run.
+     */
+    checks?: Partial<Record<LintCheck, boolean>>;
+};
+
+export const lintProject = (
+    projectRoot: string,
+    rootFolder: string,
+    { rules = defaultDependencyRules, checks = {} }: LintOptions = {}
+) =>
+    [
+        ...importViolations(projectRoot, rootFolder, rules),
+        ...wiringViolations(projectRoot, rootFolder, rules),
+        ...clockViolations(projectRoot, rootFolder)
+    ].filter((x) => checks[x.check] !== false);
 
 /**
  * Violations grouped under their rules, with paths from the project root.

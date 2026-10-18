@@ -13,7 +13,7 @@ Spend less time setting up files. Spend more time building your domain.
 
 In most TypeScript codebases you choose between convenience and architecture. Clear boundaries and roles around the domain mean more files, more contracts and more wiring, so under deadline pressure the logic ends up wherever it is quickest to write it. The boundaries blur one shortcut at a time.
 
-Domain First Project Structure removes that choice: **the cleanest path is also the shortest one**. An interactive CLI asks which bounded context, layer and role a new piece of code has, and generates it in its place, with contracts, implementations, test skeletons and wiring that respect the boundaries. Dependencies are offered only where the layers allow them. Doing it right takes a few prompts; doing it wrong takes extra effort. It knows the `@domain-first` packages: types, errors, handlers, wire and handlers-rest. The generated files belong to your project; you write the business rules.
+Domain First Project Structure removes that choice: **the cleanest path is also the shortest one**. An interactive CLI asks which bounded context, layer and role a new piece of code has, and generates it in its place, with contracts, implementations, test skeletons and wiring that respect the boundaries. Dependencies are offered only where the dependency rules allow them. Doing it right takes a few prompts; doing it wrong takes extra effort. It knows the `@domain-first` packages: types, errors, handlers, wire and handlers-rest. The generated files belong to your project; you write the business rules.
 
 ```
 npm i -D @domain-first/project-structure
@@ -213,7 +213,24 @@ Choose **Add integration** to configure Storybook, Prisma 8, Vitest, Playwright,
 npx df-lint
 ```
 
-It reports what breaks the Domain-First rules: imports between bounded contexts, imports against the layers, queries using commands, wired dependencies the CLI wouldn't offer, React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
+It reports what breaks the Domain-First rules: imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
+
+The rules are a default. Teams that work differently change them in the config: what each kind of module may depend on (`rules.dependencies`) and which checks run (`rules.lint`). `df-ps` offers dependencies by the same rules. Without `rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
+
+- Kinds in `rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `execution-commands`, `execution-queries`, `orchestration-commands`, `orchestration-queries`, `infrastructure-services`, `presentation-services`.
+- A kind's value: a list that replaces its defaults, or `{ "add": [...], "remove": [...] }`.
+- Checks in `rules.lint`: `context-isolation`, `shared-layer`, `layers`, `dependencies`, `react`, `clock`.
+
+Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](API.md#df-lint).
+
+```json
+{
+    "rules": {
+        "dependencies": { "use-cases": { "add": ["use-cases"] } },
+        "lint": { "clock": false }
+    }
+}
+```
 
 ### How to teach your coding agent
 

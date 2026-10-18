@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from '@rstest/core';
+import { resolveDependencyRules } from './dependency-rules';
 import {
     addConstructorParameters,
     addImport,
@@ -271,6 +272,31 @@ describe('canDependOn', () => {
         expect(canDependOn(orchestrationQuery, port)).toBe(false);
         expect(canDependOn(orchestrationQuery, applicationService)).toBe(false);
         expect(canDependOn(orchestrationQuery, repository)).toBe(true);
+    });
+
+    test('follows the given dependency rules', () => {
+        const rules = resolveDependencyRules({
+            'use-cases': { add: ['use-cases'] },
+            'orchestration-queries': { remove: ['repositories'] }
+        });
+        const orchestrationQuery = {
+            ...wiredModule('queries', 'application'),
+            typeFile: '/c/application/queries/orchestration/x-query.ts'
+        };
+
+        expect(canDependOn(useCase, useCase, rules)).toBe(true);
+        expect(canDependOn(orchestrationQuery, repository, rules)).toBe(false);
+        expect(canDependOn(orchestrationQuery, executionQuery, rules)).toBe(
+            true
+        );
+    });
+
+    test('follows the layers for kinds the rules do not know', () => {
+        const custom = wiredModule('mappers', 'application');
+
+        expect(canDependOn(custom, repository)).toBe(true);
+        expect(canDependOn(custom, infrastructureService)).toBe(false);
+        expect(canDependOn(useCase, custom)).toBe(true);
     });
 
     test('use cases use everything in application but use cases', () => {

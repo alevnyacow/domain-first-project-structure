@@ -1,7 +1,25 @@
 import path from 'node:path';
 import z from 'zod';
+import {
+    dependencyRulesSchema,
+    resolveDependencyRules
+} from './dependency-rules';
 import { File } from './file-system';
 import { ProjectRoot } from './project-root';
+
+/**
+ * `df-lint` checks that `rules.lint` can turn off.
+ */
+export const lintChecks = [
+    'context-isolation',
+    'shared-layer',
+    'layers',
+    'dependencies',
+    'react',
+    'clock'
+] as const;
+
+export type LintCheck = (typeof lintChecks)[number];
 
 const configFileName = 'domain-first.project-structure.config.json';
 
@@ -20,7 +38,13 @@ const configSchema = z.object({
     withInMemoryDb: z.boolean().optional(),
     useReact: z.boolean(),
     storybookFramework: z.string().optional(),
-    testingLibrary: z.string().optional()
+    testingLibrary: z.string().optional(),
+    rules: z
+        .object({
+            dependencies: dependencyRulesSchema.optional(),
+            lint: z.partialRecord(z.enum(lintChecks), z.boolean()).optional()
+        })
+        .optional()
 });
 
 export class ConfigFile {
@@ -50,3 +74,13 @@ export class ConfigFile {
         new File(ConfigFile.path).data = JSON.stringify(config, null, '\t');
     };
 }
+
+/**
+ * The dependency rules: the defaults with the config's `rules.dependencies`.
+ */
+export const configuredDependencyRules = () =>
+    resolveDependencyRules(
+        ConfigFile.exists
+            ? ConfigFile.Instance.data.rules?.dependencies
+            : undefined
+    );

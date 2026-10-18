@@ -213,6 +213,8 @@ type Config = {
 | `useReact`                              | Shows `Scaffold React module` in the main menu and enables the Orval integration.                                                            |
 | `storybookFramework`                    | Package that generated stories import `Meta` and `StoryObj` from. Omitted: no stories are generated.                                         |
 | `testingLibrary`                        | Module that generated tests import `describe`, `test`, `expect` and `beforeEach` from. Omitted: no tests are generated.                      |
+| `rules.dependencies`                    | Changes the [dependency rules](#dependency-rules) per kind of module. Omitted: the defaults.                                                 |
+| `rules.lint`                            | Turns [`df-lint`](#df-lint) checks off with `false`. Omitted: all checks run.                                                                |
 
 Edits apply to future runs only. Existing files are not migrated: enabling `wire` or `errors` later also requires the shared files [initialization](#initialization) would create and, for `errors`, the error namespaces of existing contexts.
 
@@ -528,26 +530,37 @@ Prints `No wired modules here yet.` when there are no modules, and `No dependenc
 
 ### Dependency rules
 
-The layer of a candidate is where its type lives. The layer of a consumer is where its implementation lives: repository, execution command, execution query and port implementations belong to infrastructure.
+What a module may depend on is decided by its kind: the folder of its wire under `wiring/`, with commands and queries split by the folder of their type (`execution/` or `orchestration/`). Repositories, execution commands and queries, and ports are their implementations here, so they follow infrastructure. Dependency selection, `Wire dependency` and [`df-lint`](#df-lint) use the same rules.
 
-| Consumer layer | Can depend on                         |
-| -------------- | ------------------------------------- |
-| Domain         | Domain                                |
-| Application    | Domain, application                   |
-| Infrastructure | Domain, application, infrastructure   |
-| Presentation   | Application, presentation             |
+| Kind                      | Can depend on by default                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `domain-services`         | `repositories`, `domain-services`                                                                                         |
+| `repositories`            | `domain-services`, `application-ports`, `infrastructure-services`                                                         |
+| `application-ports`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
+| `application-services`    | `repositories`, `domain-services`, `application-ports`                                                                    |
+| `use-cases`               | `repositories`, `domain-services`, `application-ports`, `application-services`, all commands and queries                  |
+| `execution-commands`      | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
+| `execution-queries`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
+| `orchestration-commands`  | `repositories`, `domain-services`, `execution-commands`, `execution-queries`                                              |
+| `orchestration-queries`   | `repositories`, `domain-services`, `execution-queries`. Queries only read: call only the repositories' reading methods      |
+| `infrastructure-services` | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
+| `presentation-services`   | `application-ports`, `application-services`, `use-cases`, all commands and queries, `presentation-services`               |
 
-Narrower rules on top of the layer rules:
+"All commands and queries" = `execution-commands`, `execution-queries`, `orchestration-commands`, `orchestration-queries`. Modules of the context and the Shared Layer follow the same rules. Kinds missing from the table (custom folders under `wiring/`) follow the layers: domain sees domain, application sees domain and application, infrastructure sees domain, application ports and infrastructure, presentation sees application and presentation.
 
-| Consumer                         | Rule                                                                         |
-| -------------------------------- | ---------------------------------------------------------------------------- |
-| Infrastructure                   | From the application layer, only ports, of the context and the Shared Layer  |
-| Application service              | From the application layer, only ports                                       |
-| Use case                         | No use cases                                                                 |
-| Repository implementation        | No repositories                                                              |
-| Execution command or query       | No commands or queries                                                       |
-| Orchestration command            | From the application layer, only execution commands and queries              |
-| Orchestration query              | From the application layer, only execution queries; repositories stay available, and only their reading methods may be called |
+`rules.dependencies` in the configuration file changes a kind's list: a list replaces it, `add` and `remove` change it. Kinds it doesn't mention keep their defaults; without it (or without `rules`, or without a configuration file), the table above applies as is. Unknown kinds make the config invalid.
+
+```json
+{
+    "rules": {
+        "dependencies": {
+            "use-cases": { "add": ["use-cases"] },
+            "orchestration-queries": { "remove": ["repositories"] },
+            "application-services": ["application-ports"]
+        }
+    }
+}
+```
 
 REST endpoints are never offered as dependencies.
 
@@ -796,17 +809,16 @@ Reports code that breaks the Domain-First rules, grouped by rule, as `file:line:
 npx df-lint [rootFolder]
 ```
 
-`rootFolder` defaults to the one in the configuration file, or `src` without it. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
+`rootFolder` defaults to the one in the configuration file, or `src` without it. The dependency rules come from `rules.dependencies`; `rules.lint` turns checks off by the names in brackets: `{ "rules": { "lint": { "clock": false } } }`. Checks it doesn't mention run. Without `rules` or without a configuration file, every check runs with the default dependency rules. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
 
 | Rule                       | Reported                                                                                                   |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Context isolation          | A bounded context importing another one                                                                    |
-| Shared Layer               | `shared/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
-| Layers                     | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and execution contracts, or presentation or wiring; presentation importing infrastructure. Specs are not checked |
-| Queries only read          | A query's contract, implementation or wire importing a command of its context                              |
-| React                      | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
-| Wiring                     | A wired dependency the [dependency rules](#dependency-rules) never offer                                   |
-| Clock                      | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
+| Context isolation (`context-isolation`) | A bounded context importing another one                                                                    |
+| Shared Layer (`shared-layer`) | `shared/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
+| Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and execution contracts, or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
+| Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
+| React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
+| Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
 
 ## Runtime semantics
 

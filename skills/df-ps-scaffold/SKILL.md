@@ -9,7 +9,7 @@ description: Generate Domain-First components with the `df-ps` CLI (@domain-firs
 
 Follow this order for every request:
 
-1. Read `domain-first.project-structure.config.json` (beside the nearest `package.json`). If missing, stop and tell the user to initialize the project with `npx df-ps` first.
+1. Read `domain-first.project-structure.config.json` (beside the nearest `package.json`). If missing, stop and tell the user to initialize the project with `npx df-ps` first. Its optional `rules.dependencies` changes what each kind of module may depend on; where it differs from the defaults in these skills, the config wins.
 2. Feature request without named contexts/components → `df-ps-plan-feature` (it covers steps 3–5).
 3. Choose a component for each piece of logic with `references/choosing-components.md`.
 4. Prepare the run details ("Preparing runs" below).
@@ -82,7 +82,7 @@ Moving or renaming a page or widget is a df-ps run too (`Move or rename page` / 
 With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-ps`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-ps` added.
 
 - List each module's dependencies in the plan as run options (`deps: OrderRepository`), with a `Wire dependency` run for existing modules.
-- A dependency the CLI doesn't offer is forbidden by the wiring rules (layer, kind, or another context): change the design (a port, an execution query or command, an infrastructure service) instead of adding it by hand.
+- A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `rules.dependencies` in the config) or by context isolation: change the design (a port, an execution query or command, an infrastructure service) instead of adding it by hand.
 - A value that isn't a wired module (a database or SDK client, a config value) lives in an infrastructure service named after the implementation label (`prisma`, `in-memory-db`, `stripe`): the service creates or reads it itself (`readonly client = new PrismaClient()`), with no constructor parameter for it. Implementations get the service through `df-ps`, where it shows up under `Suggested`. Wrap the service's wire in `memoWire(...)` when one instance must be shared (a connection pool, an in-memory store). No `wireValue(...)`. A domain or application module never gets such a value directly: it depends on a port whose adapter uses the service.
 - An endpoint generated with `handler: never` gets its handler by re-running the endpoint generator once the handler exists, as an approved overwrite.
 

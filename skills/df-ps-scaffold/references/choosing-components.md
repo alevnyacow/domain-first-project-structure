@@ -1,6 +1,6 @@
 # Choosing the component for a piece of logic
 
-The only place where these rules live.
+The only place where these rules live. What each kind of module may depend on is the default; `rules.dependencies` in the project's config can change it (e.g. let use cases call each other), and then the config wins.
 
 Split the request into pieces of logic (one responsibility each). For each piece, go through the steps **in order**: the first "yes" decides. A name the user used ("service", "gateway") is not a decision.
 

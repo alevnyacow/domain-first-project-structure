@@ -2,13 +2,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from '@rstest/core';
-import { formatViolations, lintProject } from './project-lint';
+import { resolveDependencyRules } from './dependency-rules';
+import {
+    formatViolations,
+    type LintOptions,
+    lintProject
+} from './project-lint';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'df-lint-'));
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
 let sequence = 0;
-const lint = (files: Record<string, string>) => {
+const lint = (files: Record<string, string>, options?: LintOptions) => {
     const project = path.join(root, String(sequence++));
     for (const [file, content] of Object.entries(files)) {
         fs.mkdirSync(path.dirname(path.join(project, file)), {
@@ -16,7 +21,7 @@ const lint = (files: Record<string, string>) => {
         });
         fs.writeFileSync(path.join(project, file), content);
     }
-    return lintProject(project, 'src').map((x) => ({
+    return lintProject(project, 'src', options).map((x) => ({
         rule: x.rule,
         file: path.relative(project, x.file),
         line: x.line
@@ -89,18 +94,41 @@ import { C } from '@/bounded-contexts/billing/domain/c'`
         ]);
     });
 
-    test('reports queries importing commands', () => {
+    test('reports module files importing what the dependency rules forbid', () => {
         expect(
             lint({
                 [`${sales}/application/queries/orchestration/summary-query.ts`]:
                     "import type { PayCommand } from '../../commands/execution/pay-command'",
-                [`${sales}/wiring/queries/wire-summary-query.ts`]:
-                    "import { wirePayCommand } from '../commands/wire-pay-command'"
-            }).map((x) => x.rule)
+                [`${sales}/application/use-cases/pay-use-case.ts`]:
+                    "import { CancelUseCase } from './cancel-use-case'",
+                [`${sales}/infrastructure/queries/prisma/prisma-order-query.ts`]: `import { OrderQuery } from '../../../application/queries/execution/order-query'
+import { ListQuery } from '../../../application/queries/execution/list-query'`,
+                [`${sales}/application/commands/orchestration/checkout-command.ts`]:
+                    "import { PrismaOrderQuery } from '../../../infrastructure/queries/prisma/prisma-order-query'"
+            }).map((x) => `${x.rule} ${x.file}:${x.line}`)
         ).toEqual([
-            '[sales] a query imports a command (queries only read):',
-            '[sales] a query imports a command (queries only read):'
+            `[sales] application imports outside domain and application: ${sales}/application/commands/orchestration/checkout-command.ts:1`,
+            `[sales] orchestration-queries may not use execution-commands (dependency rules): ${sales}/application/queries/orchestration/summary-query.ts:1`,
+            `[sales] use-cases may not use use-cases (dependency rules): ${sales}/application/use-cases/pay-use-case.ts:1`,
+            `[sales] execution-queries may not use execution-queries (dependency rules): ${sales}/infrastructure/queries/prisma/prisma-order-query.ts:2`
         ]);
+    });
+
+    test('follows the configured dependency rules and checks', () => {
+        const files = {
+            [`${sales}/application/use-cases/pay-use-case.ts`]:
+                "import { CancelUseCase } from './cancel-use-case'",
+            [`${sales}/domain/a.ts`]: 'const a = new Date()'
+        };
+
+        expect(
+            lint(files, {
+                rules: resolveDependencyRules({
+                    'use-cases': { add: ['use-cases'] }
+                }),
+                checks: { clock: false }
+            })
+        ).toEqual([]);
     });
 
     test('reports React modules importing what they must not', () => {
@@ -124,7 +152,7 @@ import { D } from '../../../../bounded-contexts/sales/presentation/rest/d'`
         ]);
     });
 
-    test('reports wired dependencies the CLI never offers', () => {
+    test('reports wired dependencies the dependency rules forbid', () => {
         expect(
             lint({
                 [`${sales}/wiring/commands/wire-pay-command.ts`]: `import { wireClass } from '@domain-first/wire'
@@ -143,7 +171,7 @@ export const wireSummaryQuery = wireClass(SummaryQuery, [
             }).filter((x) => x.rule.includes('wiring'))
         ).toEqual([
             {
-                rule: '[sales] wiring: a dependency the CLI never offers (layer or kind rules):',
+                rule: "[sales] wiring: a dependency the dependency rules don't allow:",
                 file: `${sales}/wiring/queries/wire-summary-query.ts`,
                 line: 6
             }
@@ -164,12 +192,31 @@ export const wireSummaryQuery = wireClass(SummaryQuery, [
 
 describe('formatViolations', () => {
     test('groups violations under their rules', () => {
+        const check = 'layers' as const;
         expect(
             formatViolations(
                 [
-                    { rule: 'A:', file: '/p/x.ts', line: 1, text: 'one' },
-                    { rule: 'B:', file: '/p/y.ts', line: 2, text: 'two' },
-                    { rule: 'A:', file: '/p/z.ts', line: 3, text: 'three' }
+                    {
+                        check,
+                        rule: 'A:',
+                        file: '/p/x.ts',
+                        line: 1,
+                        text: 'one'
+                    },
+                    {
+                        check,
+                        rule: 'B:',
+                        file: '/p/y.ts',
+                        line: 2,
+                        text: 'two'
+                    },
+                    {
+                        check,
+                        rule: 'A:',
+                        file: '/p/z.ts',
+                        line: 3,
+                        text: 'three'
+                    }
                 ],
                 '/p'
             )

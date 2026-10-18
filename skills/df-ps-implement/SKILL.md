@@ -15,6 +15,7 @@ Generated files contain placeholders: empty classes, `{}` schemas, `[]` dependen
 - Constructors take abstractions (`OrderRepository`, abstract `PlaceOrderCommand`, port `PaymentGateway`), never `PrismaOrderRepository`.
 - Implementation order: domain → application → schema tool runs (migrations, only if infrastructure needs data the database lacks) → infrastructure (repositories, execution commands/queries, adapters) → endpoints → other tool runs (OpenAPI, API client) → React. Widgets need the regenerated client. How to run tools and handle their output: the project's scripts skill (`project-scripts`), if there is one.
 - Run the project's tsc/lint/tests after each component.
+- What each kind of module may use follows the defaults in these skills unless `rules.dependencies` in the config changes them; then follow the config, in imports as well as in wiring.
 
 ## Bounded context isolation
 
@@ -38,12 +39,11 @@ Run it from the project root; `rootFolder` defaults to the config's. It resolves
 
 - imports across contexts, and from `shared/` or React outside the exceptions above;
 - imports against the layers ("Ground rules"; specs excluded);
+- module files importing kinds the project's dependency rules don't allow (a use case importing a use case, a query importing a command, …), and wired dependencies they don't allow ("Wiring" below, `df-ps-scaffold` rule 3); an implementation importing its own contract is fine;
 - a widget importing another widget (a widget = the nearest folder under `presentation/react/widgets/` with a `*-widget.tsx`, nested widgets included), UI-kit importing widgets, pages or contexts, shared hooks importing UI-kit, widgets, pages or contexts;
-- a query importing a command of its context (`application/`, `infrastructure/` or `wiring/` `queries/` → `commands/`);
-- wired dependencies the CLI would never offer ("Wiring" below, `df-ps-scaffold` rule 3);
 - `new Date()` / `Date.now()` in domain or application (use the `clock` port).
 
-It exits with 1 when anything is found.
+It exits with 1 when anything is found. Checks turned off in the config (`rules.lint`) aren't reported; don't turn checks off yourself.
 
 ## Domain
 

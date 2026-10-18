@@ -1,5 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { configuredDependencyRules } from './config-file';
+import {
+    type DependencyRules,
+    defaultDependencyRules,
+    wiredModuleKind
+} from './dependency-rules';
 import { File } from './file-system';
 import { UnknownFormatNaming } from './unknown-format-naming';
 
@@ -263,67 +269,20 @@ export const findWiredModules = (contextPath: string) => {
 };
 
 /**
- * Narrower rules for some kinds of modules, on top of the layer rules.
+ * The kind a module has in the dependency rules.
  */
-const isCommandOrQuery = (module: WiredModule) =>
-    module.kind === 'commands' || module.kind === 'queries';
+export const moduleKindOf = (module: WiredModule) =>
+    wiredModuleKind(module.kind, module.typeFile);
 
 /**
- * An execution command or query: its abstract type lives in
- * `application/{commands,queries}/execution/`.
+ * Modules of other kinds (folders the rules don't know) follow the
+ * layers; infrastructure takes only ports from application.
  */
-const isExecution = (module: WiredModule) =>
-    isCommandOrQuery(module) &&
-    path.basename(path.dirname(module.typeFile)) === 'execution';
-
-/**
- * Execution ones use no commands or queries; orchestration ones use only
- * execution commands and queries from the application layer, and
- * orchestration queries, which only read, only execution queries (plus
- * repositories from domain, whose writing methods they must not call).
- */
-const commandOrQueryRule = (candidate: WiredModule, consumer: WiredModule) =>
-    isExecution(consumer)
-        ? !isCommandOrQuery(candidate)
-        : candidate.layer !== 'application' ||
-          (isExecution(candidate) &&
-              (consumer.kind === 'commands' || candidate.kind === 'queries'));
-
-/**
- * Narrower rules for some layers of consumers' implementations.
- */
-const layerRules: Partial<Record<Layer, (candidate: WiredModule) => boolean>> =
-    {
-        /**
-         * Infrastructure implements application modules and uses only
-         * their ports.
-         */
-        infrastructure: (candidate) =>
-            candidate.layer !== 'application' ||
-            candidate.kind === 'application-ports'
-    };
-
-const kindRules: Record<
-    string,
-    (candidate: WiredModule, consumer: WiredModule) => boolean
-> = {
-    /**
-     * From the application layer, application services use ports only.
-     */
-    'application-services': (candidate) =>
+const layerRule = (consumer: WiredModule, candidate: WiredModule) =>
+    visibleLayers[consumer.implementationsLayer].includes(candidate.layer) &&
+    (consumer.implementationsLayer !== 'infrastructure' ||
         candidate.layer !== 'application' ||
-        candidate.kind === 'application-ports',
-    /**
-     * Use cases don't call each other.
-     */
-    'use-cases': (candidate) => candidate.kind !== 'use-cases',
-    /**
-     * Repository implementations don't use other repositories.
-     */
-    repositories: (candidate) => candidate.kind !== 'repositories',
-    commands: commandOrQueryRule,
-    queries: commandOrQueryRule
-};
+        candidate.kind === 'application-ports');
 
 /**
  * The implementation label of a branched wire's class, taken from its
@@ -350,20 +309,28 @@ export const isSuggestedFor = (
         `-${implementation}-`
     );
 
-export const canDependOn = (consumer: WiredModule, candidate: WiredModule) =>
-    visibleLayers[consumer.implementationsLayer].includes(candidate.layer) &&
-    (layerRules[consumer.implementationsLayer]?.(candidate) ?? true) &&
-    (kindRules[consumer.kind]?.(candidate, consumer) ?? true);
+export const canDependOn = (
+    consumer: WiredModule,
+    candidate: WiredModule,
+    rules: DependencyRules = defaultDependencyRules
+) => {
+    const consumerKind = moduleKindOf(consumer);
+    const candidateKind = moduleKindOf(candidate);
+    return consumerKind && candidateKind
+        ? rules[consumerKind].has(candidateKind)
+        : layerRule(consumer, candidate);
+};
 
 /**
- * What an implementation of the consumer can depend on: modules of the
- * visible layers, except the consumer and what this implementation
- * already depends on.
+ * What an implementation of the consumer can depend on by the project's
+ * rules, except the consumer and what this implementation already
+ * depends on.
  */
 export const availableDependencies = (
     consumer: WiredModule,
     implementation: WiredClass,
-    candidates: WiredModule[]
+    candidates: WiredModule[],
+    rules: DependencyRules = configuredDependencyRules()
 ) => {
     const wired = wiredDependencyNames(
         new File(consumer.wireFile).data,
@@ -373,7 +340,7 @@ export const availableDependencies = (
     return candidates.filter(
         (candidate) =>
             candidate.wireFile !== consumer.wireFile &&
-            canDependOn(consumer, candidate) &&
+            canDependOn(consumer, candidate, rules) &&
             !wired.includes(candidate.wireName)
     );
 };
