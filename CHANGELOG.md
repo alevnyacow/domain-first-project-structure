@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.0.0...v4.1.0) (2026-10-18)
+
+
+### Features
+
+* df-lint ([1499595](https://github.com/alevnyacow/domain-first-project-structure/commit/14995954c51dd989b1ce4ee144b31b4d4b2feff9))
+
 # [4.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v3.3.2...v4.0.0) (2026-10-18)
 
 
