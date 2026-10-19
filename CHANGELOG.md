@@ -1,3 +1,10 @@
+## [4.2.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.2.1...v4.2.2) (2026-10-19)
+
+
+### Bug Fixes
+
+* actual skills and rules ([3648725](https://github.com/alevnyacow/domain-first-project-structure/commit/36487252115a0f3b79d50d2ec4ccf92ac3d2bb40))
+
 ## [4.2.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.2.0...v4.2.1) (2026-10-19)
 
 
