@@ -52,7 +52,11 @@ export const defaultDependencies: Record<ModuleKind, ModuleKind[]> = {
         'infrastructure-services'
     ],
     'application-ports': infrastructure,
-    'application-services': [...domain, 'application-ports'],
+    'application-services': [
+        ...domain,
+        'application-ports',
+        ...commandsAndQueries
+    ],
     'use-cases': [
         ...domain,
         'application-ports',

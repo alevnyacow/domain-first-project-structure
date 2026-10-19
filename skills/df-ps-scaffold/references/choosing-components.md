@@ -21,7 +21,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 | 11 | One read/write on this context's own storage that isn't "load/save one aggregate" (read model, report, bulk update)? | **Execution command** (write) / **query** (read) |
 | 12 | A reusable read/write composed of other commands/queries? | **Orchestrator command** (execution commands and queries) / **query** (execution queries and repositories only, calling only their reading methods) |
 | 13 | A rule at the junction of several entities / value objects not all belonging to one aggregate (a discount from purchase history and the current discount), no I/O? | **Domain service**, always |
-| 14 | Application logic reused by 2+ use cases, with any external interaction delegated to injected ports? | **Application service** |
+| 14 | Application logic reused by 2+ use cases, with any external interaction or storage access delegated to injected ports, commands or queries? | **Application service** |
 | 15 | A technical helper used only by infrastructure code? | **Infrastructure service** |
 | 16 | A helper used only by presentation code? | **Presentation service** |
 | — | None of the above | A method or function in an existing file |
@@ -36,7 +36,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 ## Port or service?
 
 - A **port** describes a capability at the boundary: an external system or time. Its adapter performs the actual interaction. Own storage still follows the repository / execution command / query rules above. Another context is not a port: it's an execution query/command (step 9).
-- An **application service** contains reusable application logic and may call injected ports. It does not call external SDKs, HTTP clients, or another context directly. A domain service remains pure: no I/O, ports, or repositories.
+- An **application service** contains reusable application logic and may call injected ports, commands and queries. It does not call external SDKs, HTTP clients, or another context directly. A domain service remains pure: no I/O, ports, or repositories.
 - Wanting to mock a class or imagining multiple implementations is not enough to make it a port. Identify the boundary capability first. Ports get swappable adapters and a test implementation under `NODE_ENV=test`; test a service's logic with fake dependencies.
 
 Example: `order-confirmation` prepares a message and calls the injected `mailer` port. It stays an application service; the mailer adapter calls the email provider. Tests use a fake mailer and exercise the real service.
@@ -52,6 +52,7 @@ Example: `order-confirmation` prepares a message and calls the injected `mailer`
 | Domain / application service | Stated without requests, permissions, responses, scenarios → domain. Otherwise application. |
 | Use case / application service | Use case = one action with `handle`. Application service = helper used by use cases. |
 | Use case / orchestrator | Use case = action exposed outside. Orchestrator = reusable operation called by use cases. |
+| Orchestrator / application service | Only composes commands/queries into one reusable storage operation → orchestrator. Also needs ports or application logic beyond that composition → application service (it may call commands and queries, orchestrators included). |
 | Application / infrastructure service | Used by use cases → application. Only by adapters/repositories → infrastructure. |
 | Logic infrastructure needs from an application service | Infrastructure never sees application services. Pure logic without ports → domain service. Logic over ports → infrastructure calls the ports directly. Technical (mapping, retries, external API formats) → infrastructure service. |
 | Clock | Always a port (`clock`, usually in Shared Layer). |

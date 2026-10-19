@@ -195,10 +195,12 @@ describe('canDependOn', () => {
         expect(canDependOn(presentationService, repository)).toBe(false);
     });
 
-    test('application services use only ports from application', () => {
+    test('application services use ports, commands and queries from application', () => {
         expect(canDependOn(applicationService, port)).toBe(true);
         expect(canDependOn(applicationService, repository)).toBe(true);
-        expect(canDependOn(applicationService, query)).toBe(false);
+        expect(canDependOn(applicationService, query)).toBe(true);
+        expect(canDependOn(applicationService, executionCommand)).toBe(true);
+        expect(canDependOn(applicationService, applicationService)).toBe(false);
         expect(canDependOn(applicationService, useCase)).toBe(false);
     });
 

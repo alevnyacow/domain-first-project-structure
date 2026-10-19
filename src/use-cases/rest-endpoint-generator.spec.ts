@@ -54,13 +54,6 @@ test('declares a placeholder adapter above the class by default', () => {
     expect(content).not.toContain('@domain-first/handlers-next');
 });
 
-test('puts default client request errors before generating getters', () => {
-    const content = generate();
-    expect(content.indexOf('get defaultClientRequestErrors')).toBeLessThan(
-        content.indexOf('get withoutGuards')
-    );
-});
-
 test('imports the Next adapter instead of the placeholder', () => {
     const content = generate(true);
     expect(content).toContain(
@@ -71,14 +64,10 @@ test('imports the Next adapter instead of the placeholder', () => {
     expect(content).not.toContain('type Adapter');
 });
 
-test('maps default client request errors with handlers-rest 9 errors', () => {
+test('answers invalid requests with invalidRequest of handlers-rest', () => {
     const content = generate();
-    expect(content).toContain('type ErrorMapping');
-    expect(content).toContain(
-        'match: [RequestParsingError, InputMappingError]'
-    );
-    expect(content).toContain('message: (error) => error.message');
-    expect(content).toContain('errors: this.defaultClientRequestErrors');
-    expect(content).not.toContain('errorStatuses');
-    expect(content).not.toContain('ErrorStatuses');
+    expect(content).toContain('    invalidRequest\n} from');
+    expect(content).toContain('errors: [invalidRequest()]');
+    expect(content).not.toContain('httpStatus');
+    expect(content).not.toContain('RequestParsingError');
 });

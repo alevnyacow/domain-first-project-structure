@@ -164,30 +164,15 @@ Every endpoint uses the one endpoint generator of the project, `RestEndpointGene
 const adapter = undefined as unknown as Adapter<any[], any>
 
 export class RestEndpointGeneratorPresentationService {
-    /**
-     * Default errors of a client request, to spread into a generator's
-     * own error mappings.
-     */
-    private get defaultClientRequestErrors(): ErrorMapping[] {
-        return [
-            httpStatus(400, {
-                code: 'INVALID_REQUEST',
-                description: 'Invalid request',
-                message: (error) => error.message,
-                match: [RequestParsingError, InputMappingError]
-            })
-        ]
-    }
-
     get withoutGuards(): EndpointGenerator {
         return createEndpoint({
-            errors: this.defaultClientRequestErrors
+            errors: [invalidRequest()]
         })(adapter) as EndpointGenerator
     }
 }
 ```
 
-Set the module-level `adapter` constant above the class to the adapter of your HTTP framework; the class uses it through closure. If you connected the Next adapter during initialization, the file imports `nextAdapter` from `@domain-first/handlers-next` instead, with nothing to set. Each generating method is a getter returning `EndpointGenerator`: add one per kind of endpoint (for example `withAuth`, with its `context` and error mappings). Reuse the default mappings there and add your own: `errors: [httpError(MyError, 404), ...this.defaultClientRequestErrors]`. A new endpoint calls `this.endpointGenerator(...)` and doesn't compile on purpose: choose the getter yourself in its `get handle()`, e.g. `this.endpointGenerator.withoutGuards(...)`.
+Set the module-level `adapter` constant above the class to the adapter of your HTTP framework; the class uses it through closure. If you connected the Next adapter during initialization, the file imports `nextAdapter` from `@domain-first/handlers-next` instead, with nothing to set. Each generating method is a getter returning `EndpointGenerator`: add one per kind of endpoint (for example `withAuth`, with its `context` and error mappings). Keep `invalidRequest()` of `@domain-first/handlers-rest` there for invalid requests (`400`) and add your own mappings: `errors: [httpError(MyError, 404), invalidRequest()]`. A new endpoint calls `this.endpointGenerator(...)` and doesn't compile on purpose: choose the getter yourself in its `get handle()`, e.g. `this.endpointGenerator.withoutGuards(...)`.
 
 With wiring, the endpoint takes the generator and a handler you pick from the context's queries, commands and use cases, and all endpoints are collected as `restHandlers` in `src/presentation/rest/index.ts`. Connect them to your HTTP server.
 

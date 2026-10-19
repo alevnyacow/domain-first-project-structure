@@ -464,10 +464,9 @@ Bounded contexts only, with `handlers-rest`.
 | Member                        | Kind            | Content                                                                                      |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
 | `adapter`                     | Module constant | `Adapter<any[], any>`, declared above the class; `undefined` until replaced, used by the class through closure. With the Next adapter: `import { nextAdapter } from '@domain-first/handlers-next'` instead, and the getters pass `nextAdapter` |
-| `defaultClientRequestErrors`  | Private getter  | `ErrorMapping[]` with the default `400` mapping: `httpStatus(400, { code: 'INVALID_REQUEST', description: 'Invalid request', message: (error) => error.message, match: [RequestParsingError, InputMappingError] })`; declared first in the class |
-| `withoutGuards`               | Getter          | `createEndpoint({ errors: this.defaultClientRequestErrors })(adapter) as EndpointGenerator` |
+| `withoutGuards`               | Getter          | `createEndpoint({ errors: [invalidRequest()] })(adapter) as EndpointGenerator`; `invalidRequest()` of `@domain-first/handlers-rest` answers invalid requests with `400` |
 
-Further generating methods are getters typed as `EndpointGenerator`; they spread the default mappings into their own: `errors: [httpError(MyError, 404), ...this.defaultClientRequestErrors]`.
+Further generating methods are getters typed as `EndpointGenerator`; they keep `invalidRequest()` next to their own mappings: `errors: [httpError(MyError, 404), invalidRequest()]`.
 
 **Example**
 
@@ -537,7 +536,7 @@ What a module may depend on is decided by its kind: the folder of its wire under
 | `domain-services`         | `repositories`, `domain-services`                                                                                         |
 | `repositories`            | `domain-services`, `application-ports`, `infrastructure-services`                                                         |
 | `application-ports`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
-| `application-services`    | `repositories`, `domain-services`, `application-ports`                                                                    |
+| `application-services`    | `repositories`, `domain-services`, `application-ports`, all commands and queries                                          |
 | `use-cases`               | `repositories`, `domain-services`, `application-ports`, `application-services`, all commands and queries                  |
 | `execution-commands`      | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
 | `execution-queries`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
