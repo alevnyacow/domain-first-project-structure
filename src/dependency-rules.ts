@@ -45,7 +45,11 @@ const infrastructure: ModuleKind[] = [
  * commands and queries, and ports are their implementations here.
  */
 export const defaultDependencies: Record<ModuleKind, ModuleKind[]> = {
-    'domain-services': domain,
+    /**
+     * Domain services work with the data they are handed: loading it is
+     * the application layer's job.
+     */
+    'domain-services': ['domain-services'],
     repositories: [
         'domain-services',
         'application-ports',

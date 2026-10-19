@@ -533,7 +533,7 @@ What a module may depend on is decided by its kind: the folder of its wire under
 
 | Kind                      | Can depend on by default                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `domain-services`         | `repositories`, `domain-services`                                                                                         |
+| `domain-services`         | `domain-services`. They work with the data they are handed, loading it is the application layer's job                    |
 | `repositories`            | `domain-services`, `application-ports`, `infrastructure-services`                                                         |
 | `application-ports`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
 | `application-services`    | `repositories`, `domain-services`, `application-ports`, all commands and queries                                          |

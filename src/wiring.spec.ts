@@ -187,7 +187,7 @@ describe('canDependOn', () => {
             'presentation'
         );
 
-        expect(canDependOn(domainService, repository)).toBe(true);
+        expect(canDependOn(domainService, repository)).toBe(false);
         expect(canDependOn(domainService, port)).toBe(false);
         expect(canDependOn(infrastructureService, useCase)).toBe(false);
         expect(canDependOn(infrastructureService, port)).toBe(true);

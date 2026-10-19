@@ -15,12 +15,12 @@ Split the request into pieces of logic (one responsibility each). For each piece
 | 5 | An entity or value object used **only inside one** aggregate (an entity inside it, or a value like `order-id` used only by `order`)? | **Entity / value object** (Domain → New Entity / New Value Object, pick that aggregate) |
 | 6 | An entity or value object used by **several** aggregates or by a domain service? | **Entity / value object** (Domain → New Entity / New Value Object, `No aggregate`). Universal ones (see "Where it goes") in Shared Layer |
 | 7 | A rule about one aggregate's own state, including the junction of entities / value objects that all belong to it? | **Method on the aggregate**. No new file |
-| 8 | One business action a user/system triggers? (Its I/O is separate pieces.) | **Use case** |
+| 8 | One business action a user/system triggers that doesn't fit into a single query or command? (Its I/O is separate pieces.) | **Use case**. An action that is exactly one query or command gets none (see below) |
 | 9 | Data or behavior of **another context**? | **Execution query** (read) / **execution command** (write) in this context (see below) |
 | 10 | Leaves this context's code and storage: external system or time? | **Port** (+ adapters) |
 | 11 | One read/write on this context's own storage that isn't "load/save one aggregate" (read model, report, bulk update)? | **Execution command** (write) / **query** (read) |
 | 12 | A reusable read/write composed of other commands/queries? | **Orchestrator command** (execution commands and queries) / **query** (execution queries and repositories only, calling only their reading methods) |
-| 13 | A rule at the junction of several entities / value objects not all belonging to one aggregate (a discount from purchase history and the current discount), no I/O? | **Domain service**, always |
+| 13 | A rule at the junction of several entities / value objects not all belonging to one aggregate (a discount from purchase history and the current discount), no I/O? | **Domain service**, always. It takes the aggregates and values it needs as arguments; loading them is the caller's job (use case, application service) |
 | 14 | Application logic reused by 2+ use cases, with any external interaction or storage access delegated to injected ports, commands or queries? | **Application service** |
 | 15 | A technical helper used only by infrastructure code? | **Infrastructure service** |
 | 16 | A helper used only by presentation code? | **Presentation service** |
@@ -28,6 +28,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 
 - Entities and value objects are **rich**: rules about their own data, including how they are created, are their methods. They never know about their storage or loading: that's repositories and execution queries/commands.
 - Loading/saving one aggregate = a **repository method**, not a query or command.
+- **No proxy use cases.** Every query and command (execution or orchestration) is a handler, so an endpoint uses it directly. A use case that only forwards the call to one query or command adds nothing: don't create it. A use case appears only when the action needs several queries, commands or ports, or logic around them.
 - A rule about a **set** of aggregates (uniqueness, "at most N per day") = a repository method that queries it, plus a check and a domain error in the use case. No separate component.
 - Steps 9–10 beat 11–16. The other-context or external part becomes an execution query/command or a port. What remains may be a service that **receives it in its constructor**.
 - Another context (step 9): input/output are this context's own models, duplicated in its terms, never the other context's. The implementation reaches the other context the simplest available way: a shared database → directly (the persistence label, e.g. `prisma`); otherwise the way chosen by `df-ps-plan-feature` (step 3, rule 4): if the project has several ways to reach a context (REST, message queue, RPC…), ask the user; with REST only, its REST endpoint (`http`). The test implementation returns fixed data. No imports from the other context.
@@ -36,7 +37,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 ## Port or service?
 
 - A **port** describes a capability at the boundary: an external system or time. Its adapter performs the actual interaction. Own storage still follows the repository / execution command / query rules above. Another context is not a port: it's an execution query/command (step 9).
-- An **application service** contains reusable application logic and may call injected ports, commands and queries. It does not call external SDKs, HTTP clients, or another context directly. A domain service remains pure: no I/O, ports, or repositories.
+- An **application service** contains reusable application logic and may call injected ports, commands and queries. It does not call external SDKs, HTTP clients, or another context directly. A domain service remains pure: no I/O, ports, or repositories, not even injected ones; it works with the data it is handed.
 - Wanting to mock a class or imagining multiple implementations is not enough to make it a port. Identify the boundary capability first. Ports get swappable adapters and a test implementation under `NODE_ENV=test`; test a service's logic with fake dependencies.
 
 Example: `order-confirmation` prepares a message and calls the injected `mailer` port. It stays an application service; the mailer adapter calls the email provider. Tests use a fake mailer and exercise the real service.
@@ -47,11 +48,11 @@ Example: `order-confirmation` prepares a message and calls the injected `mailer`
 | --- | --- |
 | Port / repository | Own aggregate's persistence → repository. External system → port. |
 | Port / execution command, query | Own storage or another context → command/query. External system → port. |
-| Query / command | A query only reads: it never changes any state, not even idempotently (no cache filling, no default settings created if missing), and never calls a command. Any state change → command. A command may return data (the created order, the new balance); an orchestrator command may also use execution queries. An orchestrator query may load aggregates through a repository, but never calls its writing methods (`save`, `delete`): the wiring can't forbid it, so it's on the developer. |
+| Query / command | A query only reads: it never changes any state, not even idempotently (no cache filling, no default settings created if missing), and never calls a command. Any state change → command. A command returns nothing or only the minimum needed to use its result later (the created order's ID), never the changed data: read that with a query. An orchestrator command may also use execution queries. An orchestrator query may load aggregates through a repository, but never calls its writing methods (`save`, `delete`): the wiring can't forbid it, so it's on the developer. |
 | Domain service / entity, value object method | One entity / value object → its method. The junction of several → always a domain service, unless they all belong to one aggregate → a method on that aggregate. |
 | Domain / application service | Stated without requests, permissions, responses, scenarios → domain. Otherwise application. |
 | Use case / application service | Use case = one action with `handle`. Application service = helper used by use cases. |
-| Use case / orchestrator | Use case = action exposed outside. Orchestrator = reusable operation called by use cases. |
+| Use case / orchestrator | Use case = one complete business action, never reused by other use cases. Orchestrator = reusable read/write composed of execution commands/queries. Both are handlers an endpoint can use directly. |
 | Orchestrator / application service | Only composes commands/queries into one reusable storage operation → orchestrator. Also needs ports or application logic beyond that composition → application service (it may call commands and queries, orchestrators included). |
 | Application / infrastructure service | Used by use cases → application. Only by adapters/repositories → infrastructure. |
 | Logic infrastructure needs from an application service | Infrastructure never sees application services. Pure logic without ports → domain service. Logic over ports → infrastructure calls the ports directly. Technical (mapping, retries, external API formats) → infrastructure service. |

@@ -35,7 +35,7 @@ Split the request into pieces of logic and choose each piece's component with `d
    - Otherwise, look for the ways the project already reaches a context besides its REST endpoints: message queue, RPC, events, generated API clients. Several options (REST counts) → ask the user which one in "Decisions for you", with a recommendation. Never pick silently.
    - Nothing besides REST → the providing context's REST endpoint (`http`).
 
-   Unless it's the database, plan **both sides**: check that the providing context exposes what the call needs (endpoint, queue consumer…). If not, add it (and the use case behind it) to the plan.
+   Unless it's the database, plan **both sides**: check that the providing context exposes what the call needs (endpoint, queue consumer…). If not, add it (and the handler behind it: a query or command, or a use case only when one query or command isn't enough) to the plan.
 5. `shared/` holds technical, ownerless pieces and universal entities / value objects (`money`, `email`): the same meaning in every context, owned by none. Never a concept with one context's meaning or rules.
 6. Names: kebab-case, in the context's language. Contexts are business areas (`sales`, `reviews`), not features.
 
