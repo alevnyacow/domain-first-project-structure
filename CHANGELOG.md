@@ -1,3 +1,10 @@
+# [5.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.0.1...v5.1.0) (2026-10-22)
+
+
+### Features
+
+* `testcontainers` integration ([aefece2](https://github.com/alevnyacow/domain-first-project-structure/commit/aefece20aa6d6fe898789e2e9baf724292e5c8bb))
+
 ## [5.0.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.0.0...v5.0.1) (2026-10-22)
 
 
