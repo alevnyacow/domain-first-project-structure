@@ -1,3 +1,10 @@
+## [5.0.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.0.0...v5.0.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* updated skill with modern domain-first/types API ([f879a6c](https://github.com/alevnyacow/domain-first-project-structure/commit/f879a6c3375b6f6db871ca0a7e5e016ab9fc13b2))
+
 # [5.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.2.2...v5.0.0) (2026-10-22)
 
 
