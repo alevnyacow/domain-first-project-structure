@@ -1,3 +1,15 @@
+# [5.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.2.2...v5.0.0) (2026-10-22)
+
+
+### Bug Fixes
+
+* simplified queries and commands, removed `orchestrational` ones ([442edd2](https://github.com/alevnyacow/domain-first-project-structure/commit/442edd260909d0f2ccd592a78f3196a85d6387c9))
+
+
+### BREAKING CHANGES
+
+* new queries and commands placing
+
 ## [4.2.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v4.2.1...v4.2.2) (2026-10-19)
 
 
