@@ -49,12 +49,20 @@ It exits with 1 when anything is found. Checks turned off in the config (`rules.
 
 ```ts
 export class Order extends domainType(
-    z.object({ id: z.instanceof(OrderId), lines: z.array(z.instanceof(OrderLine)), status: z.enum(['open', 'paid']) })
+    z.object({
+        id: z.instanceof(OrderId),
+        lines: z.array(z.instanceof(OrderLine)),
+        status: z.enum(["open", "paid"]),
+    }),
 ) {
-    pay = () => {
-        if (this.status === 'paid') throw new AlreadyPaidOrderSalesError({ id: this.id.value })
-        return new Order({ id: this.id, lines: this.lines, status: 'paid' })
-    }
+    withPayment = () => {
+        if (this.status === "paid") {
+            throw new AlreadyPaidOrderSalesError({
+                id: this.id.snapshot,
+            });
+        }
+        return this.with({ status: "paid" });
+    };
 }
 ```
 
@@ -76,7 +84,10 @@ export class Order extends domainType(
 Dependencies (constructor parameters and their wires) are added only by `df-ps` (`df-ps-scaffold`, rule 3): the generator's `Dependencies:` step or `Wire dependency`. It keeps each `wireClass(X, [...])` in the order of the constructor, which TypeScript checks:
 
 ```ts
-export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [wireOrderRepository, wirePaymentGateway])
+export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [
+    wireOrderRepository,
+    wirePaymentGateway,
+]);
 ```
 
 - Use the injected dependencies in the class body; don't edit the parameter list or the wire list.
