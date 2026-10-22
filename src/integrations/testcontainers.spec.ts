@@ -85,8 +85,9 @@ test('adds config, setup files, example spec and script with deferred writes', a
     const globalSetup = fs.readFileSync(globalSetupPath, 'utf8');
     expect(globalSetup).toContain("const POSTGRES_IMAGE = 'postgres:15';");
     expect(globalSetup).toContain(
-        'npx prisma db migrate --advance-ref db --config \\"src/shared/infrastructure/prisma/prisma.config.ts\\"'
+        'npx prisma db migrate --config \\"src/shared/infrastructure/prisma/prisma.config.ts\\"'
     );
+    expect(globalSetup).not.toContain('--advance-ref');
     expect(fs.readFileSync(setupEnvPath, 'utf8')).toContain(
         "process.env.DATABASE_URL = inject('databaseUrl');"
     );
