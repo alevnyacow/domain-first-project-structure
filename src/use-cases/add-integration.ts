@@ -6,6 +6,7 @@ import {
     addPlaywright,
     addPrisma,
     addStorybook,
+    addTestcontainers,
     addVitest,
     missingDomainFirstPackages
 } from '../integrations';
@@ -26,6 +27,10 @@ const integrations: {
     { name: 'Prisma 8 (PostgreSQL, RC)', run: addPrisma },
     { name: 'Vitest', run: addVitest },
     { name: 'Playwright', run: addPlaywright },
+    {
+        name: 'Integration tests (Testcontainers, PostgreSQL)',
+        run: addTestcontainers
+    },
     { name: 'OpenAPI', run: addOpenapi, available: () => withHandlersRest() },
     {
         name: 'Orval (React Query client)',

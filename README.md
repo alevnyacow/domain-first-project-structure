@@ -188,7 +188,7 @@ admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPane
 
 ### How to add tooling
 
-Choose **Add integration** to configure Storybook, Prisma 8, Vitest, Playwright, OpenAPI generation or an Orval React Query client. Integrations add config files, package scripts and `.gitignore` entries, then print the install commands. Nothing is installed or run for you.
+Choose **Add integration** to configure Storybook, Prisma 8, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval React Query client. Integrations add config files, package scripts and `.gitignore` entries, then print the install commands. Nothing is installed or run for you.
 
 **Missing domain-first packages** prints the `npm i` command for packages from the config that are not in `package.json`.
 

@@ -41,6 +41,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Prisma 8 (PostgreSQL, RC)](#prisma-8-postgresql-rc)
     - [Vitest](#vitest)
     - [Playwright](#playwright)
+    - [Integration tests (Testcontainers, PostgreSQL)](#integration-tests-testcontainers-postgresql)
     - [OpenAPI](#openapi)
     - [Orval (React Query client)](#orval-react-query-client)
     - [Missing domain-first packages](#missing-domain-first-packages)
@@ -628,6 +629,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 | `Prisma 8 (PostgreSQL, RC)`      | Always                                       |
 | `Vitest`                         | Always                                       |
 | `Playwright`                     | Always                                       |
+| `Integration tests (Testcontainers, PostgreSQL)` | Always                       |
 | `OpenAPI`                        | With `handlers-rest`                         |
 | `Orval (React Query client)`     | With `handlers-rest` and `useReact`          |
 | `Missing domain-first packages`  | Always                                       |
@@ -690,7 +692,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 }
 ```
 
-The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolder>/bounded-contexts` and `<rootFolder>/shared`, excluding specs, infrastructure, REST presentation and wiring. `specs/e2e` is excluded from tests. When `@domain-first/handlers-next` is declared, it is inlined so its `next/headers` import resolves.
+The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolder>/bounded-contexts` and `<rootFolder>/shared`, excluding specs, infrastructure, REST presentation and wiring. `specs/e2e` and `specs/integration` are excluded from tests. When `@domain-first/handlers-next` is declared, it is inlined so its `next/headers` import resolves.
 
 ### Playwright
 
@@ -702,6 +704,23 @@ The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolde
 | Install        | `npm install --save-dev @playwright/test` when missing; `npx playwright install --with-deps`                           |
 
 The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, screenshots and videos on failure, and projects for Chromium, Firefox, WebKit, Mobile Chrome and Mobile Safari. The web server runs `npm run dev` at `http://localhost:3000` and is reused outside CI.
+
+### Integration tests (Testcontainers, PostgreSQL)
+
+| Item           | Value                                                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Files          | Under `specs/integration/`: `vitest.config.ts`, `global-setup.ts`, `setup-env.ts`; `database/database.spec.ts` if missing   |
+| Scripts        | `test:integration`: `vitest run --config specs/integration/vitest.config.ts --reporter=dot --silent=passed-only`             |
+| Install        | `--save-dev vitest testcontainers dotenv`, each when missing                                                               |
+| Notes          | The database image and variable and where to change them; with no Prisma config, a reminder to apply migrations in `global-setup.ts`; when `vitest.config.ts` doesn't mention `specs/integration`, a reminder to exclude it from unit tests; Docker must be running |
+
+| File               | Content                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `vitest.config.ts` | Runs `specs/integration/**/*.spec.ts` with `NODE_ENV=development`, so `envBranchedWire` picks development implementations. Paths are relative to the project root. When `@domain-first/handlers-next` is declared, it is inlined |
+| `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container |
+| `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container |
+
+Specs get the container's address in `DATABASE_URL`, so the Prisma infrastructure service connects to it. Change the image, credentials and connection string in `global-setup.ts`, and the variable name in `setup-env.ts`. All specs of a run share one database: give each spec its own data.
 
 ### OpenAPI
 

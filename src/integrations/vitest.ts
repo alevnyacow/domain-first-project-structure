@@ -35,8 +35,8 @@ export default defineConfig({
         tsconfigPaths: true
     },
     test: {
-        // Playwright runs end-to-end specs
-        exclude: [...configDefaults.exclude, 'specs/e2e/**'],
+        // Playwright runs end-to-end specs, test:integration runs integration ones
+        exclude: [...configDefaults.exclude, 'specs/e2e/**', 'specs/integration/**'],
         coverage: {
             provider: 'v8',
             include: [${folder('bounded-contexts/**/*.ts')}, ${folder('shared/**/*.ts')}],
