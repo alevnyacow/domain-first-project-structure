@@ -1,3 +1,10 @@
+## [5.1.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.1.1...v5.1.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* no db ref moving in testcontainer integration ([a0e20ba](https://github.com/alevnyacow/domain-first-project-structure/commit/a0e20ba9846652d496f47e5599255fe11b89cd76))
+
 ## [5.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.1.0...v5.1.1) (2026-10-22)
 
 
