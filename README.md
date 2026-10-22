@@ -101,11 +101,11 @@ export class PlaceOrderUseCase {
 }
 ```
 
-Commands and queries come in two modes. **Execution** creates an abstract contract in `application/` and implementations in `infrastructure/`, like a repository. **Orchestrator** creates one application class that coordinates execution commands and queries (an orchestrator query, execution queries and repositories only, reading methods only). A query only reads and never changes data; any change is a command.
+A command or query creates an abstract contract in `application/` and implementations in `infrastructure/`, like a repository. A query only reads and never changes data; any change is a command.
 
 ### How to switch implementations
 
-With `@domain-first/wire`, repositories, execution commands and queries, and ports get one factory per implementation, selected by `NODE_ENV`:
+With `@domain-first/wire`, repositories, commands, queries and ports get one factory per implementation, selected by `NODE_ENV`:
 
 ```ts
 export const wireOrderRepository = envBranchedWire({
@@ -202,7 +202,7 @@ It reports what breaks the Domain-First rules: imports between bounded contexts,
 
 The rules are a default. Teams that work differently change them in the config: what each kind of module may depend on (`rules.dependencies`) and which checks run (`rules.lint`). `df-ps` offers dependencies by the same rules. Without `rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
 
-- Kinds in `rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `execution-commands`, `execution-queries`, `orchestration-commands`, `orchestration-queries`, `infrastructure-services`, `presentation-services`.
+- Kinds in `rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `infrastructure-services`, `presentation-services`.
 - A kind's value: a list that replaces its defaults, or `{ "add": [...], "remove": [...] }`.
 - Checks in `rules.lint`: `context-isolation`, `shared-layer`, `layers`, `dependencies`, `react`, `clock`.
 

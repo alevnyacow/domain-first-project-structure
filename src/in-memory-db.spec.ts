@@ -188,10 +188,9 @@ for (const [kind, scaffold, Kind] of [
     ['Query', scaffoldNewQuery, 'Query'],
     ['Command', scaffoldNewCommand, 'Command']
 ] as const) {
-    test(`an in-memory execution ${kind.toLowerCase()} gets the whole in-memory DB`, async () => {
+    test(`an in-memory ${kind.toLowerCase()} gets the whole in-memory DB`, async () => {
         answer({
             'Name: ': `find-user-${kind.toLowerCase()}`,
-            [`${Kind} type`]: 'Execution (with infrastructure implementation)',
             [`${Kind} infrastructure implementation type:`]: 'prisma',
             [`Add a test implementation for ${Kind}`]: true,
             [`Test ${Kind} infrastructure implementation type:`]: 'in-memory'

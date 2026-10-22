@@ -1,4 +1,4 @@
-import { confirm, input, select } from '@inquirer/prompts';
+import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import {
@@ -23,62 +23,49 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     const commandName = await input({ message: 'Name: ' });
     const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
     const naming = new UnknownFormatNaming(commandName);
-    const commandType = await select({
-        choices: [
-            'Execution (with infrastructure implementation)',
-            'Orchestrator (no infrastructure implementation)'
-        ],
-        message: 'Command type'
-    });
-
-    const isOrchestrator =
-        commandType === 'Orchestrator (no infrastructure implementation)';
-
     const withWiring =
         ConfigFile.Instance.data.domainFirstPackages.includes(
             '@domain-first/wire'
         );
 
-    if (!isOrchestrator) {
-        const implementationType = await input({
-            message: 'Command infrastructure implementation type:',
-            default:
-                ConfigFile.Instance.data.defaultPersistenceLayerImplementation
+    const implementationType = await input({
+        message: 'Command infrastructure implementation type:',
+        default: ConfigFile.Instance.data.defaultPersistenceLayerImplementation
+    });
+
+    let addTestImplementation: boolean = false;
+    let testImplementationType: string = '';
+
+    addTestImplementation = await confirm({
+        message: 'Add a test implementation for Command'
+    });
+
+    if (addTestImplementation) {
+        testImplementationType = await input({
+            message: 'Test Command infrastructure implementation type:',
+            default: 'in-memory'
         });
+    }
 
-        let addTestImplementation: boolean = false;
-        let testImplementationType: string = '';
+    const implementationTypes = [
+        implementationType,
+        testImplementationType
+    ].filter((x) => !!x);
 
-        addTestImplementation = await confirm({
-            message: 'Add a test implementation for Command'
-        });
+    for (const implementation of implementationTypes) {
+        const formatNaming = new UnknownFormatNaming(implementation);
 
-        if (addTestImplementation) {
-            testImplementationType = await input({
-                message: 'Test Command infrastructure implementation type:',
-                default: 'in-memory'
-            });
-        }
-
-        const implementationTypes = [
-            implementationType,
-            testImplementationType
-        ].filter((x) => !!x);
-
-        for (const implementation of implementationTypes) {
-            const formatNaming = new UnknownFormatNaming(implementation);
-
-            const implementationFile = infrastructureFolder
-                .subitem([formatNaming.fileName])
-                .createFile(
-                    `${formatNaming.fileName}-${naming.fileName}-command.ts`,
-                    ConfigFile.Instance.data.domainFirstPackages.includes(
-                        '@domain-first/handlers'
-                    )
-                        ? /** Implementation with @domain-first/handlers */
-                          `
+        const implementationFile = infrastructureFolder
+            .subitem([formatNaming.fileName])
+            .createFile(
+                `${formatNaming.fileName}-${naming.fileName}-command.ts`,
+                ConfigFile.Instance.data.domainFirstPackages.includes(
+                    '@domain-first/handlers'
+                )
+                    ? /** Implementation with @domain-first/handlers */
+                      `
 import { defineHandler } from '@domain-first/handlers'
-import { ${naming.ClassName}Command } from '../../../application/commands/execution/${naming.fileName}-command'
+import { ${naming.ClassName}Command } from '../../../application/commands/${naming.fileName}-command'
 
 export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${naming.ClassName}Command {
     constructor() {
@@ -94,8 +81,8 @@ export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${namin
     })
 }
         `.trim()
-                        : /** Implementation without @domain-first/handlers */ `
-import { ${naming.ClassName}Command } from '../../../application/commands/execution/${naming.fileName}-command'
+                    : /** Implementation without @domain-first/handlers */ `
+import { ${naming.ClassName}Command } from '../../../application/commands/${naming.fileName}-command'
 
 export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${naming.ClassName}Command {
     constructor() {
@@ -103,28 +90,28 @@ export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${namin
     }
 }
     `.trim()
-                );
+            );
 
-            /**
-             * With wiring, the in-memory DB is a suggested dependency
-             * instead, so it can be left out.
-             */
-            if (!withWiring && usesInMemoryDb(implementation)) {
-                injectInMemoryDb(
-                    implementationFile,
-                    `${formatNaming.ClassName}${naming.ClassName}Command`
-                );
-            }
+        /**
+         * With wiring, the in-memory DB is a suggested dependency
+         * instead, so it can be left out.
+         */
+        if (!withWiring && usesInMemoryDb(implementation)) {
+            injectInMemoryDb(
+                implementationFile,
+                `${formatNaming.ClassName}${naming.ClassName}Command`
+            );
         }
+    }
 
-        if (
-            ConfigFile.Instance.data.domainFirstPackages.includes(
-                '@domain-first/handlers'
-            )
-        ) {
-            commandsFolder.subitem(['execution']).createFile(
-                `${naming.fileName}-command.ts`,
-                `
+    if (
+        ConfigFile.Instance.data.domainFirstPackages.includes(
+            '@domain-first/handlers'
+        )
+    ) {
+        commandsFolder.createFile(
+            `${naming.fileName}-command.ts`,
+            `
 import type { Handler } from '@domain-first/handlers'
 
 export abstract class ${naming.ClassName}Command {
@@ -134,30 +121,30 @@ export abstract class ${naming.ClassName}Command {
     abstract handle: Handler<typeof ${naming.ClassName}Command.inputSchema, typeof ${naming.ClassName}Command.outputSchema>
 }
                     `.trim()
-            );
-        } else {
-            commandsFolder.subitem(['execution']).createFile(
-                `${naming.fileName}-command.ts`,
-                `
+        );
+    } else {
+        commandsFolder.createFile(
+            `${naming.fileName}-command.ts`,
+            `
 export abstract class ${naming.ClassName}Command {
 
 }`.trim()
-            );
-        }
+        );
+    }
 
-        if (scaffoldUnitTests) {
-            const implementationNaming = new UnknownFormatNaming(
-                implementationType
-            );
-            const specFile = commandsFolder.subitem(['execution']).createFile(
-                `${naming.fileName}-command.spec.ts`,
-                `
+    if (scaffoldUnitTests) {
+        const implementationNaming = new UnknownFormatNaming(
+            implementationType
+        );
+        const specFile = commandsFolder.createFile(
+            `${naming.fileName}-command.spec.ts`,
+            `
 import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
-import { wire${naming.ClassName}Command } from '../../../wiring/commands/wire-${naming.fileName}-command'`
-        : `import { ${implementationNaming.ClassName}${naming.ClassName}Command } from '../../../infrastructure/commands/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}-command'
+import { wire${naming.ClassName}Command } from '../../wiring/commands/wire-${naming.fileName}-command'`
+        : `import { ${implementationNaming.ClassName}${naming.ClassName}Command } from '../../infrastructure/commands/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}-command'
 
 type ${naming.ClassName}Command = ${implementationNaming.ClassName}${naming.ClassName}Command`
 }
@@ -174,33 +161,33 @@ describe('${naming.withSpaces} command', () => {
     })
 })
                 `.trim()
-            );
+        );
 
-            if (!withWiring && usesInMemoryDb(implementationType)) {
-                passInMemoryDb(
-                    specFile,
-                    `${implementationNaming.ClassName}${naming.ClassName}Command`
-                );
-            }
+        if (!withWiring && usesInMemoryDb(implementationType)) {
+            passInMemoryDb(
+                specFile,
+                `${implementationNaming.ClassName}${naming.ClassName}Command`
+            );
         }
+    }
 
-        if (
-            ConfigFile.Instance.data.domainFirstPackages.includes(
-                '@domain-first/wire'
-            )
-        ) {
-            const implementationNaming = new UnknownFormatNaming(
-                implementationType
-            );
-            const testImplementationNaming = new UnknownFormatNaming(
-                testImplementationType
-            );
+    if (
+        ConfigFile.Instance.data.domainFirstPackages.includes(
+            '@domain-first/wire'
+        )
+    ) {
+        const implementationNaming = new UnknownFormatNaming(
+            implementationType
+        );
+        const testImplementationNaming = new UnknownFormatNaming(
+            testImplementationType
+        );
 
-            const wireFile = boundedContextFolder
-                .subitem(['wiring', 'commands'])
-                .createFile(
-                    `wire-${naming.fileName}-command.ts`,
-                    `
+        const wireFile = boundedContextFolder
+            .subitem(['wiring', 'commands'])
+            .createFile(
+                `wire-${naming.fileName}-command.ts`,
+                `
 import { wireClass } from '@domain-first/wire'
 import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
 ${implementationTypes
@@ -224,99 +211,8 @@ export const wire${naming.ClassName}Command = envBranchedWire({
     production: wire${implementationNaming.ClassName}Implementation
 })
     `.trim()
-                );
+            );
 
-            await wireNewModuleDependencies(boundedContextFolder, wireFile);
-        }
-        return;
-    }
-
-    /**
-     * Orchestrator command
-     */
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/handlers'
-        )
-    ) {
-        commandsFolder.subitem(['orchestration']).createFile(
-            `${naming.fileName}-command.ts`,
-            `
-import { defineHandler } from '@domain-first/handlers'
-
-export class ${naming.ClassName}Command {
-    constructor() {}
-
-    static inputSchema = {}
-    static outputSchema = {}
-
-    handle = defineHandler({
-        inputSchema: ${naming.ClassName}Command.inputSchema,
-        outputSchema: ${naming.ClassName}Command.outputSchema,
-        handler: async (payload) => {
-            return {}
-        }
-    })
-}
-                `.trim()
-        );
-    } else {
-        commandsFolder.subitem(['orchestration']).createFile(
-            `${naming.fileName}-command.ts`,
-            `
-export class ${naming.ClassName}Command {
-    constructor() {}
-}`.trim()
-        );
-    }
-
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
-    ) {
-        boundedContextFolder.subitem(['wiring', 'commands']).createFile(
-            `wire-${naming.fileName}-command.ts`,
-            `
-import { wireClass } from '@domain-first/wire'
-import { ${naming.ClassName}Command } from '../../application/commands/orchestration/${naming.fileName}-command'
-
-export const wire${naming.ClassName}Command = wireClass(${naming.ClassName}Command, [])
-`.trim()
-        );
-    }
-    if (scaffoldUnitTests) {
-        commandsFolder.subitem(['orchestration']).createFile(
-            `${naming.fileName}-command.spec.ts`,
-            `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
-${
-    withWiring
-        ? `import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
-import { wire${naming.ClassName}Command } from '../../../wiring/commands/wire-${naming.fileName}-command'`
-        : `import { ${naming.ClassName}Command } from './${naming.fileName}-command'`
-}
-
-let ${naming.variableName}Command: ${naming.ClassName}Command
-
-beforeEach(() => {
-${naming.variableName}Command = ${withWiring ? `wire${naming.ClassName}Command()` : `new ${naming.ClassName}Command()`}
-})
-
-describe('${naming.withSpaces} command', () => {
-test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
-    expect(${naming.variableName}Command).toBeDefined()
-})
-})
-        `.trim()
-        );
-    }
-    if (withWiring) {
-        await wireNewModuleDependencies(
-            boundedContextFolder,
-            boundedContextFolder
-                .subitem(['wiring', 'commands'])
-                .file(`wire-${naming.fileName}-command.ts`)
-        );
+        await wireNewModuleDependencies(boundedContextFolder, wireFile);
     }
 };

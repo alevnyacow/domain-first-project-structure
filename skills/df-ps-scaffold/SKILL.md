@@ -82,7 +82,7 @@ Moving or renaming a page or widget is a df-ps run too (`Move or rename page` / 
 With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-ps`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-ps` added.
 
 - List each module's dependencies in the plan as run options (`deps: OrderRepository`), with a `Wire dependency` run for existing modules.
-- A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `rules.dependencies` in the config) or by context isolation: change the design (a port, an execution query or command, an infrastructure service) instead of adding it by hand.
+- A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `rules.dependencies` in the config) or by context isolation: change the design (a port, a query or command, an infrastructure service) instead of adding it by hand.
 - A value that isn't a wired module (a database or SDK client, a config value) lives in an infrastructure service named after the implementation label (`prisma`, `in-memory-db`, `stripe`): the service creates or reads it itself (`readonly client = new PrismaClient()`), with no constructor parameter for it. Implementations get the service through `df-ps`, where it shows up under `Suggested`. Wrap the service's wire in `memoWire(...)` when one instance must be shared (a connection pool, an in-memory store). No `wireValue(...)`. A domain or application module never gets such a value directly: it depends on a port whose adapter uses the service.
 - An endpoint generated with `handler: never` gets its handler by re-running the endpoint generator once the handler exists, as an approved overwrite.
 
@@ -95,7 +95,7 @@ Details and the check script: `df-ps-implement`, "Bounded context isolation".
 - **Contexts**: subfolders of `<rootFolder>/bounded-contexts/` (menu: `Bounded Context: <name>`).
 - **Names**: lowercase kebab-case, no generator suffix (`place-order`, not `place-order-use-case`). No empty segments (`a--b`). Pages and widgets only: folders before the name, each segment kebab-case (`admin/users`); when to nest: `references/choosing-components.md`.
 - **Collisions**: before writing, the CLI asks `Overwrite them?` if the run would replace existing files. Check the target paths; rename, or flag the overwrite in the plan and end that run's steps with `yes`.
-- **Tests**: with `testingLibrary` set, df-ps always generates specs; add a test implementation (`in-memory`/`mock`) to repositories, execution commands/queries, and ports. Otherwise the spec wires the real one. Without `testingLibrary`, tell the user once and suggest adding it; don't edit the config yourself.
+- **Tests**: with `testingLibrary` set, df-ps always generates specs; add a test implementation (`in-memory`/`mock`) to repositories, commands/queries, and ports. Otherwise the spec wires the real one. Without `testingLibrary`, tell the user once and suggest adding it; don't edit the config yourself.
 - **Prompts**: take the exact sequence for the generator and config from `references/generators.md`.
 
 ## Running the driver

@@ -38,8 +38,8 @@ describe('lintProject', () => {
                     'export class Order {}',
                 [`${sales}/application/use-cases/pay-use-case.ts`]:
                     "import { Order } from '../../domain/aggregates/order/order'",
-                [`${sales}/infrastructure/commands/prisma/prisma-pay-command.ts`]: `import { PayCommand } from '../../../application/commands/execution/pay-command'
-import { Clock } from '../../../../../shared/application/ports/clock'`,
+                [`${sales}/infrastructure/commands/prisma/prisma-pay-command.ts`]: `import { PayCommand } from '../../../application/commands/pay-command'
+import { PrismaInfrastructureService } from '../../services/prisma-infrastructure-service'`,
                 [`${sales}/application/use-cases/pay-use-case.spec.ts`]:
                     "import { wirePayUseCase } from '../../wiring/use-cases/wire-pay-use-case'",
                 'src/shared/presentation/services/errors.ts':
@@ -97,20 +97,20 @@ import { C } from '@/bounded-contexts/billing/domain/c'`
     test('reports module files importing what the dependency rules forbid', () => {
         expect(
             lint({
-                [`${sales}/application/queries/orchestration/summary-query.ts`]:
-                    "import type { PayCommand } from '../../commands/execution/pay-command'",
+                [`${sales}/application/queries/summary-query.ts`]:
+                    "import type { PayCommand } from '../commands/pay-command'",
                 [`${sales}/application/use-cases/pay-use-case.ts`]:
                     "import { CancelUseCase } from './cancel-use-case'",
-                [`${sales}/infrastructure/queries/prisma/prisma-order-query.ts`]: `import { OrderQuery } from '../../../application/queries/execution/order-query'
-import { ListQuery } from '../../../application/queries/execution/list-query'`,
-                [`${sales}/application/commands/orchestration/checkout-command.ts`]:
-                    "import { PrismaOrderQuery } from '../../../infrastructure/queries/prisma/prisma-order-query'"
+                [`${sales}/infrastructure/queries/prisma/prisma-order-query.ts`]: `import { OrderQuery } from '../../../application/queries/order-query'
+import { ListQuery } from '../../../application/queries/list-query'`,
+                [`${sales}/application/services/checkout-application-service.ts`]:
+                    "import { PrismaOrderQuery } from '../../infrastructure/queries/prisma/prisma-order-query'"
             }).map((x) => `${x.rule} ${x.file}:${x.line}`)
         ).toEqual([
-            `[sales] application imports outside domain and application: ${sales}/application/commands/orchestration/checkout-command.ts:1`,
-            `[sales] orchestration-queries may not use execution-commands (dependency rules): ${sales}/application/queries/orchestration/summary-query.ts:1`,
+            `[sales] queries may not use commands (dependency rules): ${sales}/application/queries/summary-query.ts:1`,
+            `[sales] application imports outside domain and application: ${sales}/application/services/checkout-application-service.ts:1`,
             `[sales] use-cases may not use use-cases (dependency rules): ${sales}/application/use-cases/pay-use-case.ts:1`,
-            `[sales] execution-queries may not use execution-queries (dependency rules): ${sales}/infrastructure/queries/prisma/prisma-order-query.ts:2`
+            `[sales] queries may not use queries (dependency rules): ${sales}/infrastructure/queries/prisma/prisma-order-query.ts:2`
         ]);
     });
 
@@ -162,12 +162,14 @@ const wireInMemoryImplementation = wireClass(InMemoryPayCommand, [])
 
 export const wirePayCommand = envBranchedWire({ test: wireInMemoryImplementation })`,
                 [`${sales}/wiring/queries/wire-summary-query.ts`]: `import { wireClass } from '@domain-first/wire'
-import { SummaryQuery } from '../../application/queries/orchestration/summary-query'
+import { InMemorySummaryQuery } from '../../infrastructure/queries/in-memory/in-memory-summary-query'
 import { wirePayCommand } from '../commands/wire-pay-command'
 
-export const wireSummaryQuery = wireClass(SummaryQuery, [
+const wireInMemoryImplementation = wireClass(InMemorySummaryQuery, [
     wirePayCommand
-])`
+])
+
+export const wireSummaryQuery = envBranchedWire({ test: wireInMemoryImplementation })`
             }).filter((x) => x.rule.includes('wiring'))
         ).toEqual([
             {

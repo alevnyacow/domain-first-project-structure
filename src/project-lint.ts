@@ -163,14 +163,14 @@ const layerImportRules: Record<
         rule: 'application imports outside domain and application:'
     },
     infrastructure: {
-        allows: ([layer, part, mode]) =>
+        allows: ([layer, part]) =>
             layer === 'domain' ||
             layer === 'infrastructure' ||
             (layer === 'application' &&
                 (part === 'ports' ||
-                    ((part === 'commands' || part === 'queries') &&
-                        mode === 'execution'))),
-        rule: 'infrastructure imports outside domain, infrastructure, application ports and execution contracts:'
+                    part === 'commands' ||
+                    part === 'queries')),
+        rule: 'infrastructure imports outside domain, infrastructure, application ports and command and query contracts:'
     },
     presentation: {
         allows: ([layer]) => layer !== 'infrastructure',

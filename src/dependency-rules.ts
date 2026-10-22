@@ -1,9 +1,8 @@
-import path from 'node:path';
 import z from 'zod';
 
 /**
  * Kinds of modules the dependency rules are written in: the folders
- * under `wiring/`, with commands and queries split by mode.
+ * under `wiring/`.
  */
 export const moduleKinds = [
     'repositories',
@@ -11,10 +10,8 @@ export const moduleKinds = [
     'application-ports',
     'application-services',
     'use-cases',
-    'execution-commands',
-    'execution-queries',
-    'orchestration-commands',
-    'orchestration-queries',
+    'commands',
+    'queries',
     'infrastructure-services',
     'presentation-services'
 ] as const;
@@ -24,12 +21,7 @@ export type ModuleKind = (typeof moduleKinds)[number];
 export type DependencyRules = Record<ModuleKind, ReadonlySet<ModuleKind>>;
 
 const domain: ModuleKind[] = ['repositories', 'domain-services'];
-const commandsAndQueries: ModuleKind[] = [
-    'execution-commands',
-    'execution-queries',
-    'orchestration-commands',
-    'orchestration-queries'
-];
+const commandsAndQueries: ModuleKind[] = ['commands', 'queries'];
 /**
  * What infrastructure implementations see: domain, application ports
  * and other infrastructure.
@@ -41,8 +33,8 @@ const infrastructure: ModuleKind[] = [
 ];
 
 /**
- * What each kind of module may depend on. Repositories, execution
- * commands and queries, and ports are their implementations here.
+ * What each kind of module may depend on. Repositories, commands,
+ * queries and ports are their implementations here.
  */
 export const defaultDependencies: Record<ModuleKind, ModuleKind[]> = {
     /**
@@ -67,17 +59,11 @@ export const defaultDependencies: Record<ModuleKind, ModuleKind[]> = {
         'application-services',
         ...commandsAndQueries
     ],
-    'execution-commands': infrastructure,
-    'execution-queries': infrastructure,
-    'orchestration-commands': [
-        ...domain,
-        'execution-commands',
-        'execution-queries'
-    ],
     /**
-     * Queries only read.
+     * One atomic operation each: only the technology they run on.
      */
-    'orchestration-queries': [...domain, 'execution-queries'],
+    commands: ['infrastructure-services'],
+    queries: ['infrastructure-services'],
     'infrastructure-services': infrastructure,
     'presentation-services': [
         'application-ports',
@@ -132,16 +118,10 @@ const isModuleKind = (value: string): value is ModuleKind =>
     (moduleKinds as readonly string[]).includes(value);
 
 /**
- * The kind of a wired module: its folder under `wiring/`; commands and
- * queries by the folder of their type, `execution/` or `orchestration/`.
+ * The kind of a wired module: its folder under `wiring/`.
  */
-export const wiredModuleKind = (wiringKind: string, typeFile: string) => {
-    const kind =
-        wiringKind === 'commands' || wiringKind === 'queries'
-            ? `${path.basename(path.dirname(typeFile)) === 'execution' ? 'execution' : 'orchestration'}-${wiringKind}`
-            : wiringKind;
-    return isModuleKind(kind) ? kind : undefined;
-};
+export const wiredModuleKind = (wiringKind: string) =>
+    isModuleKind(wiringKind) ? wiringKind : undefined;
 
 /**
  * The kind of a module file, from its path inside a context or the
@@ -149,7 +129,7 @@ export const wiredModuleKind = (wiringKind: string, typeFile: string) => {
  * such as entities, value objects and errors.
  */
 export const fileModuleKind = (segments: string[]): ModuleKind | undefined => {
-    const [layer, folder, mode] = segments;
+    const [layer, folder] = segments;
     const file = segments.at(-1) ?? '';
     /**
      * Barrels only re-export.
@@ -166,13 +146,10 @@ export const fileModuleKind = (segments: string[]): ModuleKind | undefined => {
             : undefined;
     }
     if (layer === 'application') {
-        if (folder === 'commands' || folder === 'queries') {
-            return mode === 'execution' || mode === 'orchestration'
-                ? `${mode}-${folder}`
-                : undefined;
-        }
         return (
             {
+                commands: 'commands',
+                queries: 'queries',
                 ports: 'application-ports',
                 services: 'application-services',
                 'use-cases': 'use-cases'
@@ -183,8 +160,8 @@ export const fileModuleKind = (segments: string[]): ModuleKind | undefined => {
         return (
             {
                 repositories: 'repositories',
-                commands: 'execution-commands',
-                queries: 'execution-queries',
+                commands: 'commands',
+                queries: 'queries',
                 'application-adapters': 'application-ports',
                 services: 'infrastructure-services'
             } as const

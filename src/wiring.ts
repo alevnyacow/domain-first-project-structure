@@ -82,18 +82,8 @@ const branchedTypeFiles: Record<string, (fileBase: string) => string[]> = {
         fileBase.replace(/-repository$/, ''),
         `${fileBase}.ts`
     ],
-    commands: (fileBase) => [
-        'application',
-        'commands',
-        'execution',
-        `${fileBase}.ts`
-    ],
-    queries: (fileBase) => [
-        'application',
-        'queries',
-        'execution',
-        `${fileBase}.ts`
-    ],
+    commands: (fileBase) => ['application', 'commands', `${fileBase}.ts`],
+    queries: (fileBase) => ['application', 'queries', `${fileBase}.ts`],
     'application-ports': (fileBase) => [
         'application',
         'ports',
@@ -272,7 +262,7 @@ export const findWiredModules = (contextPath: string) => {
  * The kind a module has in the dependency rules.
  */
 export const moduleKindOf = (module: WiredModule) =>
-    wiredModuleKind(module.kind, module.typeFile);
+    wiredModuleKind(module.kind);
 
 /**
  * Modules of other kinds (folders the rules don't know) follow the

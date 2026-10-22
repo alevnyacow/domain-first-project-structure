@@ -25,7 +25,7 @@ Config: `shared/infrastructure/prisma/prisma.config.ts`. Source: `shared/infrast
 
 ### When to migrate
 
-Only when domain and application logic are implemented, and implementing an infrastructure module (repository, execution command/query) needs data the database doesn't have yet. Not earlier "just in case", and never as the first step of a feature: the domain decides what's stored, not the schema.
+Only when domain and application logic are implemented, and implementing an infrastructure module (repository, command/query) needs data the database doesn't have yet. Not earlier "just in case", and never as the first step of a feature: the domain decides what's stored, not the schema.
 
 Order: domain → application → `contract.prisma` + migration → user applies it → infrastructure → endpoints → other codegen → React.
 

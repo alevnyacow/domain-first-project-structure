@@ -208,8 +208,8 @@ type Config = {
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `rootFolder`                            | Base path of generated source, relative to the project root. May contain inner folders: `src/server`.                                       |
 | `domainFirstPackages`                   | Integrations used by templates. See [Package integrations](#package-integrations). An empty array selects plain class templates.             |
-| `defaultPersistenceLayerImplementation` | Default implementation label for repositories, execution commands and execution queries.                                                     |
-| `withInMemoryDb`                        | `in-memory` implementations of repositories, execution commands and execution queries get the shared [in-memory DB](#in-memory-db). Omitted: they are generated empty. |
+| `defaultPersistenceLayerImplementation` | Default implementation label for repositories, commands and queries.                                                                         |
+| `withInMemoryDb`                        | `in-memory` implementations of repositories, commands and queries get the shared [in-memory DB](#in-memory-db). Omitted: they are generated empty. |
 | `useReact`                              | Shows `Scaffold React module` in the main menu and enables the Orval integration.                                                            |
 | `storybookFramework`                    | Package that generated stories import `Meta` and `StoryObj` from. Omitted: no stories are generated.                                         |
 | `testingLibrary`                        | Module that generated tests import `describe`, `test`, `expect` and `beforeEach` from. Omitted: no tests are generated.                      |
@@ -379,32 +379,23 @@ Bounded contexts only. Both generators are identical except for the folder (`com
 
 **Prompts**
 
-| Prompt                                                   | Default                                 | Condition                |
-| -------------------------------------------------------- | --------------------------------------- | ------------------------ |
-| `Name:`                                                  |                                         |                          |
-| `Command type` / `Query type`                            |                                         |                          |
-| `<Suffix> infrastructure implementation type:`           | `defaultPersistenceLayerImplementation` | Execution                |
-| `Add a test implementation for <Suffix>`                 |                                         | Execution                |
-| `Test <Suffix> infrastructure implementation type:`      | `in-memory`                             | With test implementation |
+| Prompt                                              | Default                                 | Condition                |
+| --------------------------------------------------- | --------------------------------------- | ------------------------ |
+| `Name:`                                             |                                         |                          |
+| `<Suffix> infrastructure implementation type:`      | `defaultPersistenceLayerImplementation` |                          |
+| `Add a test implementation for <Suffix>`            |                                         |                          |
+| `Test <Suffix> infrastructure implementation type:` | `in-memory`                             | With test implementation |
 
-**Execution (with infrastructure implementation)**
+**Files**
 
-| Path                                                                 | Condition          | Content                                                                                 |
-| -------------------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------- |
-| `application/<kind>/execution/<name>-<suffix>.ts`                    | Always             | `abstract class <Name><Suffix>`; with `handlers`, static schemas and an abstract `handle: Handler<...>` |
-| `infrastructure/<kind>/<impl>/<impl>-<name>-<suffix>.ts`             | Per implementation | `class <Impl><Name><Suffix> extends <Name><Suffix>`; with `handlers`, `handle = defineHandler(...)` |
-| `application/<kind>/execution/<name>-<suffix>.spec.ts`               | With tests         | Wiring test with `wire`, construction test of the primary implementation otherwise      |
-| `wiring/<kind>/wire-<name>-<suffix>.ts`                              | With `wire`        | `wire<Name><Suffix>` built with [`envBranchedWire`](#envbranchedwire)                   |
+| Path                                                     | Condition          | Content                                                                                 |
+| -------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------- |
+| `application/<kind>/<name>-<suffix>.ts`                  | Always             | `abstract class <Name><Suffix>`; with `handlers`, static schemas and an abstract `handle: Handler<...>` |
+| `infrastructure/<kind>/<impl>/<impl>-<name>-<suffix>.ts` | Per implementation | `class <Impl><Name><Suffix> extends <Name><Suffix>`; with `handlers`, `handle = defineHandler(...)` |
+| `application/<kind>/<name>-<suffix>.spec.ts`             | With tests         | Wiring test with `wire`, construction test of the primary implementation otherwise      |
+| `wiring/<kind>/wire-<name>-<suffix>.ts`                  | With `wire`        | `wire<Name><Suffix>` built with [`envBranchedWire`](#envbranchedwire)                   |
 
 With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the whole DB, with no section added: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`, wired with `wireInMemoryDbInfrastructureService`. With `wire`, this is the checked **Suggested** choice of its dependency question; unchecked, the implementation stays empty.
-
-**Orchestrator (no infrastructure implementation)**
-
-| Path                                                     | Condition   | Content                                                                    |
-| -------------------------------------------------------- | ----------- | -------------------------------------------------------------------------- |
-| `application/<kind>/orchestration/<name>-<suffix>.ts`    | Always      | `class <Name><Suffix>`; with `handlers`, static schemas and `handle = defineHandler(...)` |
-| `application/<kind>/orchestration/<name>-<suffix>.spec.ts` | With tests | Wiring or construction test                                               |
-| `wiring/<kind>/wire-<name>-<suffix>.ts`                  | With `wire` | `wire<Name><Suffix> = wireClass(<Name><Suffix>, [])`                       |
 
 ### New Port
 
@@ -493,7 +484,7 @@ export const envBranchedWire = branchedWire(() => {
 });
 ```
 
-Repositories, execution commands, execution queries and ports wire every implementation separately and select one with it:
+Repositories, commands, queries and ports wire every implementation separately and select one with it:
 
 | `NODE_ENV`               | Implementation                                                |
 | ------------------------ | ------------------------------------------------------------- |
@@ -529,23 +520,21 @@ Prints `No wired modules here yet.` when there are no modules, and `No dependenc
 
 ### Dependency rules
 
-What a module may depend on is decided by its kind: the folder of its wire under `wiring/`, with commands and queries split by the folder of their type (`execution/` or `orchestration/`). Repositories, execution commands and queries, and ports are their implementations here, so they follow infrastructure. Dependency selection, `Wire dependency` and [`df-lint`](#df-lint) use the same rules.
+What a module may depend on is decided by its kind: the folder of its wire under `wiring/`. Repositories, commands, queries and ports are their implementations here, so they follow infrastructure. Dependency selection, `Wire dependency` and [`df-lint`](#df-lint) use the same rules.
 
 | Kind                      | Can depend on by default                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `domain-services`         | `domain-services`. They work with the data they are handed, loading it is the application layer's job                    |
 | `repositories`            | `domain-services`, `application-ports`, `infrastructure-services`                                                         |
 | `application-ports`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
-| `application-services`    | `repositories`, `domain-services`, `application-ports`, all commands and queries                                          |
-| `use-cases`               | `repositories`, `domain-services`, `application-ports`, `application-services`, all commands and queries                  |
-| `execution-commands`      | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
-| `execution-queries`       | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
-| `orchestration-commands`  | `repositories`, `domain-services`, `execution-commands`, `execution-queries`                                              |
-| `orchestration-queries`   | `repositories`, `domain-services`, `execution-queries`. Queries only read: call only the repositories' reading methods      |
+| `application-services`    | `repositories`, `domain-services`, `application-ports`, `commands`, `queries`                                          |
+| `use-cases`               | `repositories`, `domain-services`, `application-ports`, `application-services`, `commands`, `queries`                  |
+| `commands`                | `infrastructure-services`. One atomic operation each: only the technology it runs on                                       |
+| `queries`                 | `infrastructure-services`. One atomic operation each: only the technology it runs on                                       |
 | `infrastructure-services` | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
-| `presentation-services`   | `application-ports`, `application-services`, `use-cases`, all commands and queries, `presentation-services`               |
+| `presentation-services`   | `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `presentation-services`               |
 
-"All commands and queries" = `execution-commands`, `execution-queries`, `orchestration-commands`, `orchestration-queries`. Modules of the context and the Shared Layer follow the same rules. Kinds missing from the table (custom folders under `wiring/`) follow the layers: domain sees domain, application sees domain and application, infrastructure sees domain, application ports and infrastructure, presentation sees application and presentation.
+Modules of the context and the Shared Layer follow the same rules. Kinds missing from the table (custom folders under `wiring/`) follow the layers: domain sees domain, application sees domain and application, infrastructure sees domain, application ports and infrastructure, presentation sees application and presentation.
 
 `rules.dependencies` in the configuration file changes a kind's list: a list replaces it, `add` and `remove` change it. Kinds it doesn't mention keep their defaults; without it (or without `rules`, or without a configuration file), the table above applies as is. Unknown kinds make the config invalid.
 
@@ -554,7 +543,7 @@ What a module may depend on is decided by its kind: the folder of its wire under
     "rules": {
         "dependencies": {
             "use-cases": { "add": ["use-cases"] },
-            "orchestration-queries": { "remove": ["repositories"] },
+            "queries": { "remove": ["repositories"] },
             "application-services": ["application-ports"]
         }
     }
@@ -814,7 +803,7 @@ npx df-lint [rootFolder]
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | Context isolation (`context-isolation`) | A bounded context importing another one                                                                    |
 | Shared Layer (`shared-layer`) | `shared/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
-| Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and execution contracts, or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
+| Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and command and query contracts, or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
 | Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |

@@ -13,7 +13,7 @@ Generated files contain placeholders: empty classes, `{}` schemas, `[]` dependen
 - Keep generated names and paths: barrels, wiring, specs, and `presentation/rest/wires.ts` import them.
 - Layers: domain imports nothing from other layers. Application uses domain and its own abstractions. Infrastructure implements repositories, contracts, and ports, and may use application ports (of its context and the Shared Layer), never other application modules. Infrastructure needing logic from an application service means the logic is misplaced: pure logic without ports → a domain service; logic over ports → call those ports directly; technical logic (mapping, retries, formatting for an external API) → an infrastructure service. Presentation calls application handlers. Only `wiring/` knows concrete classes.
 - Constructors take abstractions (`OrderRepository`, abstract `PlaceOrderCommand`, port `PaymentGateway`), never `PrismaOrderRepository`.
-- Implementation order: domain → application → schema tool runs (migrations, only if infrastructure needs data the database lacks) → infrastructure (repositories, execution commands/queries, adapters) → endpoints → other tool runs (OpenAPI, API client) → React. Widgets need the regenerated client. How to run tools and handle their output: the project's scripts skill (`project-scripts`), if there is one.
+- Implementation order: domain → application → schema tool runs (migrations, only if infrastructure needs data the database lacks) → infrastructure (repositories, commands/queries, adapters) → endpoints → other tool runs (OpenAPI, API client) → React. Widgets need the regenerated client. How to run tools and handle their output: the project's scripts skill (`project-scripts`), if there is one.
 - Run the project's tsc/lint/tests after each component.
 - What each kind of module may use follows the defaults in these skills unless `rules.dependencies` in the config changes them; then follow the config, in imports as well as in wiring.
 
@@ -21,13 +21,13 @@ Generated files contain placeholders: empty classes, `{}` schemas, `[]` dependen
 
 A file in context A imports **nothing** from context B: no types (`import type` too), barrels, aliases, errors, or wiring. No exceptions: every context must be movable to its own service.
 
-- A needs B's data or behavior → an **execution query** (read) or **execution command** (write) in A. Its input/output are A's own models, duplicated in A's terms; B's models never appear in A.
+- A needs B's data or behavior → a **query** (read) or **command** (write) in A. Its input/output are A's own models, duplicated in A's terms; B's models never appear in A.
 - Its infrastructure implementation reaches B's data **the simplest available way**: a shared database → query it directly (e.g. `prisma`); otherwise the way chosen in the plan (`df-ps-plan-feature`, step 3, rule 4), by default B's REST endpoint (`http`), like an external service. Either way it maps the result to A's models and errors and imports nothing from B. Its test implementation returns fixed data, so A's tests never run B.
 - Refer to B's entities by id only.
 - `shared/` may import any context's **`domain/errors`** (e.g. to map them to HTTP statuses), and nothing else from a context. The one exception: the shared in-memory DB, `shared/infrastructure/services/in-memory-db-infrastructure-service.ts`, may also import any context's **domain models** (aggregate roots, entities, value objects: the `domainType` classes under `domain/aggregates/`, `domain/entities/`, `domain/value-objects/`) to type its sections, never repository contracts or anything outside `domain/`. Don't move a context's domain concepts into `shared/` to share them between contexts; only universal entities / value objects (`money`, `email`) live there.
 - `<rootFolder>/presentation/rest/` (the generated `wires.ts`, `index.ts`) may import every context's REST wiring.
 - `<rootFolder>/presentation/react/` imports **nothing** from contexts whenever it can avoid it (`ui-kit/` never does). If the project has a generated API client (orval, openapi-typescript, … from the OpenAPI document built by `generateOpenAPI`), use its hooks and types only. As a fallback, without such a client, it may import **only endpoint contract types**: `import type` from `<C>/presentation/rest/**`, e.g. `type Contract = EndpointContract<OrdersRecentGetEndpoint['handle']>`. No value imports, no `import { type X }`, nothing from other layers.
-- Need a forbidden import? A's own execution query or command is missing. Plan it and generate it.
+- Need a forbidden import? A's own query or command is missing. Plan it and generate it.
 
 Check before reporting done; fix every finding:
 
@@ -66,10 +66,10 @@ export class Order extends domainType(
 
 ## Application
 
-- Use cases, commands, queries ({handlers}): the member is `handle = defineHandler({ inputSchema, outputSchema, handler })`. Replace the static `{}` schemas with real ones and write the logic in the `handler` callback; dependencies come through the constructor. Execution: the abstract contract holds the static schemas and `abstract handle`; each infrastructure implementation defines `handle` with the contract's schemas and writes only its `handler` callback. Orchestrator: a concrete class composing injected contracts. Call with `x.handle(input)` (returns a result) or `x.handle.unsafe(input)` (throws).
-- A query only reads: it never changes data (not even idempotently) and never uses a command; an orchestrator query may use a repository, but calls only its reading methods (never `save`/`delete`); see "Commonly confused" in `df-ps-scaffold/references/choosing-components.md`. A command returns nothing or only the minimum needed to use its result later (e.g. the created ID), in its output schema; data to show after it comes from a query.
+- Use cases, commands, queries ({handlers}): the member is `handle = defineHandler({ inputSchema, outputSchema, handler })`. Replace the static `{}` schemas with real ones and write the logic in the `handler` callback; dependencies come through the constructor. Commands and queries: the abstract contract holds the static schemas and `abstract handle`; each infrastructure implementation defines `handle` with the contract's schemas and writes only its `handler` callback. A command or query implementation performs one atomic operation: one database operation (one transaction at most), one API request; no business logic and no steps around it. Its only wired dependencies are infrastructure services (the client it runs on); repositories, ports and domain services stay with the use case. Needing more → it's several commands/queries, composed in the use case (in an application service only when 2+ use cases share that composition). Call with `x.handle(input)` (returns a result) or `x.handle.unsafe(input)` (throws).
+- A query only reads: it never changes data (not even idempotently) and never uses a command; see "Commonly confused" in `df-ps-scaffold/references/choosing-components.md`. A command returns nothing or only the minimum needed to use its result later (e.g. the created ID), in its output schema; data to show after it comes from a query.
 - Ports: abstract members in the port, one implementation per adapter (`api` real, `mock`/`fake` deterministic). Use the shared `clock` port instead of `new Date()`.
-- Services: what each kind may contain and call is in `choosing-components.md` (steps 13–16, "Port or service?"). Domain services take and return domain types. Application services have no `handle`.
+- Services: what each kind may contain and call is in `choosing-components.md` (steps 12–15, "Port or service?"). Domain services take and return domain types. Application services have no `handle`.
 
 ## Wiring ({wire})
 
@@ -80,7 +80,7 @@ export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [wireOrderRepo
 ```
 
 - Use the injected dependencies in the class body; don't edit the parameter list or the wire list.
-- Env-branched files (repositories, execution commands/queries, ports): each `wire<Impl>Implementation` has its own dependencies, added per implementation. `NODE_ENV=test` selects the test one; vitest sets it.
+- Env-branched files (repositories, commands/queries, ports): each `wire<Impl>Implementation` has its own dependencies, added per implementation. `NODE_ENV=test` selects the test one; vitest sets it.
 - External clients and config values: an infrastructure service named after the implementation label creates or reads them (`readonly client = new PrismaClient()`); wrap its wire in `memoWire(...)` when the instance must be shared. Implementations depend on that service, never on a `wireValue(...)`.
 - A needed dependency the CLI doesn't offer: see rule 3 (change the design).
 

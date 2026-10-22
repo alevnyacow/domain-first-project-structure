@@ -30,7 +30,7 @@ Split the request into pieces of logic and choose each piece's component with `d
 1. A component goes where the data and rules it depends on live.
 2. Extend an existing context when the concept fits its language and lifecycle (the normal case).
 3. Create a new context only for a concept with its own lifecycle and vocabulary, or a different business owner. Never one context per feature.
-4. Contexts are fully isolated and never import each other, so each can become its own service. Every need for another context's data or behavior is an **execution query or command** in the consuming context, with its own duplicated models, implemented the simplest available way. Find it in the code:
+4. Contexts are fully isolated and never import each other, so each can become its own service. Every need for another context's data or behavior is a **query or command** in the consuming context, with its own duplicated models, implemented the simplest available way. Find it in the code:
    - Both contexts use the same database → query it directly (the persistence label, e.g. `prisma`).
    - Otherwise, look for the ways the project already reaches a context besides its REST endpoints: message queue, RPC, events, generated API clients. Several options (REST counts) → ask the user which one in "Decisions for you", with a recommendation. Never pick silently.
    - Nothing besides REST → the providing context's REST endpoint (`http`).
@@ -46,7 +46,7 @@ If two placements are plausible, ask the user and give your recommendation.
 Find out why, then act:
 
 - **You don't understand the domain** (unknown term, unclear who changes the data). Ask business questions, not "which context?": Who changes it, and when? What rule does it protect? What changes together with it? Who decides when the rule changes? The answers point to the owner. Check whether the code already has the concept under another name.
-- **The logic spans several contexts** (e.g. "cancel only if not shipped and refunded"). It's a process: each context owns its part, and the initiating context gets the coordinating use case and reaches the others through its own execution queries and commands.
+- **The logic spans several contexts** (e.g. "cancel only if not shipped and refunded"). It's a process: each context owns its part, and the initiating context gets the coordinating use case and reaches the others through its own queries and commands.
 - **Nobody knows, including the user.** Pick a reversible default: the initiating or closest context, other contexts behind its own queries and commands, and mark it **(provisional)** with the reason.
 
 Never: pick silently, put one context's domain logic in `shared/`, create a catch-all context (`common`, `core`, `misc`), or split arbitrarily.
@@ -62,7 +62,7 @@ One message: the architectural part plus the work plan in the `df-ps-scaffold` r
 **Work plan**
 (df-ps-scaffold format: new contexts first; mark (new) and (provisional))
 
-**Why:** own lifecycle and vocabulary → own context (step 3, rule 3); review → aggregate (choosing-components, step 4). "Only buyers" needs `sales` data → execution query `customer-purchase` in `reviews` with its own models, implementation `prisma`: same database, so no `sales` endpoint is needed (choosing-components, step 9; step 3, rule 4).
+**Why:** own lifecycle and vocabulary → own context (step 3, rule 3); review → aggregate (choosing-components, step 4). "Only buyers" needs `sales` data → query `customer-purchase` in `reviews` with its own models, implementation `prisma`: same database, so no `sales` endpoint is needed (choosing-components, step 9; step 3, rule 4).
 
 **Decisions for you:**
 1. Separate `reviews` context (recommended) or part of `catalog`?

@@ -167,14 +167,7 @@ describe('canDependOn', () => {
         'application-services',
         'application'
     );
-    const executionQuery = {
-        ...wiredModule('queries', 'application'),
-        typeFile: '/c/application/queries/execution/y-query.ts'
-    };
-    const executionCommand = {
-        ...wiredModule('commands', 'application'),
-        typeFile: '/c/application/commands/execution/y-command.ts'
-    };
+    const command = wiredModule('commands', 'application');
     const infrastructureService = wiredModule(
         'infrastructure-services',
         'infrastructure'
@@ -199,7 +192,7 @@ describe('canDependOn', () => {
         expect(canDependOn(applicationService, port)).toBe(true);
         expect(canDependOn(applicationService, repository)).toBe(true);
         expect(canDependOn(applicationService, query)).toBe(true);
-        expect(canDependOn(applicationService, executionCommand)).toBe(true);
+        expect(canDependOn(applicationService, command)).toBe(true);
         expect(canDependOn(applicationService, applicationService)).toBe(false);
         expect(canDependOn(applicationService, useCase)).toBe(false);
     });
@@ -227,70 +220,31 @@ describe('canDependOn', () => {
         expect(canDependOn(adapters, query)).toBe(false);
         expect(canDependOn(adapters, useCase)).toBe(false);
         expect(canDependOn(adapters, applicationService)).toBe(false);
-        expect(canDependOn(infrastructureService, executionCommand)).toBe(
-            false
-        );
+        expect(canDependOn(infrastructureService, command)).toBe(false);
     });
 
-    test('execution commands and queries use no commands or queries', () => {
-        // The application layer here keeps the infrastructure layer rule,
-        // which allows only ports from application, out of the check.
+    test('commands and queries use only infrastructure services', () => {
         const consumer = {
             ...wiredModule('commands', 'application'),
-            typeFile: '/c/application/commands/execution/x-command.ts'
+            implementationsLayer: 'infrastructure' as const
         };
 
-        expect(canDependOn(consumer, executionQuery)).toBe(false);
+        expect(canDependOn(consumer, infrastructureService)).toBe(true);
         expect(canDependOn(consumer, query)).toBe(false);
-        expect(canDependOn(consumer, port)).toBe(true);
-        expect(canDependOn(consumer, repository)).toBe(true);
-    });
-
-    test('orchestration commands use only execution commands and queries', () => {
-        const orchestrationCommand = {
-            ...wiredModule('commands', 'application'),
-            typeFile: '/c/application/commands/orchestration/x-command.ts'
-        };
-
-        expect(canDependOn(orchestrationCommand, executionQuery)).toBe(true);
-        expect(canDependOn(orchestrationCommand, executionCommand)).toBe(true);
-        expect(canDependOn(orchestrationCommand, query)).toBe(false);
-        expect(canDependOn(orchestrationCommand, port)).toBe(false);
-        expect(canDependOn(orchestrationCommand, applicationService)).toBe(
-            false
-        );
-        expect(canDependOn(orchestrationCommand, repository)).toBe(true);
-    });
-
-    test('orchestration queries use only execution queries', () => {
-        const orchestrationQuery = {
-            ...wiredModule('queries', 'application'),
-            typeFile: '/c/application/queries/orchestration/x-query.ts'
-        };
-
-        expect(canDependOn(orchestrationQuery, executionQuery)).toBe(true);
-        expect(canDependOn(orchestrationQuery, executionCommand)).toBe(false);
-        expect(canDependOn(orchestrationQuery, query)).toBe(false);
-        expect(canDependOn(orchestrationQuery, port)).toBe(false);
-        expect(canDependOn(orchestrationQuery, applicationService)).toBe(false);
-        expect(canDependOn(orchestrationQuery, repository)).toBe(true);
+        expect(canDependOn(consumer, command)).toBe(false);
+        expect(canDependOn(consumer, port)).toBe(false);
+        expect(canDependOn(consumer, repository)).toBe(false);
     });
 
     test('follows the given dependency rules', () => {
         const rules = resolveDependencyRules({
             'use-cases': { add: ['use-cases'] },
-            'orchestration-queries': { remove: ['repositories'] }
+            queries: { add: ['repositories'] }
         });
-        const orchestrationQuery = {
-            ...wiredModule('queries', 'application'),
-            typeFile: '/c/application/queries/orchestration/x-query.ts'
-        };
 
         expect(canDependOn(useCase, useCase, rules)).toBe(true);
-        expect(canDependOn(orchestrationQuery, repository, rules)).toBe(false);
-        expect(canDependOn(orchestrationQuery, executionQuery, rules)).toBe(
-            true
-        );
+        expect(canDependOn(query, repository, rules)).toBe(true);
+        expect(canDependOn(query, port, rules)).toBe(false);
     });
 
     test('follows the layers for kinds the rules do not know', () => {

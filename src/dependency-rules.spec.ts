@@ -18,15 +18,13 @@ describe('resolveDependencyRules', () => {
     test('adds and removes kinds, or replaces the list', () => {
         const rules = resolveDependencyRules({
             'use-cases': { add: ['use-cases'], remove: ['repositories'] },
-            'orchestration-queries': ['execution-queries']
+            queries: ['repositories']
         });
 
         expect(rules['use-cases'].has('use-cases')).toBe(true);
         expect(rules['use-cases'].has('repositories')).toBe(false);
         expect(rules['use-cases'].has('application-ports')).toBe(true);
-        expect([...rules['orchestration-queries']]).toEqual([
-            'execution-queries'
-        ]);
+        expect([...rules.queries]).toEqual(['repositories']);
     });
 
     test('rejects unknown kinds', () => {
@@ -46,12 +44,12 @@ describe('fileModuleKind', () => {
         expect(fileModuleKind(['application', 'use-cases', 'pay.ts'])).toBe(
             'use-cases'
         );
-        expect(
-            fileModuleKind(['application', 'queries', 'orchestration', 'x.ts'])
-        ).toBe('orchestration-queries');
+        expect(fileModuleKind(['application', 'queries', 'x.ts'])).toBe(
+            'queries'
+        );
         expect(
             fileModuleKind(['infrastructure', 'commands', 'prisma', 'x.ts'])
-        ).toBe('execution-commands');
+        ).toBe('commands');
         expect(
             fileModuleKind([
                 'domain',
