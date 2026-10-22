@@ -710,9 +710,10 @@ The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, scr
 | Item           | Value                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Files          | Under `specs/integration/`: `vitest.config.ts`, `global-setup.ts`, `setup-env.ts`; `database/database.spec.ts` if missing   |
+| Changed files  | `vitest.config.ts`: `specs/integration/**` is added to the `test.exclude` array that spreads `configDefaults.exclude`, keeping its layout |
 | Scripts        | `test:integration`: `vitest run --config specs/integration/vitest.config.ts --reporter=dot --silent=passed-only`             |
 | Install        | `--save-dev vitest testcontainers dotenv`, each when missing                                                               |
-| Notes          | The database image and variable and where to change them; with no Prisma config, a reminder to apply migrations in `global-setup.ts`; when `vitest.config.ts` doesn't mention `specs/integration`, a reminder to exclude it from unit tests; Docker must be running |
+| Notes          | The database image and variable and where to change them; with no Prisma config, a reminder to apply migrations in `global-setup.ts`; when `specs/integration/**` can't be added to `test.exclude` of `vitest.config.ts`, a reminder to add it; Docker must be running |
 
 | File               | Content                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------- |

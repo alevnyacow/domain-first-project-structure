@@ -124,6 +124,34 @@ test('connects to the database in the container', () => {
 });
 `;
 
+/**
+ * Adds the integration folder to `test.exclude` of the unit test config.
+ * The array is found by `...configDefaults.exclude`, which coverage
+ * excludes don't use. Returns `undefined` for configs of another shape.
+ */
+export const excludeFromUnitTests = (content: string) => {
+    const exclude =
+        /(exclude:\s*\[\s*\.\.\.configDefaults\.exclude\b[^\]]*?)(,?)(\s*)\]/;
+    if (!exclude.test(content)) return undefined;
+    const entry = `'${integrationFolder}/**'`;
+    return content
+        .replace(
+            exclude,
+            (_, items: string, comma: string, whitespace: string) => {
+                // One item per line: the new one gets the last item's indent
+                const indent = whitespace.includes('\n')
+                    ? /\n([ \t]*)[^\n]*$/.exec(items)?.[1]
+                    : undefined;
+                const separator = indent === undefined ? ', ' : `,\n${indent}`;
+                return `${items}${separator}${entry}${comma}${whitespace}]`;
+            }
+        )
+        .replace(
+            '// Playwright runs end-to-end specs\n',
+            '// Playwright runs end-to-end specs, test:integration runs integration ones\n'
+        );
+};
+
 const stageFile = (filePath: string, content: string) => {
     const file = new File(filePath);
     if (!file.exists || file.data !== content) file.data = content;
@@ -172,8 +200,15 @@ export const addTestcontainers = async (): Promise<string[]> => {
     if (!example.exists) example.data = exampleSpec;
 
     const unitConfig = new File(path.join(root, 'vitest.config.ts'));
-    const excludedFromUnitTests =
+    let excludedFromUnitTests =
         !unitConfig.exists || unitConfig.data.includes(integrationFolder);
+    if (!excludedFromUnitTests) {
+        const excluded = excludeFromUnitTests(unitConfig.data);
+        if (excluded) {
+            unitConfig.update(excluded);
+            excludedFromUnitTests = true;
+        }
+    }
 
     const missing = ['vitest', 'testcontainers', 'dotenv'].filter(
         (name) => !dependencies[name]
