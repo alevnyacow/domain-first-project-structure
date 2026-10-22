@@ -1,3 +1,10 @@
+## [5.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.1.0...v5.1.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* automatic excluding integration tests in unit tests ([1cbee6f](https://github.com/alevnyacow/domain-first-project-structure/commit/1cbee6fafe8351eee3d13ff427f2fe09dbe997ec))
+
 # [5.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.0.1...v5.1.0) (2026-10-22)
 
 
