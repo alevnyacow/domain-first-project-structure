@@ -1,3 +1,16 @@
+# [6.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.1.2...v6.0.0) (2026-10-24)
+
+
+### Features
+
+* multiple integrations ([5e0eea6](https://github.com/alevnyacow/domain-first-project-structure/commit/5e0eea66ed7ff57b073741236ea30bc7a812ec71))
+
+
+### BREAKING CHANGES
+
+* new scripts. `df-ps` => `df-scaffold`, `df-integration` for
+integrations
+
 ## [5.1.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.1.1...v5.1.2) (2026-10-22)
 
 
