@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { input } from '@inquirer/prompts';
+import { checkbox, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
@@ -7,28 +7,40 @@ import { addGitignoreEntry } from './gitignore';
 import { defaultOpenapiPath, openapiScriptPath } from './openapi';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
-const dataLayerFolder = (rootFolder: string) =>
+export type OrvalTarget = 'hooks' | 'client';
+
+/** React Query hooks go to the React data layer, the typed client to the shared one. */
+export const dataLayerFolder = (rootFolder: string, target: OrvalTarget) =>
     path.posix.join(
         rootFolder.replaceAll('\\', '/'),
-        'presentation/react/data-layer'
+        target === 'hooks'
+            ? 'presentation/react/data-layer'
+            : 'presentation/data-layer'
     );
 
-export const orvalScripts = (rootFolder: string) => ({
+export const orvalScripts = (rootFolder: string, targets: OrvalTarget[]) => ({
     // JSON quotes protect paths containing spaces in package scripts.
-    'client:orval': `orval --config ${JSON.stringify(`${dataLayerFolder(rootFolder)}/orval.config.ts`)}`
+    'client:orval': targets
+        .map(
+            (target) =>
+                `orval --config ${JSON.stringify(`${dataLayerFolder(rootFolder, target)}/orval.config.ts`)}`
+        )
+        .join(' && ')
 });
 
 /**
  * Orval resolves paths relative to the config, which lives in the data layer
- * folder next to the generated client.
+ * folder next to the generated code. `mutatorPath` is relative to the config.
  */
 export const orvalConfig = (
     rootFolder: string,
     openapiPath: string,
-    withNext: boolean
+    withNext: boolean,
+    target: OrvalTarget = 'hooks',
+    mutatorPath = './api-client/mutator.ts'
 ) => {
     const inputPath = path.posix.relative(
-        dataLayerFolder(rootFolder),
+        dataLayerFolder(rootFolder, target),
         openapiPath
     );
     const baseUrl = withNext
@@ -37,6 +49,20 @@ export const orvalConfig = (
                 runtime: 'process.env.NEXT_PUBLIC_API_BASE_URL ?? ""'
             },`
         : '';
+    const client =
+        target === 'hooks'
+            ? `
+            client: 'react-query',
+            httpClient: 'fetch',`
+            : `
+            client: 'fetch',`;
+    const query =
+        target === 'hooks'
+            ? `,
+                query: {
+                    version: 5
+                }`
+            : '';
     return `import { defineConfig } from 'orval';
 
 export default defineConfig({
@@ -45,21 +71,16 @@ export default defineConfig({
         output: {
             mode: 'tags-split',
             target: './orval',
-            schemas: './orval/model',
-            client: 'react-query',
-            httpClient: 'fetch',${baseUrl}
+            schemas: './orval/model',${client}${baseUrl}
             clean: true,
             override: {
                 mutator: {
-                    path: './api-client/mutator.ts',
+                    path: '${mutatorPath}',
                     name: 'customInstance'
                 },
                 fetch: {
                     includeHttpResponseReturnType: false
-                },
-                query: {
-                    version: 5
-                }
+                }${query}
             }
         }
     }
@@ -67,7 +88,7 @@ export default defineConfig({
 `;
 };
 
-export const orvalMutator = `/** Error of the generated hooks, with the parsed response body. */
+export const orvalMutator = `/** Error of the generated requests, with the parsed response body. */
 export class ApiError<Body = unknown> extends Error {
     constructor(
         public readonly status: number,
@@ -78,7 +99,7 @@ export class ApiError<Body = unknown> extends Error {
     }
 }
 
-/** Error type of the generated hooks, typed per endpoint by Orval. */
+/** Error type of the generated requests, typed per endpoint by Orval. */
 export type ErrorType<Body> = ApiError<Body>;
 
 /** Every generated request goes through here: add auth headers, token refresh, logging. */
@@ -122,7 +143,7 @@ const openapiOutputPath = (root: string) => {
 };
 
 export const addOrval = async (): Promise<string[]> => {
-    const { rootFolder } = ConfigFile.Instance.data;
+    const { rootFolder, useReact } = ConfigFile.Instance.data;
     const root = new ProjectRoot().path;
     const manifestFile = new File(path.join(root, 'package.json'));
     const manifest = JSON.parse(manifestFile.data);
@@ -138,35 +159,69 @@ export const addOrval = async (): Promise<string[]> => {
         default: generatedOpenapiPath ?? defaultOpenapiPath(withNext),
         validate: (value) => (value.trim() ? true : 'Path is required')
     });
+    const targets: OrvalTarget[] = useReact
+        ? await checkbox({
+              message: 'Generate:',
+              choices: [
+                  { name: 'React Query hooks', value: 'hooks', checked: true },
+                  { name: 'Typed API client', value: 'client' }
+              ],
+              required: true
+          })
+        : ['client'];
 
     const selected = await addPackageScripts(
         manifestFile,
-        orvalScripts(rootFolder)
+        orvalScripts(rootFolder, targets)
     );
 
-    const dataLayer = dataLayerFolder(rootFolder);
-    const configFile = new File(path.join(root, dataLayer, 'orval.config.ts'));
-    const content = orvalConfig(
-        rootFolder,
-        path.posix.normalize(openapiPath.trim().replaceAll('\\', '/')),
-        withNext
+    const document = path.posix.normalize(
+        openapiPath.trim().replaceAll('\\', '/')
     );
-    if (!configFile.exists || configFile.data !== content) {
-        configFile.data = content;
+    const withClient = targets.includes('client');
+    for (const target of targets) {
+        const dataLayer = dataLayerFolder(rootFolder, target);
+        // With the typed client, hooks share its mutator: one place for auth headers
+        const sharedMutator = target === 'hooks' && withClient;
+        const mutatorPath = sharedMutator
+            ? `${path.posix.relative(dataLayer, dataLayerFolder(rootFolder, 'client'))}/api-client/mutator.ts`
+            : undefined;
+        const configFile = new File(
+            path.join(root, dataLayer, 'orval.config.ts')
+        );
+        const content = orvalConfig(
+            rootFolder,
+            document,
+            withNext,
+            target,
+            mutatorPath
+        );
+        if (!configFile.exists || configFile.data !== content) {
+            configFile.data = content;
+        }
+        // Starting points: edits to them are never overwritten.
+        for (const [name, fileContent] of [
+            ...(sharedMutator ? [] : [['api-client/mutator.ts', orvalMutator]]),
+            ...(target === 'hooks'
+                ? [['query-provider.tsx', queryProvider]]
+                : [])
+        ]) {
+            const file = new File(path.join(root, dataLayer, name));
+            if (!file.exists) file.data = fileContent;
+        }
+        addGitignoreEntry(root, `/${dataLayer}/orval/`);
     }
-    // Starting points: edits to them are never overwritten.
-    for (const [name, fileContent] of [
-        ['api-client/mutator.ts', orvalMutator],
-        ['query-provider.tsx', queryProvider]
-    ]) {
-        const file = new File(path.join(root, dataLayer, name));
-        if (!file.exists) file.data = fileContent;
-    }
-    addGitignoreEntry(root, `/${dataLayer}/orval/`);
 
+    const generated = targets.map((target) =>
+        target === 'hooks'
+            ? `React Query hooks in ${dataLayerFolder(rootFolder, 'hooks')}/orval`
+            : `a typed API client in ${dataLayerFolder(rootFolder, 'client')}/orval`
+    );
     const missing = (names: string[]) =>
         names.filter((name) => !dependencies[name]);
-    const runtime = missing(['@tanstack/react-query']);
+    const runtime = missing(
+        targets.includes('hooks') ? ['@tanstack/react-query'] : []
+    );
     const development = missing(['orval']);
     return [
         ...(runtime.length ? [`npm install ${runtime.join(' ')}`] : []),
@@ -174,13 +229,17 @@ export const addOrval = async (): Promise<string[]> => {
             ? [`npm install --save-dev ${development.join(' ')}`]
             : []),
         ...describeScripts(selected, {
-            'client:orval': `generate React Query hooks from ${openapiPath.trim()} in ${dataLayer}/orval`
+            'client:orval': `generate ${generated.join(' and ')} from ${openapiPath.trim()}`
         }),
-        `Wrap your app in QueryProvider from ${dataLayer}/query-provider.tsx`,
+        ...(targets.includes('hooks')
+            ? [
+                  `Wrap your app in QueryProvider from ${dataLayerFolder(rootFolder, 'hooks')}/query-provider.tsx`
+              ]
+            : []),
         ...(generatedOpenapiPath
             ? []
             : [
-                  'Add integration → OpenAPI generates the OpenAPI document the client is built from'
+                  'npx df-integration → OpenAPI generates the OpenAPI document the client is built from'
               ])
     ];
 };

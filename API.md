@@ -4,7 +4,7 @@ Technical specification of the command-line interface of `@domain-first/project-
 
 - [Package](#package)
 - [Commands overview](#commands-overview)
-- [`df-ps`](#df-ps)
+- [`df-scaffold`](#df-scaffold)
     - [Run lifecycle](#run-lifecycle)
     - [Project root](#project-root)
     - [Initialization](#initialization)
@@ -43,7 +43,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Playwright](#playwright)
     - [Integration tests (Testcontainers, PostgreSQL)](#integration-tests-testcontainers-postgresql)
     - [OpenAPI](#openapi)
-    - [Orval (React Query client)](#orval-react-query-client)
+    - [Orval (API client)](#orval-api-client)
     - [Missing domain-first packages](#missing-domain-first-packages)
     - [Package scripts](#package-scripts)
 - [`df-skills`](#df-skills)
@@ -64,28 +64,30 @@ Notation used below:
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-ps`, `df-skills`, `df-lint`                          |
+| Binaries       | `df-scaffold`, `df-integration`, `df-skills`, `df-lint`  |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
 | Runtime        | Node.js 22.13+ within the Node 22 release line, or 24+   |
-| Interaction    | Interactive prompts only; `df-ps` takes no arguments     |
+| Interaction    | Interactive prompts only; `df-scaffold` takes no arguments, `df-integration` only `--help` |
 
 ## Commands overview
 
-| Command     | Purpose                                                                 | Section                   |
-| ----------- | ----------------------------------------------------------------------- | ------------------------- |
-| `df-ps`     | Initializes a project, scaffolds components, adds integrations          | [`df-ps`](#df-ps)         |
-| `df-skills` | Copies the bundled agent skills into a project or the home directory    | [`df-skills`](#df-skills) |
-| `df-lint`   | Reports code that breaks the Domain-First rules                         | [`df-lint`](#df-lint)     |
+| Command          | Purpose                                                              | Section                       |
+| ---------------- | -------------------------------------------------------------------- | ----------------------------- |
+| `df-scaffold`    | Initializes a project, scaffolds components                          | [`df-scaffold`](#df-scaffold) |
+| `df-integration` | Adds integrations: Storybook, Prisma, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
+| `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
+| `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
 
 ```bash
-npx df-ps
+npx df-scaffold
+npx df-integration
 npx df-skills [--claude] [--codex] [--global]
 npx df-lint [rootFolder]
 ```
 
-## `df-ps`
+## `df-scaffold`
 
 ### Run lifecycle
 
@@ -137,7 +139,6 @@ With the Next adapter confirmed and `@domain-first/handlers-next` missing from `
 | `Scaffold React module`      | `useReact`       | [React modules](#react-modules)                                  |
 | `Shared Layer`               | Always           | [Layer menus](#layer-menus) for `<rootFolder>/shared`            |
 | `Scaffold new bounded context` | Always         | [New bounded context](#new-bounded-context)                      |
-| `Add integration`            | Always           | [Integrations](#integrations)                                    |
 
 ### Layer menus
 
@@ -211,7 +212,7 @@ type Config = {
 | `domainFirstPackages`                   | Integrations used by templates. See [Package integrations](#package-integrations). An empty array selects plain class templates.             |
 | `defaultPersistenceLayerImplementation` | Default implementation label for repositories, commands and queries.                                                                         |
 | `withInMemoryDb`                        | `in-memory` implementations of repositories, commands and queries get the shared [in-memory DB](#in-memory-db). Omitted: they are generated empty. |
-| `useReact`                              | Shows `Scaffold React module` in the main menu and enables the Orval integration.                                                            |
+| `useReact`                              | Shows `Scaffold React module` in the main menu and lets the Orval integration generate React Query hooks.                                    |
 | `storybookFramework`                    | Package that generated stories import `Meta` and `StoryObj` from. Omitted: no stories are generated.                                         |
 | `testingLibrary`                        | Module that generated tests import `describe`, `test`, `expect` and `beforeEach` from. Omitted: no tests are generated.                      |
 | `rules.dependencies`                    | Changes the [dependency rules](#dependency-rules) per kind of module. Omitted: the defaults.                                                 |
@@ -611,7 +612,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 **Behavior**
 
-- Lists pages and widgets generated by `df-ps`. Prints `No pages generated by df-ps were found.` (or `widgets`) when there are none.
+- Lists pages and widgets generated by `df-scaffold`. Prints `No pages generated by df-scaffold were found.` (or `widgets`) when there are none.
 - A widget moves with its whole folder, assets included. A page moves with the files next to it that share its name, such as `<file>-page.module.css`.
 - File names, `<Name>Page`, `<Name>Widget…`, `use<Name>UIModel` and generated story titles follow the new name.
 - Imports of the module are updated across the project: relative imports and `tsconfig.json` `paths` aliases such as `@/`. Files importing it through barrels (`export * from`, `export { … } from`) get the renamed names too. Relative imports inside the module are adjusted to its new location.
@@ -621,18 +622,22 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 ## Integrations
 
-`Add integration` changes project files and prints next steps. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints install commands under `Run these commands to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
+`npx df-integration` changes project files and prints next steps. It needs the configuration file: without it, it prints `No domain-first.project-structure.config.json found: run df-scaffold first to initialize the project.` and exits with 1. The [project root](#project-root), staging and overwrite confirmation work as in `df-scaffold`. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints install commands under `Run these commands to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
 
-| Item                             | Listed when                                  |
-| -------------------------------- | -------------------------------------------- |
-| `Storybook (React + Vite)`       | Always                                       |
-| `Prisma 8 (PostgreSQL, RC)`      | Always                                       |
-| `Vitest`                         | Always                                       |
-| `Playwright`                     | Always                                       |
-| `Integration tests (Testcontainers, PostgreSQL)` | Always                       |
-| `OpenAPI`                        | With `handlers-rest`                         |
-| `Orval (React Query client)`     | With `handlers-rest` and `useReact`          |
-| `Missing domain-first packages`  | Always                                       |
+Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma config and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook turns on `useReact`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them.
+
+The list has two sections: `New integrations`, then `Already applied (select to reapply)`. Each item ends with its group, e.g. `Vitest · backend`; inside a section backend integrations come first. An integration counts as applied when the file in the table exists; selecting it again regenerates its files.
+
+| Item                                             | Group    | Listed when          | Applied when exists                                                                                                    |
+| ------------------------------------------------ | -------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Storybook (React + Vite)`                       | Frontend | Always               | `<rootFolder>/presentation/react/.storybook/main.ts`                                                                   |
+| `Prisma 8 (PostgreSQL, RC)`                      | Backend  | Always               | `<rootFolder>/shared/infrastructure/prisma/prisma.config.ts`                                                           |
+| `Vitest`                                         | Backend  | Always               | `vitest.config.ts`                                                                                                     |
+| `Playwright`                                     | Frontend | Always               | `playwright.config.ts`                                                                                                 |
+| `Integration tests (Testcontainers, PostgreSQL)` | Backend  | Always               | `specs/integration/vitest.config.ts`                                                                                   |
+| `OpenAPI`                                        | Backend  | With `handlers-rest` | `scripts/generate-openapi.ts`                                                                                          |
+| `Orval (API client)`                             | Frontend | With `handlers-rest` | `<rootFolder>/presentation/react/data-layer/orval.config.ts` or `<rootFolder>/presentation/data-layer/orval.config.ts` |
+| `Missing domain-first packages`                  | Backend  | Always               | Every package of `domainFirstPackages` is declared                                                                     |
 
 ### Storybook (React + Vite)
 
@@ -749,21 +754,26 @@ With TSDoc extraction, each endpoint's metadata is filled from the class passed 
 
 Metadata set explicitly on an endpoint takes precedence.
 
-### Orval (React Query client)
+### Orval (API client)
 
-Listed with `handlers-rest` and `useReact`.
+Listed with `handlers-rest`. Generates a typed API client and, with `useReact`, React Query hooks. Each target lives in its own data layer folder next to its config:
+
+| Target              | Folder                                     |
+| ------------------- | ------------------------------------------ |
+| Typed API client    | `<rootFolder>/presentation/data-layer/`    |
+| React Query hooks   | `<rootFolder>/presentation/react/data-layer/` |
 
 | Item         | Value                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`                               |
-| Files        | Under `<rootFolder>/presentation/react/data-layer/`: `orval.config.ts`; `api-client/mutator.ts` and `query-provider.tsx` if missing |
-| Scripts      | `client:orval`: `orval --config "<rootFolder>/presentation/react/data-layer/orval.config.ts"`                 |
-| `.gitignore` | `data-layer/orval/`                                                                                           |
-| Install      | `@tanstack/react-query`; `--save-dev orval` when missing                                                      |
+| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `useReact`, `Generate:` with `React Query hooks` (checked) and `Typed API client`, at least one. Without `useReact`, only the typed API client is generated |
+| Files        | In each target folder: `orval.config.ts`; `api-client/mutator.ts` if missing. For hooks, `query-provider.tsx` if missing. With both targets, the hooks use the typed client's mutator and get no own |
+| Scripts      | `client:orval`: `orval --config "<folder>/orval.config.ts"` for each target, joined with `&&`                   |
+| `.gitignore` | `<folder>/orval/` for each target                                                                               |
+| Install      | `@tanstack/react-query` for hooks; `--save-dev orval`; each when missing                                       |
 
 | File                  | Content                                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `orval.config.ts`     | TanStack Query v5 hooks on `fetch`, split by tags into `data-layer/orval`, schemas in its `model` folder. With `next`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
+| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With `next`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
 | `api-client/mutator.ts` | `customInstance`, used by every request. Throws `ApiError` with the status and the parsed body on non-2xx responses |
 | `query-provider.tsx`  | `QueryProvider` with one `QueryClient` per browser session                                                    |
 
@@ -800,12 +810,12 @@ npx df-skills [options]
 
 - Without `--claude` and `--codex`, it asks `Install skills for` (Claude Code is preselected, at least one is required) and, without `--global`, `Install into` (this project or the home directory).
 - Every skill folder is replaced as a whole, so files removed upstream disappear. It prints `added` or `updated` per skill.
-- Unlike `df-ps`, it uses the current directory, not the project root, and writes immediately.
+- Unlike `df-scaffold`, it uses the current directory, not the project root, and writes immediately.
 
 | Skill                   | Purpose                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------- |
 | `df-ps-plan-feature`    | Turns a feature request into a plan of bounded contexts and components                   |
-| `df-ps-scaffold`        | Generates components with `df-ps`                                                         |
+| `df-ps-scaffold`        | Generates components with `df-scaffold`                                                         |
 | `df-ps-implement`       | Fills in the generated code                                                              |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |
 
@@ -832,7 +842,7 @@ npx df-lint [rootFolder]
 
 | Topic             | Behavior                                                                                                                         |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| One operation     | Each `df-ps` run performs one operation. Run it again for the next one.                                                          |
+| One operation     | Each `df-scaffold` run performs one operation. Run it again for the next one.                                                          |
 | Staging           | Files, folders, moves and deletions are staged in memory and written after the operation's last prompt.                          |
 | Overwrites        | If staged files would replace existing ones, the CLI lists them and asks `Overwrite them?` (default: No). No discards everything and prints `Cancelled: nothing was written.` |
 | Additions         | Lines added to existing barrels, error files, wiring indexes and `.gitignore` are not overwrites and are never duplicated.       |

@@ -17,7 +17,7 @@ Domain First Project Structure removes that choice: **the cleanest path is also 
 
 ```
 npm i -D @domain-first/project-structure
-npx df-ps
+npx df-scaffold
 ```
 
 ## API
@@ -28,10 +28,10 @@ The full technical specification lives in [API.md](./API.md).
 
 ### How to initialize a project
 
-Run `df-ps` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, whether to scaffold a shared in-memory DB for test implementations, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint); if `next` is among your dependencies, it offers to connect `nextAdapter` from `@domain-first/handlers-next` right away and prints the install command for it when it's missing.
+Run `df-scaffold` in a project with a `package.json`. The first run asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, whether to scaffold a shared in-memory DB for test implementations, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and exits. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint); if `next` is among your dependencies, it offers to connect `nextAdapter` from `@domain-first/handlers-next` right away and prints the install command for it when it's missing.
 
 ```
-npx df-ps
+npx df-scaffold
 ```
 
 ```json
@@ -188,7 +188,7 @@ admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPane
 
 ### How to add tooling
 
-Choose **Add integration** to configure Storybook, Prisma 8, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval React Query client. Integrations add config files, package scripts and `.gitignore` entries, then print the install commands. Nothing is installed or run for you.
+Run `npx df-integration` to configure one or several of Storybook, Prisma 8, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval API client (typed client and React Query hooks). Integrations add config files, package scripts and `.gitignore` entries, then print the install commands. Nothing is installed or run for you.
 
 **Missing domain-first packages** prints the `npm i` command for packages from the config that are not in `package.json`.
 
@@ -200,7 +200,7 @@ npx df-lint
 
 It reports what breaks the Domain-First rules: imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
 
-The rules are a default. Teams that work differently change them in the config: what each kind of module may depend on (`rules.dependencies`) and which checks run (`rules.lint`). `df-ps` offers dependencies by the same rules. Without `rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
+The rules are a default. Teams that work differently change them in the config: what each kind of module may depend on (`rules.dependencies`) and which checks run (`rules.lint`). `df-scaffold` offers dependencies by the same rules. Without `rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
 
 - Kinds in `rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `infrastructure-services`, `presentation-services`.
 - A kind's value: a list that replaces its defaults, or `{ "add": [...], "remove": [...] }`.
@@ -219,7 +219,7 @@ Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](A
 
 ### How to teach your coding agent
 
-The package ships skills that teach coding agents to plan features, scaffold with `df-ps` and implement the generated code.
+The package ships skills that teach coding agents to plan features, scaffold with `df-scaffold` and implement the generated code.
 
 ```
 npx df-skills --claude

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Drives the interactive `df-ps` CLI with a scripted list of answers and
+ * Drives the interactive `df-scaffold` CLI with a scripted list of answers and
  * prints the files it created or changed.
  *
  * Usage:
@@ -87,12 +87,12 @@ const snapshot = () => {
     return result;
 };
 
-const localBin = path.join(projectRoot, 'node_modules', '.bin', 'df-ps');
+const localBin = path.join(projectRoot, 'node_modules', '.bin', 'df-scaffold');
 const [command, commandArgs] = fs.existsSync(localBin)
     ? [localBin, []]
     : [
           'npm',
-          ['exec', '--yes', '--package=@domain-first/project-structure', '--', 'df-ps']
+          ['exec', '--yes', '--package=@domain-first/project-structure', '--', 'df-scaffold']
       ];
 
 const before = snapshot();

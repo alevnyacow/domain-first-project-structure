@@ -1,6 +1,6 @@
 ---
 name: df-ps-plan-feature
-description: Turn an abstract feature request into a Domain-First plan for a project using `df-ps` (@domain-first/project-structure) — decide which bounded contexts own what and which components are needed, then get the user's approval before generating anything. Use when the project has domain-first.project-structure.config.json and the user describes a feature ("add product reviews", "let users cancel orders") without naming bounded contexts or exact components.
+description: Turn an abstract feature request into a Domain-First plan for a project using `df-scaffold` (@domain-first/project-structure) — decide which bounded contexts own what and which components are needed, then get the user's approval before generating anything. Use when the project has domain-first.project-structure.config.json and the user describes a feature ("add product reviews", "let users cancel orders") without naming bounded contexts or exact components.
 ---
 
 # Plan a feature

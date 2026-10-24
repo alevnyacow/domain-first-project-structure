@@ -2,43 +2,67 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
-import { confirm, select } from '@inquirer/prompts';
+import { checkbox, confirm, Separator } from '@inquirer/prompts';
 import { afterAll, expect, rstest, test } from '@rstest/core';
 import { ConfigFile } from '../config-file';
 import { File, writePendingChanges } from '../file-system';
-import { addStorybook } from '../integrations';
+import {
+    addPrisma,
+    addStorybook,
+    missingDomainFirstPackages
+} from '../integrations';
 import { addIntegration } from './add-integration';
 
 rstest.mock('@inquirer/prompts', () => ({
-    select: rstest.fn(),
+    Separator: class {
+        constructor(readonly separator: string) {}
+    },
+    checkbox: rstest.fn(),
     confirm: rstest.fn()
 }));
 rstest.mock('../integrations', () => ({
     addStorybook: rstest.fn(),
     addPrisma: rstest.fn(),
-    missingDomainFirstPackages: rstest.fn()
+    missingDomainFirstPackages: rstest.fn(() => ['npm i @domain-first/types']),
+    openapiScriptPath: 'scripts/generate-openapi.ts'
 }));
 rstest.mock('../config-file', () => ({
     ConfigFile: {
-        Instance: { data: { domainFirstPackages: [], useReact: false } }
+        Instance: {
+            data: {
+                rootFolder: 'src',
+                domainFirstPackages: [],
+                useReact: false
+            }
+        }
     }
 }));
 
-const pickFirst = () =>
+const pick = (...names: string[]) =>
     rstest
-        .mocked(select)
-        .mockImplementationOnce(async ({ choices }: any) => choices[0].value);
+        .mocked(checkbox)
+        .mockImplementationOnce(async ({ choices }: any) =>
+            names.map(
+                (name) =>
+                    choices.find((choice: any) => choice.name === name).value
+            )
+        );
+const pickFirst = () => pick('Storybook (React + Vite) · frontend');
 const choiceNames = async () => {
     let names: string[] = [];
-    rstest.mocked(select).mockImplementationOnce(async ({ choices }: any) => {
-        names = choices.map((choice: { name: string }) => choice.name);
-        return { run: () => [] };
+    rstest.mocked(checkbox).mockImplementationOnce(async ({ choices }: any) => {
+        names = choices.map((choice: any) =>
+            choice instanceof Separator ? `-- ${choice.separator}` : choice.name
+        );
+        return [];
     });
     await addIntegration();
     return names;
 };
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'df-integration-'));
+fs.writeFileSync(path.join(root, 'package.json'), '{}');
+rstest.spyOn(process, 'cwd').mockReturnValue(root);
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
 test('standalone use case writes files before reporting next steps', async () => {
@@ -88,24 +112,107 @@ test('cancelled overwrite discards changes and suppresses next steps', async () 
     }
 });
 
-test('offers OpenAPI with @domain-first/handlers-rest and Orval also with React', async () => {
+test('offers OpenAPI and Orval with @domain-first/handlers-rest', async () => {
     const log = rstest.spyOn(console, 'log').mockImplementation(() => {});
-    const orval = 'Orval (React Query client)';
+    const orval = 'Orval (API client) · frontend';
     const config = ConfigFile.Instance.data as {
         domainFirstPackages: string[];
         useReact: boolean;
     };
     try {
         config.useReact = true;
-        expect(await choiceNames()).not.toContain('OpenAPI');
+        expect(await choiceNames()).not.toContain('OpenAPI · backend');
         expect(await choiceNames()).not.toContain(orval);
         config.domainFirstPackages.push('@domain-first/handlers-rest');
         config.useReact = false;
-        expect(await choiceNames()).toContain('OpenAPI');
-        expect(await choiceNames()).not.toContain(orval);
-        config.useReact = true;
+        expect(await choiceNames()).toContain('OpenAPI · backend');
         expect(await choiceNames()).toContain(orval);
     } finally {
+        log.mockRestore();
+    }
+});
+
+test('runs selected integrations in list order and merges install commands', async () => {
+    const calls: string[] = [];
+    pick(
+        'Prisma 8 (PostgreSQL, RC) · backend',
+        'Storybook (React + Vite) · frontend'
+    );
+    rstest.mocked(addStorybook).mockImplementationOnce(async () => {
+        calls.push('storybook');
+        return [
+            'npm install --save-dev storybook vite dotenv',
+            'npm install react'
+        ];
+    });
+    rstest.mocked(addPrisma).mockImplementationOnce(async () => {
+        calls.push('prisma');
+        return [
+            'npm install dotenv',
+            'npm install --save-dev prisma vite',
+            'Add !src/shared/infrastructure/prisma in your linter.'
+        ];
+    });
+    const log = rstest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+        await addIntegration();
+        expect(calls).toEqual(['storybook', 'prisma']);
+        expect(stripVTControlCharacters(log.mock.calls[0][0])).toBe(
+            [
+                'Run these commands to install the required dependencies:',
+                'npm install react dotenv',
+                'npm install --save-dev storybook vite prisma',
+                '',
+                'Additional information:',
+                'Add !src/shared/infrastructure/prisma in your linter.'
+            ].join('\n')
+        );
+    } finally {
+        log.mockRestore();
+    }
+});
+
+test('lists new and applied integrations apart, each labeled with its group', async () => {
+    const log = rstest.spyOn(console, 'log').mockImplementation(() => {});
+    const config = ConfigFile.Instance.data as {
+        domainFirstPackages: string[];
+    };
+    config.domainFirstPackages.splice(
+        0,
+        config.domainFirstPackages.length,
+        '@domain-first/handlers-rest'
+    );
+    try {
+        expect(await choiceNames()).toEqual([
+            '-- New integrations',
+            'Prisma 8 (PostgreSQL, RC) · backend',
+            'Vitest · backend',
+            'Integration tests (Testcontainers, PostgreSQL) · backend',
+            'OpenAPI · backend',
+            'Missing domain-first packages · backend',
+            'Storybook (React + Vite) · frontend',
+            'Playwright · frontend',
+            'Orval (API client) · frontend'
+        ]);
+        fs.writeFileSync(path.join(root, 'vitest.config.ts'), '');
+        fs.writeFileSync(path.join(root, 'playwright.config.ts'), '');
+        rstest.mocked(missingDomainFirstPackages).mockReturnValueOnce([]);
+        const names = await choiceNames();
+        expect(
+            names.slice(
+                names.indexOf('-- Already applied (select to reapply)') + 1
+            )
+        ).toEqual([
+            'Vitest · backend',
+            'Missing domain-first packages · backend',
+            'Playwright · frontend'
+        ]);
+        expect(
+            names.indexOf('Prisma 8 (PostgreSQL, RC) · backend')
+        ).toBeLessThan(names.indexOf('-- Already applied (select to reapply)'));
+    } finally {
+        fs.rmSync(path.join(root, 'vitest.config.ts'), { force: true });
+        fs.rmSync(path.join(root, 'playwright.config.ts'), { force: true });
         log.mockRestore();
     }
 });

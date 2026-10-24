@@ -7,7 +7,6 @@ import { printNextSteps } from './print-next-steps';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
 import {
-    addIntegration,
     initializeUseCase,
     moveReactModuleUseCase,
     scaffoldNewAggregateUseCase,
@@ -65,8 +64,7 @@ const main = async () => {
               }
             : undefined,
         { name: 'Shared Layer', action: 'Scaffold in bounded context' },
-        scaffoldNewBoundedContext,
-        { name: 'Add integration', action: 'Add integration' }
+        scaffoldNewBoundedContext
     ].filter((x) => !!x);
 
     const result = await select({
@@ -77,10 +75,6 @@ const main = async () => {
     const { action, name } = options.find((x) => x.name === result)!;
 
     switch (action) {
-        case 'Add integration': {
-            await addIntegration();
-            return;
-        }
         case 'Scaffold React module': {
             const reactFolder = new Folder(rootPath).subitem([
                 ConfigFile.Instance.data.rootFolder,

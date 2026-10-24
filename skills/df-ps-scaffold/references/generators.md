@@ -1,4 +1,4 @@
-# df-ps generators: prompts and output
+# df-scaffold generators: prompts and output
 
 Notation: `<C>` = `<rootFolder>/bounded-contexts/<context>` or `<rootFolder>/shared`. `n` = the entered kebab-case name, `N` = PascalCase, `v` = camelCase. `I` = implementation label (`prisma` → `Prisma`). Specs are generated without a prompt **only if `testingLibrary` is set**. `{pkg}` = output depends on that `@domain-first/*` package.
 
@@ -127,7 +127,7 @@ The same controller, path, and method replace the existing endpoint (after `Over
 
 Page and widget names may have folders before them: `text:admin/panel/users` → `…/pages/admin/panel/admin-panel-users-page.tsx` and `…/widgets/admin/panel/users/`. The widget folder uses only the last segment; file names use the whole path (`admin-panel-users-page.tsx`, `admin-panel-users-widget.tsx`, `ui/admin-panel-users-widget-ui.tsx`, `hooks/use-admin-panel-users-ui-model.ts`), and so do code names (`AdminPanelUsersPage`, `AdminPanelUsersWidget`, `useAdminPanelUsersUIModel`); the story title follows the folders (`Widgets/Admin/Panel/Users`). `.` and `..` are rejected.
 
-Move or rename a page or a widget only with df-ps, never by hand: `"pick:Scaffold React module" "pick:Move or rename widget" "pick:admin/users" text:team/users "yes"` (`Move or rename page` for pages; the list shows nested names, the default new name is the current one). It moves the widget folder (or the page with its `<name>-page.*` files), renames files and `<Name>Widget…` / `use<Name>UIModel` / `<Name>Page…` to the new name, updates a generated story title and every import of the module (relative and `tsconfig` aliases; importers of barrels re-exporting it get the renamed classes), and fixes relative imports inside it. Before `Apply?` it prints the files to move and to update; check them. An existing target or a move into itself is rejected.
+Move or rename a page or a widget only with df-scaffold, never by hand: `"pick:Scaffold React module" "pick:Move or rename widget" "pick:admin/users" text:team/users "yes"` (`Move or rename page` for pages; the list shows nested names, the default new name is the current one). It moves the widget folder (or the page with its `<name>-page.*` files), renames files and `<Name>Widget…` / `use<Name>UIModel` / `<Name>Page…` to the new name, updates a generated story title and every import of the module (relative and `tsconfig` aliases; importers of barrels re-exporting it get the renamed classes), and fixes relative imports inside it. Before `Apply?` it prints the files to move and to update; check them. An existing target or a move into itself is rejected.
 
 `"pick:Scaffold React module" "pick:New UI-kit" text:date-picker` → `…/ui-kit/n/`:
 

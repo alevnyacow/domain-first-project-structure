@@ -5,6 +5,7 @@ export default defineConfig({
     entry: {
       index: './src/index.ts',
       lint: './src/lint.ts',
+      integration: './src/integration.ts',
     },
   },
   lib: [

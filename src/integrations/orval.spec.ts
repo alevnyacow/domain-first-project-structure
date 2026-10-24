@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { input } from '@inquirer/prompts';
+import { checkbox, input } from '@inquirer/prompts';
 import { afterAll, afterEach, expect, rstest, test } from '@rstest/core';
 import {
     discardPendingChanges,
@@ -11,6 +11,7 @@ import {
 import { addOrval, orvalMutator, queryProvider } from './index';
 
 rstest.mock('@inquirer/prompts', () => ({
+    checkbox: rstest.fn(),
     confirm: rstest.fn(),
     select: rstest.fn(),
     input: rstest.fn()
@@ -22,7 +23,11 @@ afterEach(() => {
     rstest.restoreAllMocks();
 });
 let sequence = 0;
-const setup = (rootFolder: string, manifest: Record<string, unknown>) => {
+const setup = (
+    rootFolder: string,
+    manifest: Record<string, unknown>,
+    { useReact = true, targets = ['hooks'] } = {}
+) => {
     const project = path.join(root, String(sequence++));
     fs.mkdirSync(project);
     fs.writeFileSync(
@@ -35,10 +40,11 @@ const setup = (rootFolder: string, manifest: Record<string, unknown>) => {
             rootFolder,
             domainFirstPackages: ['@domain-first/handlers-rest'],
             defaultPersistenceLayerImplementation: 'api',
-            useReact: true
+            useReact
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
+    rstest.mocked(checkbox).mockResolvedValue(targets);
     rstest
         .mocked(input)
         .mockImplementation(async ({ default: answer }: any) => answer);
@@ -75,9 +81,9 @@ test('adds config, mutator, query provider, script and gitignore entry with defe
     expect(steps).toEqual([
         'npm install @tanstack/react-query',
         'npm install --save-dev orval',
-        'npm run client:orval — generate React Query hooks from public/openapi.json in presentation/react/data-layer/orval',
+        'npm run client:orval — generate React Query hooks in presentation/react/data-layer/orval from public/openapi.json',
         'Wrap your app in QueryProvider from presentation/react/data-layer/query-provider.tsx',
-        'Add integration → OpenAPI generates the OpenAPI document the client is built from'
+        'npx df-integration → OpenAPI generates the OpenAPI document the client is built from'
     ]);
 
     await addOrval();
@@ -116,7 +122,76 @@ test('reads the document path from the OpenAPI generator and keeps edited mutato
     expect(fs.readFileSync(providerPath, 'utf8')).toBe('// custom provider');
     expect(fs.readFileSync(mutatorPath, 'utf8')).toBe('// custom mutator');
     expect(steps).toEqual([
-        'npm run client:orval — generate React Query hooks from docs/api.json in src/presentation/react/data-layer/orval',
+        'npm run client:orval — generate React Query hooks in src/presentation/react/data-layer/orval from docs/api.json',
         'Wrap your app in QueryProvider from src/presentation/react/data-layer/query-provider.tsx'
+    ]);
+});
+
+test('generates only the typed API client without React', async () => {
+    const { project, read } = setup(
+        'src',
+        { devDependencies: { orval: '^8.0.0' } },
+        { useReact: false }
+    );
+    const steps = await addOrval();
+    writePendingChanges();
+
+    expect(checkbox).not.toHaveBeenCalled();
+    const config = read('src/presentation/data-layer/orval.config.ts');
+    expect(config).toContain("input: '../../../openapi.json'");
+    expect(config).toContain("client: 'fetch',");
+    expect(config).not.toContain('react-query');
+    expect(config).not.toContain('query:');
+    expect(read('src/presentation/data-layer/api-client/mutator.ts')).toBe(
+        orvalMutator
+    );
+    expect(fs.existsSync(path.join(project, 'src/presentation/react'))).toBe(
+        false
+    );
+    expect(read('.gitignore')).toBe('/src/presentation/data-layer/orval/\n');
+    expect(JSON.parse(read('package.json')).scripts['client:orval']).toBe(
+        'orval --config "src/presentation/data-layer/orval.config.ts"'
+    );
+    expect(steps).toEqual([
+        'npm run client:orval — generate a typed API client in src/presentation/data-layer/orval from openapi.json',
+        'npx df-integration → OpenAPI generates the OpenAPI document the client is built from'
+    ]);
+});
+
+test('generates hooks and the typed API client sharing one mutator', async () => {
+    const { project, read } = setup(
+        'src',
+        {},
+        { targets: ['hooks', 'client'] }
+    );
+    const steps = await addOrval();
+    writePendingChanges();
+
+    expect(read('src/presentation/react/data-layer/orval.config.ts')).toContain(
+        "path: '../../data-layer/api-client/mutator.ts'"
+    );
+    expect(
+        fs.existsSync(
+            path.join(project, 'src/presentation/react/data-layer/api-client')
+        )
+    ).toBe(false);
+    expect(read('src/presentation/data-layer/api-client/mutator.ts')).toBe(
+        orvalMutator
+    );
+    expect(read('src/presentation/react/data-layer/query-provider.tsx')).toBe(
+        queryProvider
+    );
+    expect(read('.gitignore')).toBe(
+        '/src/presentation/react/data-layer/orval/\n/src/presentation/data-layer/orval/\n'
+    );
+    expect(JSON.parse(read('package.json')).scripts['client:orval']).toBe(
+        'orval --config "src/presentation/react/data-layer/orval.config.ts" && orval --config "src/presentation/data-layer/orval.config.ts"'
+    );
+    expect(steps).toEqual([
+        'npm install @tanstack/react-query',
+        'npm install --save-dev orval',
+        'npm run client:orval — generate React Query hooks in src/presentation/react/data-layer/orval and a typed API client in src/presentation/data-layer/orval from openapi.json',
+        'Wrap your app in QueryProvider from src/presentation/react/data-layer/query-provider.tsx',
+        'npx df-integration → OpenAPI generates the OpenAPI document the client is built from'
     ]);
 });
