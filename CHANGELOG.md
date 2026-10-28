@@ -1,3 +1,10 @@
+# [7.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.0.0...v7.1.0) (2026-10-28)
+
+
+### Features
+
+* move and rename backend units ([25fce2a](https://github.com/alevnyacow/domain-first-project-structure/commit/25fce2ad1e22b56a15c0e433ce600deaf143120e))
+
 # [7.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v6.0.0...v7.0.0) (2026-10-28)
 
 
