@@ -1,3 +1,20 @@
+# [7.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v6.0.0...v7.0.0) (2026-10-28)
+
+
+### Features
+
+* df-init and df-react commands, REST endpoint generator and in-memory DB ([8eae3e3](https://github.com/alevnyacow/domain-first-project-structure/commit/8eae3e30a2e4126ab8d97e15c8e7c4307f4149fd))
+
+
+### BREAKING CHANGES
+
+* initialization moved to `df-init` and React modules to
+`df-react`, `df-integration` no longer has "Missing domain-first packages",
+error namespaces are created with the first error instead of up front, and the
+Shared Layer is renamed to Shared Kernel (`shared/` → `shared-kernel/`,
+`SharedErrors` → `SharedKernelErrors` with error codes `shared-kernel.*`, lint
+check `shared-layer` → `shared-kernel`).
+
 # [6.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v5.1.2...v6.0.0) (2026-10-24)
 
 
