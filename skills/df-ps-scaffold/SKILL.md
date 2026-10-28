@@ -75,7 +75,7 @@ Anything else (helpers, types, constants, mappers, wiring, barrels): put it in a
 
 If the CLI can't run, give the user the menu path and answers to run `npx df-scaffold` (or `npx df-react` for React modules) themselves (`! npx df-scaffold`). Never hand-write its output. Missing generated files are only recreated by re-running the generator, as an approved overwrite.
 
-Moving or renaming a page or widget is a df-react run, never done by hand: see `df-ps-react`.
+Moving or renaming a module (aggregate, entity, value object, service, port, query, command, use case) is a df-scaffold run, `Move or rename` (`references/units/move-or-rename.md`); a page or widget, a df-react run (`df-ps-react`). Never by hand: it creates files at the new paths, so it needs an approved plan.
 
 ### 3. New dependencies only through df-scaffold
 
@@ -106,6 +106,7 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 | Port + adapters | `port.md` | Application → New Port |
 | REST endpoint | `endpoint.md` | Presentation → New Handlers-REST Endpoint |
 | Dependency of an existing module | `wire-dependency.md` | Wire dependency |
+| Moving or renaming a module | `move-or-rename.md` | Move or rename |
 | React modules | `df-ps-react` skill | `df-react` |
 
 ## Preparing runs
@@ -143,7 +144,7 @@ Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the planned fi
 | Infrastructure | New Service                                                      | New Service                                       |
 | Presentation   | New Handlers-REST Endpoint (needs handlers-rest), New Service    | New Service                                       |
 
-With `@domain-first/wire`, the layer menu of a context and of the Shared Kernel also has `Wire dependency`: it adds dependencies to an existing wired module.
+With `@domain-first/wire`, the layer menu of a context and of the Shared Kernel also has `Wire dependency`: it adds dependencies to an existing wired module. Every layer menu has `Move or rename`.
 
 The main menu also has `Scaffold new bounded context`. React modules come from a separate CLI, `df-react`: see `df-ps-react`.
 

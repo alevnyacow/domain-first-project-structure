@@ -232,7 +232,7 @@ export const usesInMemoryDb = (implementationType: string) =>
 /**
  * `user` → `users`, `category` → `categories`, `box` → `boxes`.
  */
-const plural = (word: string) => {
+export const plural = (word: string) => {
     if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
     if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
     return `${word}s`;

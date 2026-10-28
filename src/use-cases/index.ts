@@ -1,5 +1,6 @@
 export * from './add-integration';
 export * from './initialize';
+export * from './move-backend-unit';
 export * from './move-react-module';
 export * from './scaffold-new-aggregate';
 export * from './scaffold-new-application-port';

@@ -130,6 +130,10 @@ export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [
 
 Only the dependencies that respect the layers are offered: a use case can't take another use case, the domain can't take the application. To add a dependency later, choose **Wire dependency** in the context menu.
 
+### How to move or rename a module
+
+Choose **Move or rename** in the context menu: rename an aggregate, entity, value object, service, port, query, command or use case, move it to another bounded context or to the Shared Kernel, or move an entity in or out of an aggregate. Its files, implementations, wire, specs and every import and derived name in the project follow it: `OrderRepository`, `PrismaOrderRepository`, `wireOrderRepository`, the `orderRepository` parameter of a use case, the in-memory DB section. A move that would make one context import another is refused, with the list of imports that would cross the boundary.
+
 ### How to add errors
 
 Choose **Domain → Errors** to add an error to the context namespace, create a nested namespace, or add an error to it. The context namespace (`SalesErrors = errorNamespace('sales')` in `domain/errors/index.ts`) is created with the first error added without a namespace.

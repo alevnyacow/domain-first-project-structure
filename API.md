@@ -28,6 +28,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [`envBranchedWire`](#envbranchedwire)
     - [Dependency selection](#dependency-selection)
     - [Wire dependency](#wire-dependency)
+    - [Move or rename](#move-or-rename)
     - [Dependency rules](#dependency-rules)
 - [Unit tests](#unit-tests)
 - [React modules (`df-react`)](#react-modules-df-react)
@@ -155,6 +156,7 @@ After choosing a bounded context or the Shared Kernel, the CLI asks for a layer 
 | `Infrastructure`  | `New Service`                                                                | `New Service`                                        |
 | `Presentation`    | `New Handlers-REST Endpoint` (with `handlers-rest`), `New Service`           | `New Service`                                        |
 | `Wire dependency` | With `wire`: [Wire dependency](#wire-dependency)                             | With `wire`: [Wire dependency](#wire-dependency)     |
+| `Move or rename`  | [Move or rename](#move-or-rename)                                            | [Move or rename](#move-or-rename)                    |
 
 ### In-memory DB
 
@@ -522,6 +524,27 @@ Each selected module is added, in order:
 2. The [dependency selection](#dependency-selection) runs for the chosen module or implementation only.
 
 Prints `No wired modules here yet.` when there are no modules, and `No dependencies available for this module.` when there is nothing to add.
+
+### Move or rename
+
+`Layer: Move or rename` renames a module of the selected context or the Shared Kernel, or moves it to another bounded context or the Shared Kernel. Modules are found by their file layout, so it works without `wire` too.
+
+1. `Module:` lists aggregates, entities, value objects, services, ports, queries, commands and use cases, grouped by kind. Entities and value objects of an aggregate show it: `order-line (order)`.
+2. `Move to:` the current place (`(stays)`), every bounded context, and the Shared Kernel for the kinds it has: entities, value objects, services and ports.
+3. `Aggregate:` for entities and value objects, when the target context has aggregates: `No aggregate` or one of them.
+4. `New name:` kebab-case, the current name by default. A taken target file, a kind the Shared Kernel doesn't have, or the same name and place are rejected.
+
+| Unit                   | Moves with it                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| Aggregate              | Its folder (root, repository contract, barrel, entities and value objects inside, specs), repository implementations, wire |
+| Entity, value object   | The file and its spec                                                                           |
+| Service                | The file, its spec and wire                                                                     |
+| Use case               | The file, its spec and wire                                                                     |
+| Query, command, port   | The contract, its spec, every implementation and the wire                                       |
+
+Every import of the module in the project follows it, relative paths and tsconfig aliases. With a new name, the names derived from it change in the module and in every file that imports it, directly or through a barrel: the class (`OrderRepository`), its implementations (`PrismaOrderRepository`), its wire (`wireOrderRepository`) and constructor parameters of dependents (`orderRepository`). Inside the module, the variable form and the `describe` label of specs change too. Renaming an aggregate renames its [in-memory DB](#in-memory-db) section: `orders = this.section<Order>('ORDERS')` and accesses like `inMemoryDbInfrastructureService.orders`. An entity or value object leaving its aggregate is no longer re-exported by it, and files importing it from the aggregate's barrel import it from its new file; joining an aggregate adds the re-export.
+
+Before anything changes, the CLI checks bounded context isolation after the move: no file may import another context, and the Shared Kernel only a context's `domain/errors` (and the in-memory DB its domain models). When the move breaks it, the CLI prints `Nothing was moved: these imports would cross a bounded context boundary.`, every such import with paths after the move, and nothing is changed. Otherwise it lists the files to move and to update and asks `Apply?`.
 
 ### Dependency rules
 
