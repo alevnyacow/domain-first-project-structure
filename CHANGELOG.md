@@ -1,3 +1,10 @@
+# [7.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.1.1...v7.2.0) (2026-10-28)
+
+
+### Features
+
+* add implementation ([94ac0ed](https://github.com/alevnyacow/domain-first-project-structure/commit/94ac0ed133df4b04c7779e7172f6db978904c7f5))
+
 ## [7.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.1.0...v7.1.1) (2026-10-28)
 
 
