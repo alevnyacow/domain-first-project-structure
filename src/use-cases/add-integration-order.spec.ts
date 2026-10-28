@@ -61,9 +61,8 @@ test('integration tests selected with Prisma and Vitest see their changes', asyn
         const output = stripVTControlCharacters(log.mock.lastCall?.[0]);
         expect(output).toContain(
             [
-                'Run these commands to install the required dependencies:',
-                'npm install @prisma/orm-postgres temporal-polyfill dotenv',
-                'npm install --save-dev prisma @prisma/cli-engine vitest @vitest/coverage-v8 testcontainers',
+                'Run this command to install the required dependencies:',
+                'npm install @prisma/orm-postgres temporal-polyfill dotenv && npm install --save-dev prisma @prisma/cli-engine vitest @vitest/coverage-v8 testcontainers',
                 ''
             ].join('\n')
         );

@@ -4,10 +4,10 @@ Technical specification of the command-line interface of `@domain-first/project-
 
 - [Package](#package)
 - [Commands overview](#commands-overview)
+- [`df-init`](#df-init)
 - [`df-scaffold`](#df-scaffold)
     - [Run lifecycle](#run-lifecycle)
     - [Project root](#project-root)
-    - [Initialization](#initialization)
     - [Main menu](#main-menu)
     - [Layer menus](#layer-menus)
 - [Configuration file](#configuration-file)
@@ -30,13 +30,15 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Wire dependency](#wire-dependency)
     - [Dependency rules](#dependency-rules)
 - [Unit tests](#unit-tests)
-- [React modules](#react-modules)
+- [React modules (`df-react`)](#react-modules-df-react)
     - [New page](#new-page)
     - [New widget](#new-widget)
     - [New UI-kit component](#new-ui-kit-component)
     - [New shared hook](#new-shared-hook)
     - [Move or rename page / widget](#move-or-rename-page--widget)
 - [Integrations](#integrations)
+    - [REST endpoint generator](#rest-endpoint-generator)
+    - [In-memory DB](#in-memory-db-1)
     - [Storybook (React + Vite)](#storybook-react--vite)
     - [Prisma 8 (PostgreSQL, RC)](#prisma-8-postgresql-rc)
     - [Vitest](#vitest)
@@ -44,7 +46,6 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Integration tests (Testcontainers, PostgreSQL)](#integration-tests-testcontainers-postgresql)
     - [OpenAPI](#openapi)
     - [Orval (API client)](#orval-api-client)
-    - [Missing domain-first packages](#missing-domain-first-packages)
     - [Package scripts](#package-scripts)
 - [`df-skills`](#df-skills)
 - [`df-lint`](#df-lint)
@@ -53,7 +54,7 @@ Technical specification of the command-line interface of `@domain-first/project-
 Notation used below:
 
 - `<rootFolder>` is the `rootFolder` value of the [configuration file](#configuration-file), relative to the project root.
-- `<context>` is the folder of the selected bounded context: `<rootFolder>/bounded-contexts/<name>`. In the Shared Layer, it is `<rootFolder>/shared`.
+- `<context>` is the folder of the selected bounded context: `<rootFolder>/bounded-contexts/<name>`. In the Shared Kernel, it is `<rootFolder>/shared-kernel`.
 - `<name>` is the entered name as is, `<Name>` its class form and `<nameVar>` its variable form. See [Naming](#naming).
 - An **implementation label** is a name such as `prisma`, `in-memory`, `api` or `mock`. It names the folder and the class prefix of an implementation: `prisma` gives `infrastructure/repositories/prisma/prisma-order-repository.ts` with `PrismaOrderRepository`.
 - **With `wire`**, **with `handlers`** etc. mean that `domainFirstPackages` includes `@domain-first/wire`, `@domain-first/handlers` etc.
@@ -64,45 +65,36 @@ Notation used below:
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-scaffold`, `df-integration`, `df-skills`, `df-lint`  |
+| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint` |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
 | Runtime        | Node.js 22.13+ within the Node 22 release line, or 24+   |
-| Interaction    | Interactive prompts only; `df-scaffold` takes no arguments, `df-integration` only `--help` |
+| Interaction    | Interactive prompts only; `df-scaffold` takes no arguments, `df-init`, `df-react` and `df-integration` only `--help` |
 
 ## Commands overview
 
 | Command          | Purpose                                                              | Section                       |
 | ---------------- | -------------------------------------------------------------------- | ----------------------------- |
-| `df-scaffold`    | Initializes a project, scaffolds components                          | [`df-scaffold`](#df-scaffold) |
+| `df-init`        | Initializes a project: the configuration file and Shared Kernel files | [`df-init`](#df-init)         |
+| `df-scaffold`    | Scaffolds bounded contexts and their components                      | [`df-scaffold`](#df-scaffold) |
+| `df-react`       | Scaffolds, moves and renames React modules                           | [React modules](#react-modules-df-react) |
 | `df-integration` | Adds integrations: Storybook, Prisma, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
 
 ```bash
+npx df-init
 npx df-scaffold
+npx df-react
 npx df-integration
 npx df-skills [--claude] [--codex] [--global]
 npx df-lint [rootFolder]
 ```
 
-## `df-scaffold`
+## `df-init`
 
-### Run lifecycle
-
-1. The [project root](#project-root) is located.
-2. If the configuration file does not exist, [initialization](#initialization) runs and the process exits.
-3. Otherwise the [main menu](#main-menu) is shown, and exactly one operation runs.
-4. Every file change of the operation is staged in memory. At the end, the staged changes are written in one step. See [Runtime semantics](#runtime-semantics).
-
-### Project root
-
-The nearest directory containing `package.json`, found by walking up from the current directory. If none is found, the CLI throws `No package.json was found`. All paths are relative to this directory. In a monorepo, run the CLI inside the package to scaffold.
-
-### Initialization
-
-Runs when `domain-first.project-structure.config.json` is missing in the project root.
+Initializes the project in the [project root](#project-root). When `domain-first.project-structure.config.json` already exists, it prints `domain-first.project-structure.config.json already exists: edit it or add Shared Kernel files with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`.
 
 **Prompts**
 
@@ -124,27 +116,39 @@ Runs when `domain-first.project-structure.config.json` is missing in the project
 | File                                                  | Condition    | Content                                                                         |
 | ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------- |
 | `domain-first.project-structure.config.json`          | Always       | The [configuration](#configuration-file), tab-indented                          |
-| `<rootFolder>/shared/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
-| `<rootFolder>/shared/domain/errors/index.ts`          | With `errors` | `export const SharedErrors = errorNamespace('shared')`                         |
-| `<rootFolder>/shared/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its spec and wire as for [New Service](#new-service) |
-| `<rootFolder>/shared/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
+| `<rootFolder>/shared-kernel/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
+| `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its spec and wire as for [New Service](#new-service) |
+| `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
+| `app/api/[...path]/route.ts`                          | With the Next adapter | The [catch-all route](#rest-endpoint-generator); `src/app/…` when `src/app` exists and `app` doesn't |
 
-With the Next adapter confirmed and `@domain-first/handlers-next` missing from `package.json`, initialization prints `npm i @domain-first/handlers-next` after writing the files.
+The endpoint generator and the route are written as by the [REST endpoint generator](#rest-endpoint-generator) integration. After writing the files, `df-init` prints one install command for the packages of `domainFirstPackages` missing from `package.json` (`dependencies`, `devDependencies` and `optionalDependencies`; `node_modules` is not checked), plus `@domain-first/handlers-next` with the Next adapter.
+
+## `df-scaffold`
+
+### Run lifecycle
+
+1. The [project root](#project-root) is located.
+2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. `df-react` and `df-integration` do the same.
+3. Otherwise the [main menu](#main-menu) is shown, and exactly one operation runs.
+4. Every file change of the operation is staged in memory. At the end, the staged changes are written in one step. See [Runtime semantics](#runtime-semantics).
+
+### Project root
+
+The nearest directory containing `package.json`, found by walking up from the current directory. If none is found, the CLI throws `No package.json was found`. All paths are relative to this directory. In a monorepo, run the CLI inside the package to scaffold.
 
 ### Main menu
 
 | Item                         | Shown when       | Action                                                           |
 | ---------------------------- | ---------------- | ---------------------------------------------------------------- |
 | `Bounded Context: <name>`    | One per subfolder of `<rootFolder>/bounded-contexts` | [Layer menus](#layer-menus) for that context |
-| `Scaffold React module`      | `useReact`       | [React modules](#react-modules)                                  |
-| `Shared Layer`               | Always           | [Layer menus](#layer-menus) for `<rootFolder>/shared`            |
+| `Shared Kernel`               | Always           | [Layer menus](#layer-menus) for `<rootFolder>/shared-kernel`            |
 | `Scaffold new bounded context` | Always         | [New bounded context](#new-bounded-context)                      |
 
 ### Layer menus
 
-After choosing a bounded context or the Shared Layer, the CLI asks for a layer and then for an operation.
+After choosing a bounded context or the Shared Kernel, the CLI asks for a layer and then for an operation.
 
-| Layer             | Bounded context                                                              | Shared Layer                                         |
+| Layer             | Bounded context                                                              | Shared Kernel                                         |
 | ----------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `Domain`          | `New Aggregate`, `New Entity`, `New Value Object`, `Errors`, `New Service`   | `New Entity`, `New Value Object`, `Errors`, `New Service` |
 | `Application`     | `New Query`, `New Command`, `New Use Case`, `New Port`, `New Service`        | `New Port`, `New Service`                            |
@@ -212,25 +216,25 @@ type Config = {
 | `domainFirstPackages`                   | Integrations used by templates. See [Package integrations](#package-integrations). An empty array selects plain class templates.             |
 | `defaultPersistenceLayerImplementation` | Default implementation label for repositories, commands and queries.                                                                         |
 | `withInMemoryDb`                        | `in-memory` implementations of repositories, commands and queries get the shared [in-memory DB](#in-memory-db). Omitted: they are generated empty. |
-| `useReact`                              | Shows `Scaffold React module` in the main menu and lets the Orval integration generate React Query hooks.                                    |
+| `useReact`                              | Enables [`df-react`](#react-modules-df-react), the Swagger UI page of the OpenAPI integration and React Query hooks of the Orval integration. |
 | `storybookFramework`                    | Package that generated stories import `Meta` and `StoryObj` from. Omitted: no stories are generated.                                         |
 | `testingLibrary`                        | Module that generated tests import `describe`, `test`, `expect` and `beforeEach` from. Omitted: no tests are generated.                      |
 | `rules.dependencies`                    | Changes the [dependency rules](#dependency-rules) per kind of module. Omitted: the defaults.                                                 |
 | `rules.lint`                            | Turns [`df-lint`](#df-lint) checks off with `false`. Omitted: all checks run.                                                                |
 
-Edits apply to future runs only. Existing files are not migrated: enabling `wire` or `errors` later also requires the shared files [initialization](#initialization) would create and, for `errors`, the error namespaces of existing contexts.
+Edits apply to future runs only. Existing files are not migrated: enabling `wire` later also requires the Shared Kernel files [`df-init`](#df-init) would create. The endpoint generator and the in-memory DB can be added later with [integrations](#integrations).
 
 ### Package integrations
 
 | Package                       | Effect on generated code                                                                                          |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `@domain-first/types`         | Aggregate roots, entities and value objects extend `domainType()`.                                                |
-| `@domain-first/errors`        | Error namespaces for the Shared Layer and each new context. Required by the [Errors](#errors) generator.          |
+| `@domain-first/errors`        | The [Errors](#errors) generator; namespaces are created with the first error.                                     |
 | `@domain-first/handlers`      | `inputSchema` / `outputSchema` placeholders, `Handler` contracts and `defineHandler` implementations for use cases, commands and queries. |
 | `@domain-first/wire`          | `wireClass` factories under `wiring/`, [`envBranchedWire`](#envbranchedwire), dependency selection and the `Wire dependency` menu. |
 | `@domain-first/handlers-rest` | The `New Handlers-REST Endpoint` generator and the OpenAPI and Orval integrations.                                |
 
-The CLI does not install these packages. Use [Missing domain-first packages](#missing-domain-first-packages) to get the install command.
+The CLI does not install these packages. [`df-init`](#df-init) prints the install command for the missing ones.
 
 ## Naming
 
@@ -272,7 +276,6 @@ Every generator below writes into `<context>`. Unless stated otherwise:
 | Path                                                  | Condition     | Content                                                        |
 | ----------------------------------------------------- | ------------- | -------------------------------------------------------------- |
 | `<rootFolder>/bounded-contexts/<name>/`               | Always        | Empty folder                                                   |
-| `<rootFolder>/bounded-contexts/<name>/domain/errors/index.ts` | With `errors` | `export const <Name>Errors = errorNamespace('<name>')` |
 
 ### New Aggregate
 
@@ -344,11 +347,11 @@ Requires `@domain-first/errors` in the project: the generated code imports from 
 
 | Choice                               | Prompt             | Change                                                                                                               |
 | ------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `New error without namespace`        | `Error name:`      | Adds `export class <Name><Suffix> extends <Context>Errors.define('<name>') {}` to `index.ts`                          |
+| `New error without namespace`        | `Error name:`      | Adds `export class <Name><Suffix> extends <Context>Errors.define('<name>') {}` to `index.ts`. Without a namespace in `index.ts`, first puts `import { errorNamespace } from '@domain-first/errors'` and `export const <Context>Errors = errorNamespace('<context>')` at its top, above re-exports of namespaces created earlier |
 | `New error in namespace <namespace>` | `Error name:`      | Adds `export class <Namespace><Name><Suffix> extends <Namespace><Scope>Errors.define('<name>') {}` to `<namespace>.ts` |
 | `New namespace`                      | `Namespace name:`  | Creates `<namespace>.ts` with `<Namespace><Scope>Errors = errorNamespace('<context>').subnamespace('<namespace>')` and adds `export * from './<namespace>'` to `index.ts` |
 
-Names don't repeat the context: inside a bounded context `<Suffix>` and `<Scope>` are empty (`OutOfStock`, `PaymentDeclined`, `PaymentErrors`). In the Shared Layer `<Suffix>` is `SharedError` and `<Scope>` is `Shared` (`TimeoutSharedError`, `PaymentDeclinedSharedError`, `PaymentSharedErrors`). `<Context>` is the class form of the context folder name: `Shared` in the Shared Layer. The namespace name comes first in errors of a namespace.
+Names don't repeat the context: inside a bounded context `<Suffix>` and `<Scope>` are empty (`OutOfStock`, `PaymentDeclined`, `PaymentErrors`). In the Shared Kernel `<Suffix>` is `SharedKernelError` and `<Scope>` is `SharedKernel` (`TimeoutSharedKernelError`, `PaymentDeclinedSharedKernelError`, `PaymentSharedKernelErrors`). `<Context>` is the class form of the context folder name: `SharedKernel` in the Shared Kernel. The namespace name comes first in errors of a namespace.
 
 An error extends the namespace of the file it is added to, as that file exports it (`export const X = errorNamespace(...)`), so namespace files of other names keep working. One choice is listed per `.ts` file in `domain/errors/` other than `index.ts`. Lines are added only if missing, and an existing namespace file is never replaced.
 
@@ -447,12 +450,12 @@ Bounded contexts only, with `handlers-rest`.
 - Path parameters are named `_param_` in folder and class names, since `:` is not allowed there. The route keeps `:param`.
 - The class name joins the controller, path segments, method and `Endpoint` in class form: `orders/recent` with `get` gives `OrdersRecentGetEndpoint`.
 - The route is `{ method, path: ['<context>', '<controller>', ...segments] }`, and the tag is `'<context>: <controller>'`.
-- The constructor takes `endpointGenerator: RestEndpointGeneratorPresentationService`, the [endpoint generator](#endpoint-generator) of the Shared Layer, and `handler`, the chosen handler or `never` without one. `get handle()` calls `this.endpointGenerator(this.handler.handle, { route, tags })`, which doesn't compile on purpose: the user picks a generating getter of the service, e.g. `this.endpointGenerator.withoutGuards(...)`.
+- The constructor takes `endpointGenerator: RestEndpointGeneratorPresentationService`, the [endpoint generator](#endpoint-generator) of the Shared Kernel, and `handler`, the chosen handler or `never` without one. `get handle()` calls `this.endpointGenerator(this.handler.handle, { route, tags })`, which doesn't compile on purpose: the user picks a generating getter of the service, e.g. `this.endpointGenerator.withoutGuards(...)`.
 - In projects without the generator file, the generator type is `EndpointGenerator` from `@domain-first/handlers-rest` and the wire takes no dependencies.
 
 #### Endpoint generator
 
-`RestEndpointGeneratorPresentationService`, created during [initialization](#initialization) with `handlers-rest`, is the one generator every endpoint uses.
+`RestEndpointGeneratorPresentationService`, created by [`df-init`](#df-init) with `handlers-rest` or by the [REST endpoint generator](#rest-endpoint-generator) integration, is the one generator every endpoint uses.
 
 | Member                        | Kind            | Content                                                                                      |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
@@ -476,7 +479,7 @@ All of this section applies only with `wire`.
 
 ### `envBranchedWire`
 
-Created during [initialization](#initialization) in `<rootFolder>/shared/wiring/env-branched-wire.ts`:
+Created by [`df-init`](#df-init) in `<rootFolder>/shared-kernel/wiring/env-branched-wire.ts`:
 
 ```ts
 import { branchedWire } from '@domain-first/wire'
@@ -500,7 +503,7 @@ Any other value makes the wire throw `NonExistingBranchError` from `@domain-firs
 
 The last step of every generator that creates a factory, except REST endpoints, which take the [endpoint generator](#endpoint-generator) and select their handler [themselves](#new-handlers-rest-endpoint).
 
-- Candidates are the wired modules of the context and of the Shared Layer, the latter labelled `(shared)`. A module is any `wire*` factory found under `wiring/`.
+- Candidates are the wired modules of the context and of the Shared Kernel, the latter labelled `(shared-kernel)`. A module is any `wire*` factory found under `wiring/`.
 - Candidates are filtered by the [dependency rules](#dependency-rules), excluding the module itself and modules it already depends on.
 - Choices are grouped by kind: Repositories, Domain services, Ports, Application services, Queries, Commands, Use cases, Infrastructure services, Presentation services.
 - An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). Infrastructure modules whose file name contains the implementation label as whole words are listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck one to leave it out.
@@ -513,7 +516,7 @@ Each selected module is added, in order:
 
 ### Wire dependency
 
-`Layer: Wire dependency` adds dependencies to an existing module of the selected context or the Shared Layer.
+`Layer: Wire dependency` adds dependencies to an existing module of the selected context or the Shared Kernel.
 
 1. `Module:` lists the wired modules. An env-branched module is listed once per implementation: `OrderRepository (prisma)`, `OrderRepository (in-memory)`. REST endpoints are not listed.
 2. The [dependency selection](#dependency-selection) runs for the chosen module or implementation only.
@@ -536,7 +539,7 @@ What a module may depend on is decided by its kind: the folder of its wire under
 | `infrastructure-services` | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
 | `presentation-services`   | `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `presentation-services`               |
 
-Modules of the context and the Shared Layer follow the same rules. Kinds missing from the table (custom folders under `wiring/`) follow the layers: domain sees domain, application sees domain and application, infrastructure sees domain, application ports and infrastructure, presentation sees application and presentation.
+Modules of the context and the Shared Kernel follow the same rules. Kinds missing from the table (custom folders under `wiring/`) follow the layers: domain sees domain, application sees domain and application, infrastructure sees domain, application ports and infrastructure, presentation sees application and presentation.
 
 `rules.dependencies` in the configuration file changes a kind's list: a list replaces it, `add` and `remove` change it. Kinds it doesn't mention keep their defaults; without it (or without `rules`, or without a configuration file), the table above applies as is. Unknown kinds make the config invalid.
 
@@ -564,9 +567,9 @@ With tests, the generators create one `.spec.ts` per class:
 
 Repository, command, query and port tests reference wiring factories with `wire`. Without it, they reference the primary implementation directly.
 
-## React modules
+## React modules (`df-react`)
 
-`Scaffold React module` is shown when `useReact` is `true`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
+`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget` or `Move or rename page`. It needs the configuration file and `useReact: true`; otherwise it prints `React is off: set "useReact": true in domain-first.project-structure.config.json or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
 
 ### New page
 
@@ -612,7 +615,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 **Behavior**
 
-- Lists pages and widgets generated by `df-scaffold`. Prints `No pages generated by df-scaffold were found.` (or `widgets`) when there are none.
+- Lists pages and widgets generated by `df-react`. Prints `No pages generated by df-react were found.` (or `widgets`) when there are none.
 - A widget moves with its whole folder, assets included. A page moves with the files next to it that share its name, such as `<file>-page.module.css`.
 - File names, `<Name>Page`, `<Name>Widget…`, `use<Name>UIModel` and generated story titles follow the new name.
 - Imports of the module are updated across the project: relative imports and `tsconfig.json` `paths` aliases such as `@/`. Files importing it through barrels (`export * from`, `export { … } from`) get the renamed names too. Relative imports inside the module are adjusted to its new location.
@@ -622,22 +625,50 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 ## Integrations
 
-`npx df-integration` changes project files and prints next steps. It needs the configuration file: without it, it prints `No domain-first.project-structure.config.json found: run df-scaffold first to initialize the project.` and exits with 1. The [project root](#project-root), staging and overwrite confirmation work as in `df-scaffold`. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints install commands under `Run these commands to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
+`npx df-integration` changes project files and prints next steps. It needs the configuration file: without it, it prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. The [project root](#project-root), staging and overwrite confirmation work as in `df-scaffold`. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints one install command under `Run this command to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
 
-Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma config and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook turns on `useReact`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them.
+Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma config and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook turns on `useReact`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them. The parts are joined with `&&` into one line to copy, which runs in bash, zsh, cmd.exe and PowerShell 7+, but not in Windows PowerShell 5.1. `df-init` prints its command the same way.
 
-The list has two sections: `New integrations`, then `Already applied (select to reapply)`. Each item ends with its group, e.g. `Vitest · backend`; inside a section backend integrations come first. An integration counts as applied when the file in the table exists; selecting it again regenerates its files.
+The list has two sections: `New integrations`, then `Already applied (select to reapply)`. Each item ends with its group, e.g. `Vitest · backend`; inside a section backend integrations come first. An integration counts as applied when the file in the table exists; selecting it again regenerates its files. The REST endpoint generator and the in-memory DB only add missing files and never overwrite existing ones.
 
 | Item                                             | Group    | Listed when          | Applied when exists                                                                                                    |
 | ------------------------------------------------ | -------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `Storybook (React + Vite)`                       | Frontend | Always               | `<rootFolder>/presentation/react/.storybook/main.ts`                                                                   |
-| `Prisma 8 (PostgreSQL, RC)`                      | Backend  | Always               | `<rootFolder>/shared/infrastructure/prisma/prisma.config.ts`                                                           |
+| `REST endpoint generator`                        | Backend  | With `handlers-rest` | `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts`                           |
+| `In-memory DB`                                   | Backend  | Always               | `withInMemoryDb` is `true`, `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` and, with `wire`, its wire |
+| `Prisma 8 (PostgreSQL, RC)`                      | Backend  | Always               | `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts`                                                           |
 | `Vitest`                                         | Backend  | Always               | `vitest.config.ts`                                                                                                     |
 | `Playwright`                                     | Frontend | Always               | `playwright.config.ts`                                                                                                 |
 | `Integration tests (Testcontainers, PostgreSQL)` | Backend  | Always               | `specs/integration/vitest.config.ts`                                                                                   |
 | `OpenAPI`                                        | Backend  | With `handlers-rest` | `scripts/generate-openapi.ts`                                                                                          |
 | `Orval (API client)`                             | Frontend | With `handlers-rest` | `<rootFolder>/presentation/react/data-layer/orval.config.ts` or `<rootFolder>/presentation/data-layer/orval.config.ts` |
-| `Missing domain-first packages`                  | Backend  | Always               | Every package of `domainFirstPackages` is declared                                                                     |
+
+### REST endpoint generator
+
+With `next` in `package.json`, asks `Use Next adapter for REST endpoints`. Writes the [endpoint generator](#endpoint-generator) with its spec and wire as for [New Service](#new-service), and with the Next adapter the catch-all route `app/api/[...path]/route.ts` (`src/app/api/[...path]/route.ts` when `src/app` exists and `app` doesn't):
+
+```ts
+import { nextEndpoints } from '@domain-first/handlers-next'
+
+/**
+ * Pass the endpoints' handle here; their paths are relative to this route's folder.
+ */
+const handler = nextEndpoints([])
+
+export const GET = handler
+export const POST = handler
+export const PUT = handler
+export const PATCH = handler
+export const DELETE = handler
+```
+
+With `wire`, the route serves `restHandlers` instead: `import { restHandlers } from '<relative path>/<rootFolder>/presentation/rest'` and `nextEndpoints(restHandlers)`, so every endpoint generated later is served without touching the route. `<rootFolder>/presentation/rest/index.ts` appears with the first endpoint; until then the route doesn't compile, and the CLI notes `<route> serves restHandlers from <rootFolder>/presentation/rest/index.ts, which appears with the first REST endpoint — generate one with df-scaffold (Presentation → New Handlers-REST Endpoint) and the route compiles`.
+
+Existing files are kept. With the Next adapter, it prints `npm i @domain-first/handlers-next` when the package is missing; when the generator already existed, it notes to pass `nextAdapter` to its `createEndpoint` calls.
+
+### In-memory DB
+
+Sets `withInMemoryDb` to `true` and writes the missing files of the shared [in-memory DB](#in-memory-db): the service, its spec with tests and its wire with `wire`, as during [`df-init`](#df-init). Existing files are kept, so it also restores the wire when `wire` was enabled after the DB was created. No install command.
 
 ### Storybook (React + Vite)
 
@@ -663,13 +694,13 @@ The list has two sections: `New integrations`, then `Already applied (select to 
 
 | Item           | Value                                                                                                     |
 | -------------- | --------------------------------------------------------------------------------------------------------- |
-| Prompts        | `Create shared Prisma infrastructure service?` (default: Yes); `Use prisma as the default persistence implementation?` (default: No) |
-| Files          | `<rootFolder>/shared/infrastructure/prisma/prisma.config.ts`; `contract.prisma` if missing                |
-| Optional files | `<rootFolder>/shared/infrastructure/services/prisma-infrastructure-service.ts`; with `wire`, its factory  |
+| Prompts        | `Create the Prisma infrastructure service in the Shared Kernel?` (default: Yes); `Use prisma as the default persistence implementation?` (default: No) |
+| Files          | `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts`; `contract.prisma` if missing                |
+| Optional files | `<rootFolder>/shared-kernel/infrastructure/services/prisma-infrastructure-service.ts`; with `wire`, its factory  |
 | Configuration  | `defaultPersistenceLayerImplementation: "prisma"` when confirmed                                         |
 | Scripts        | `prisma:emit`, `prisma:migration:plan`, `prisma:migration:apply`                                          |
 | Install        | `prisma`, `@prisma/cli-engine`, `@prisma/orm-postgres`, `temporal-polyfill`, `dotenv` when missing        |
-| Notes          | Add `!<rootFolder>/shared/infrastructure/prisma` to linter ignores                                        |
+| Notes          | Add `!<rootFolder>/shared-kernel/infrastructure/prisma` to linter ignores                                        |
 
 | Script                    | Action                                                    |
 | ------------------------- | --------------------------------------------------------- |
@@ -697,7 +728,7 @@ The list has two sections: `New integrations`, then `Already applied (select to 
 }
 ```
 
-The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolder>/bounded-contexts` and `<rootFolder>/shared`, excluding specs, infrastructure, REST presentation and wiring. `specs/e2e` and `specs/integration` are excluded from tests. When `@domain-first/handlers-next` is declared, it is inlined so its `next/headers` import resolves.
+The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolder>/bounded-contexts` and `<rootFolder>/shared-kernel`, excluding specs, infrastructure, REST presentation and wiring. `specs/e2e` and `specs/integration` are excluded from tests. When `@domain-first/handlers-next` is declared, it is inlined so its `next/headers` import resolves.
 
 ### Playwright
 
@@ -723,7 +754,7 @@ The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, scr
 | File               | Content                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------- |
 | `vitest.config.ts` | Runs `specs/integration/**/*.spec.ts` with `NODE_ENV=development`, so `envBranchedWire` picks development implementations. Paths are relative to the project root. When `@domain-first/handlers-next` is declared, it is inlined |
-| `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container, without `--advance-ref`, so the `db` ref of the development database stays as is |
+| `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container, without `--advance-ref`, so the `db` ref of the development database stays as is |
 | `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container |
 
 Specs get the container's address in `DATABASE_URL`, so the Prisma infrastructure service connects to it. Change the image, credentials and connection string in `global-setup.ts`, and the variable name in `setup-env.ts`. All specs of a run share one database: give each spec its own data.
@@ -777,10 +808,6 @@ Listed with `handlers-rest`. Generates a typed API client and, with `useReact`, 
 | `api-client/mutator.ts` | `customInstance`, used by every request. Throws `ApiError` with the status and the parsed body on non-2xx responses |
 | `query-provider.tsx`  | `QueryProvider` with one `QueryClient` per browser session                                                    |
 
-### Missing domain-first packages
-
-Compares `domainFirstPackages` with `dependencies`, `devDependencies` and `optionalDependencies` of `package.json` and prints one `npm i` command for the missing packages. Prints nothing when none are missing. `node_modules` is not checked, and no files are changed.
-
 ### Package scripts
 
 Integrations that add scripts to `package.json` handle conflicts the same way:
@@ -815,8 +842,9 @@ npx df-skills [options]
 | Skill                   | Purpose                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------- |
 | `df-ps-plan-feature`    | Turns a feature request into a plan of bounded contexts and components                   |
-| `df-ps-scaffold`        | Generates components with `df-scaffold`                                                         |
-| `df-ps-implement`       | Fills in the generated code                                                              |
+| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules and the CLI driver       |
+| `df-ps-react`           | Chooses, generates (`df-react`), moves and implements pages, widgets, UI-kit and hooks    |
+| `df-ps-implement`       | Fills in the generated backend code                                                      |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |
 
 ## `df-lint`
@@ -832,7 +860,7 @@ npx df-lint [rootFolder]
 | Rule                       | Reported                                                                                                   |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | Context isolation (`context-isolation`) | A bounded context importing another one                                                                    |
-| Shared Layer (`shared-layer`) | `shared/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
+| Shared Kernel (`shared-kernel`) | `shared-kernel/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
 | Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and command and query contracts, or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
@@ -842,7 +870,7 @@ npx df-lint [rootFolder]
 
 | Topic             | Behavior                                                                                                                         |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| One operation     | Each `df-scaffold` run performs one operation. Run it again for the next one.                                                          |
+| One operation     | Each `df-scaffold` and `df-react` run performs one operation. Run it again for the next one.                                           |
 | Staging           | Files, folders, moves and deletions are staged in memory and written after the operation's last prompt.                          |
 | Overwrites        | If staged files would replace existing ones, the CLI lists them and asks `Overwrite them?` (default: No). No discards everything and prints `Cancelled: nothing was written.` |
 | Additions         | Lines added to existing barrels, error files, wiring indexes and `.gitignore` are not overwrites and are never duplicated.       |

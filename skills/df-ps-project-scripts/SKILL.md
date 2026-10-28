@@ -15,7 +15,7 @@ The project's scripts live in `package.json`. Run them through `npm run <script>
 
 ## Prisma
 
-Config: `shared/infrastructure/prisma/prisma.config.ts`. Source: `shared/infrastructure/prisma/contract.prisma` (edit by hand). Output: `contract.json`, `contract.d.ts` (from `prisma:emit`) and `migrations/` (from `prisma:migration:plan`), all next to it. The client is created in `shared/infrastructure/services/prisma-infrastructure-service.ts`.
+Config: `shared-kernel/infrastructure/prisma/prisma.config.ts`. Source: `shared-kernel/infrastructure/prisma/contract.prisma` (edit by hand). Output: `contract.json`, `contract.d.ts` (from `prisma:emit`) and `migrations/` (from `prisma:migration:plan`), all next to it. The client is created in `shared-kernel/infrastructure/services/prisma-infrastructure-service.ts`.
 
 | Script                   | Does                                                                      | Who runs it       |
 | ------------------------ | ------------------------------------------------------------------------- | ----------------- |

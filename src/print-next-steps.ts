@@ -34,8 +34,8 @@ export const mergeInstallCommands = (commands: string[]) => {
 };
 
 /**
- * Prints the steps left after a use case: installation commands first,
- * then additional information.
+ * Prints the steps left after a use case: one installation command to
+ * copy, then additional information.
  */
 export const printNextSteps = (nextSteps: string[]) => {
     const isCommand = (line: string) =>
@@ -46,8 +46,8 @@ export const printNextSteps = (nextSteps: string[]) => {
     if (commands.length) {
         sections.push(
             [
-                'Run these commands to install the required dependencies:',
-                ...commands.map((line) => styleText(['bold', 'cyan'], line))
+                'Run this command to install the required dependencies:',
+                styleText(['bold', 'cyan'], commands.join(' && '))
             ].join('\n')
         );
     }

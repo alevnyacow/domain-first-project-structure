@@ -31,7 +31,7 @@ beforeEach(() => {
     );
     for (const [layer, namespace, code] of [
         [['bounded-contexts', 'sales'], 'SalesErrors', 'sales'],
-        [['shared'], 'SharedErrors', 'shared']
+        [['shared-kernel'], 'SharedKernelErrors', 'shared-kernel']
     ] as const) {
         fs.mkdirSync(errorsFolder([...layer]), { recursive: true });
         fs.writeFileSync(
@@ -53,7 +53,7 @@ const read = (layer: string[], file: string) =>
     fs.readFileSync(path.join(errorsFolder(layer), file), 'utf8');
 
 const sales = ['bounded-contexts', 'sales'];
-const shared = ['shared'];
+const shared = ['shared-kernel'];
 
 test('a context error is a class named without the context', async () => {
     await run(sales, 'New error without namespace', 'out-of-stock');
@@ -73,18 +73,18 @@ test('a context namespace and its errors put the namespace first', async () => {
     );
 });
 
-test('shared errors end with SharedError', async () => {
+test('shared errors end with SharedKernelError', async () => {
     await run(shared, 'New error without namespace', 'timeout');
     expect(read(shared, 'index.ts')).toContain(
-        "export class TimeoutSharedError extends SharedErrors.define('timeout') {}"
+        "export class TimeoutSharedKernelError extends SharedKernelErrors.define('timeout') {}"
     );
     await run(shared, 'New namespace', 'payment');
     expect(read(shared, 'payment.ts')).toContain(
-        'export const PaymentSharedErrors = errorNamespace'
+        'export const PaymentSharedKernelErrors = errorNamespace'
     );
     await run(shared, 'New error in namespace payment', 'declined');
     expect(read(shared, 'payment.ts')).toContain(
-        "export class PaymentDeclinedSharedError extends PaymentSharedErrors.define('declined') {}"
+        "export class PaymentDeclinedSharedKernelError extends PaymentSharedKernelErrors.define('declined') {}"
     );
 });
 
@@ -96,5 +96,23 @@ test('a namespace file of the older naming keeps its namespace name', async () =
     await run(sales, 'New error in namespace payment', 'declined');
     expect(read(sales, 'payment.ts')).toContain(
         "export class PaymentDeclined extends PaymentSalesErrors.define('declined') {}"
+    );
+});
+
+test('the first error without a namespace creates the root namespace', async () => {
+    fs.rmSync(errorsFolder(sales), { recursive: true, force: true });
+    await run(sales, 'New error without namespace', 'out-of-stock');
+    expect(read(sales, 'index.ts')).toBe(
+        "import { errorNamespace } from '@domain-first/errors'\n\nexport const SalesErrors = errorNamespace('sales')\n\nexport class OutOfStock extends SalesErrors.define('out-of-stock') {}"
+    );
+});
+
+test('the root namespace goes above re-exports of earlier namespaces', async () => {
+    fs.rmSync(errorsFolder(shared), { recursive: true, force: true });
+    await run(shared, 'New namespace', 'payment');
+    expect(read(shared, 'index.ts')).toBe("export * from './payment'");
+    await run(shared, 'New error without namespace', 'timeout');
+    expect(read(shared, 'index.ts')).toBe(
+        "import { errorNamespace } from '@domain-first/errors'\n\nexport const SharedKernelErrors = errorNamespace('shared-kernel')\n\nexport * from './payment'\n\nexport class TimeoutSharedKernelError extends SharedKernelErrors.define('timeout') {}"
     );
 });

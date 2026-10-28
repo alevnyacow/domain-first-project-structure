@@ -114,24 +114,24 @@ test('initialization saves the flag and scaffolds the shared in-memory DB', () =
     expect(config.withInMemoryDb).toBe(true);
     expect(
         wired.read(
-            'shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+            'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
         )
     ).toContain('export class InMemoryDbInfrastructureService');
     expect(
         wired.read(
-            'shared/infrastructure/services/in-memory-db-infrastructure-service.spec.ts'
+            'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.spec.ts'
         )
     ).toContain('wireInMemoryDbInfrastructureService()');
     expect(
         wired.read(
-            'shared/wiring/infrastructure-services/wire-in-memory-db-infrastructure-service.ts'
+            'shared-kernel/wiring/infrastructure-services/wire-in-memory-db-infrastructure-service.ts'
         )
     ).toContain('export const wireInMemoryDbInfrastructureService');
 });
 
 test('an in-memory repository adds a section of its aggregate', () => {
     const db = wired.read(
-        'shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+        'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
     );
     expect(db).toContain(
         "import type { User } from '../../../bounded-contexts/users/domain/aggregates/user';"
@@ -146,7 +146,7 @@ test('an in-memory repository takes its section in the constructor', () => {
         )
     ).toBe(
         `import { UserRepository } from '../../../domain/aggregates/user'
-import type { InMemoryDbInfrastructureService } from '../../../../../shared/infrastructure/services/in-memory-db-infrastructure-service'
+import type { InMemoryDbInfrastructureService } from '../../../../../shared-kernel/infrastructure/services/in-memory-db-infrastructure-service'
 
 export class InMemoryUserRepository implements UserRepository {
     private readonly data: InMemoryDbInfrastructureService['users']
@@ -168,7 +168,7 @@ test('only the in-memory repository is wired with the in-memory DB', () => {
         'bounded-contexts/users/wiring/repositories/wire-user-repository.ts'
     );
     expect(wire).toContain(
-        "import { wireInMemoryDbInfrastructureService } from '../../../../shared/wiring/infrastructure-services/wire-in-memory-db-infrastructure-service'"
+        "import { wireInMemoryDbInfrastructureService } from '../../../../shared-kernel/wiring/infrastructure-services/wire-in-memory-db-infrastructure-service'"
     );
     expect(wire).toContain(
         'wireClass(InMemoryUserRepository, [wireInMemoryDbInfrastructureService])'
@@ -179,7 +179,7 @@ test('only the in-memory repository is wired with the in-memory DB', () => {
 test('a second repository of the same aggregate reuses its section', async () => {
     await scaffoldUserAggregate(wired.context);
     const db = wired.read(
-        'shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+        'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
     );
     expect(db.match(/this\.section</g)).toHaveLength(1);
 });
@@ -205,7 +205,7 @@ for (const [kind, scaffold, Kind] of [
             `bounded-contexts/users/infrastructure/${folder}/in-memory/in-memory-${name}.ts`
         );
         expect(implementation).toContain(
-            "import type { InMemoryDbInfrastructureService } from '../../../../../shared/infrastructure/services/in-memory-db-infrastructure-service'"
+            "import type { InMemoryDbInfrastructureService } from '../../../../../shared-kernel/infrastructure/services/in-memory-db-infrastructure-service'"
         );
         expect(implementation).toContain(
             'constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService) {\n        super()\n    }'
@@ -220,7 +220,7 @@ for (const [kind, scaffold, Kind] of [
         expect(
             wired
                 .read(
-                    'shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+                    'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
                 )
                 .match(/this\.section</g)
         ).toHaveLength(1);
@@ -242,7 +242,7 @@ test('without wiring, the spec of an in-memory repository passes the DB', async 
         'bounded-contexts/users/domain/aggregates/user/user-repository.spec.ts'
     );
     expect(spec).toContain(
-        "import { InMemoryDbInfrastructureService } from '../../../../../shared/infrastructure/services/in-memory-db-infrastructure-service'"
+        "import { InMemoryDbInfrastructureService } from '../../../../../shared-kernel/infrastructure/services/in-memory-db-infrastructure-service'"
     );
     expect(spec).toContain(
         'new InMemoryUserRepository(new InMemoryDbInfrastructureService())'
@@ -257,7 +257,7 @@ test('without the flag, in-memory implementations stay empty', async () => {
         fs.existsSync(
             path.join(
                 off.root,
-                'src/shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+                'src/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
             )
         )
     ).toBe(false);
@@ -293,7 +293,7 @@ test('an unchecked in-memory DB leaves the in-memory repository empty', async ()
     ).toContain('wireClass(InMemoryUserRepository, [])');
     expect(
         unchecked.read(
-            'shared/infrastructure/services/in-memory-db-infrastructure-service.ts'
+            'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
         )
     ).not.toContain('this.section<');
 });

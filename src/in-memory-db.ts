@@ -166,7 +166,7 @@ const withWiring = () =>
 const sharedFolder = () =>
     new Folder(new ProjectRoot().path).subitem([
         ConfigFile.Instance.data.rootFolder,
-        'shared'
+        'shared-kernel'
     ]);
 
 const serviceFile = () =>
@@ -213,6 +213,13 @@ export const scaffoldInMemoryDb = (shared: Folder) => {
 };
 
 /**
+ * Whether the files of the in-memory DB are there, its wire included
+ * with wiring.
+ */
+export const inMemoryDbScaffolded = () =>
+    serviceFile().exists && (!withWiring() || wireFile().exists);
+
+/**
  * Whether implementations of this type get the in-memory DB: it is
  * enabled in the config and its files are there.
  */
@@ -220,8 +227,7 @@ export const usesInMemoryDb = (implementationType: string) =>
     Boolean(ConfigFile.Instance.data.withInMemoryDb) &&
     new UnknownFormatNaming(implementationType).fileName ===
         inMemoryImplementationType &&
-    serviceFile().exists &&
-    (!withWiring() || wireFile().exists);
+    inMemoryDbScaffolded();
 
 /**
  * `user` → `users`, `category` → `categories`, `box` → `boxes`.

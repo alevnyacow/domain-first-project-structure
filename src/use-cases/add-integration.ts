@@ -3,15 +3,18 @@ import { checkbox, Separator } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import {
+    addInMemoryDb,
     addOpenapi,
     addOrval,
     addPlaywright,
     addPrisma,
+    addRestEndpointGenerator,
     addStorybook,
     addTestcontainers,
     addVitest,
-    missingDomainFirstPackages,
-    openapiScriptPath
+    inMemoryDbApplied,
+    openapiScriptPath,
+    restEndpointGeneratorApplied
 } from '../integrations';
 import { printNextSteps } from '../print-next-steps';
 import { ProjectRoot } from '../project-root';
@@ -48,11 +51,26 @@ const integrations: {
         applied: () => createdInRoot('presentation/react/.storybook/main.ts')
     },
     {
+        name: 'REST endpoint generator',
+        group: 'backend',
+        run: addRestEndpointGenerator,
+        available: () => withHandlersRest(),
+        applied: restEndpointGeneratorApplied
+    },
+    {
+        name: 'In-memory DB',
+        group: 'backend',
+        run: addInMemoryDb,
+        applied: inMemoryDbApplied
+    },
+    {
         name: 'Prisma 8 (PostgreSQL, RC)',
         group: 'backend',
         run: addPrisma,
         applied: () =>
-            createdInRoot('shared/infrastructure/prisma/prisma.config.ts')
+            createdInRoot(
+                'shared-kernel/infrastructure/prisma/prisma.config.ts'
+            )
     },
     {
         name: 'Vitest',
@@ -87,12 +105,6 @@ const integrations: {
         applied: () =>
             createdInRoot('presentation/react/data-layer/orval.config.ts') ||
             createdInRoot('presentation/data-layer/orval.config.ts')
-    },
-    {
-        name: 'Missing domain-first packages',
-        group: 'backend',
-        run: missingDomainFirstPackages,
-        applied: () => !missingDomainFirstPackages().length
     }
 ];
 

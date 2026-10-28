@@ -10,10 +10,10 @@ Split the request into pieces of logic (one responsibility each). For each piece
 | --- | --- | --- |
 | 1 | A business failure callers must recognize? | **Errors** (Domain → Errors) |
 | 2 | An HTTP entry point? | **REST endpoint** (Presentation; needs handlers-rest) |
-| 3 | A screen, UI block, or app-wide React hook? | **React page / widget / UI-kit component / shared hook**. Which one and widget type: below |
+| 3 | A screen, UI block, or app-wide React hook? | **React page / widget / UI-kit component / shared hook**. Which one: `df-ps-react` |
 | 4 | A thing with identity, lifecycle, and rules about its own state, **owned by this context** and stored on its own? | **Aggregate** (+ repository) |
 | 5 | An entity or value object used **only inside one** aggregate (an entity inside it, or a value like `order-id` used only by `order`)? | **Entity / value object** (Domain → New Entity / New Value Object, pick that aggregate) |
-| 6 | An entity or value object used by **several** aggregates or by a domain service? | **Entity / value object** (Domain → New Entity / New Value Object, `No aggregate`). Universal ones (see "Where it goes") in Shared Layer |
+| 6 | An entity or value object used by **several** aggregates or by a domain service? | **Entity / value object** (Domain → New Entity / New Value Object, `No aggregate`). Universal ones (see "Where it goes") in Shared Kernel |
 | 7 | A rule about one aggregate's own state, including the junction of entities / value objects that all belong to it? | **Method on the aggregate**. No new file |
 | 8 | One business action a user/system triggers that doesn't fit into a single query or command? (Its I/O is separate pieces.) | **Use case**. An action that is exactly one query or command gets none (see below) |
 | 9 | Data or behavior of **another context**? | **Query** (read) / **command** (write) in this context, one per atomic operation (see below) |
@@ -27,7 +27,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 
 - Entities and value objects are **rich**: rules about their own data, including how they are created, are their methods. They never know about their storage or loading: that's repositories and queries/commands.
 - Loading/saving one aggregate = a **repository method**, not a query or command.
-- A query or command is **one atomic operation of one kind of implementation**: one database operation (several statements in one transaction count as one), one request to an external API or another context's endpoint, one message sent. Its implementations differ only in how they perform that operation (`prisma`, `http`, `in-memory`). Several operations, a mix of storages, or logic between the steps → several queries/commands, composed in the use case that needs them; only when 2+ use cases need the same composition does it move to an application service (step 13).
+- A query or command is **one atomic operation of one kind of implementation**: one database operation (several statements in one transaction count as one), one request to another context's endpoint, one message sent to another context (an external API is never a query or command: it's a port). Its implementations differ only in how they perform that operation (`prisma`, `http`, `in-memory`). Several operations, a mix of storages, or logic between the steps → several queries/commands, composed in the use case that needs them; only when 2+ use cases need the same composition does it move to an application service (step 13).
 - **No proxy use cases.** Every query and command is a handler, so an endpoint uses it directly. A use case that only forwards the call to one query or command adds nothing: don't create it. A use case appears only when the action needs several queries, commands or ports, or logic around them. A use case whose logic lives in an application service is not a proxy: an application service has no `handle`, so the use case is how an endpoint reaches that logic.
 - A rule about a **set** of aggregates (uniqueness, "at most N per day") = a repository method that queries it, plus a check and a domain error in the use case. No separate component.
 - Steps 9–10 beat 11–15. The other-context or external part becomes a query/command or a port. What remains may be a service that **receives it in its constructor**.
@@ -48,40 +48,19 @@ Example: `order-confirmation` prepares a message and calls the injected `mailer`
 | --- | --- |
 | Port / repository | Own aggregate's persistence → repository. External system → port. |
 | Port / command, query | Own storage or another context → command/query. External system → port. |
+| Port with one method / query | Decided by what's on the other side, not by the number of methods: a single read from an external system is still a port. Another context = a folder in `bounded-contexts/` of this project; any other service (another team's API, a SaaS) is an external system → port. |
 | Query / command | A query only reads: it never changes any state, not even idempotently (no cache filling, no default settings created if missing), and never calls a command. Any state change → command. A command returns nothing or only the minimum needed to use its result later (the created order's ID), never the changed data: read that with a query. A command or query implementation depends only on infrastructure services (the database client, the HTTP client it runs on) and uses domain models; no repositories, ports, domain services or other commands and queries. Composing them is the job of a use case or an application service. |
 | Domain service / entity, value object method | One entity / value object → its method. The junction of several → always a domain service, unless they all belong to one aggregate → a method on that aggregate. |
 | Domain / application service | Stated without requests, permissions, responses, scenarios → domain. Otherwise application. |
 | Use case / application service | Use case = one action with `handle`, the entry point an endpoint calls. Application service = helper with no `handle`, used by 2+ use cases. A composition of queries/commands needed by one action stays in its use case; the same composition needed by several → application service, called by each of those use cases. |
 | Application / infrastructure service | Used by use cases → application. Only by adapters/repositories → infrastructure. |
 | Logic infrastructure needs from an application service | Infrastructure never sees application services. Pure logic without ports → domain service. Logic over ports → infrastructure calls the ports directly. Technical (mapping, retries, external API formats) → infrastructure service. |
-| Clock | Always a port (`clock`, usually in Shared Layer). A command or query never uses it: the use case reads the time and passes it in the input. |
-
-## React page, widget, UI-kit component or shared hook
-
-| Piece | Component |
-| --- | --- |
-| A route / whole screen | **Page** |
-| A block with business meaning or backend data (`cart`, `order-summary`) | **Widget** |
-| A generic element with no business meaning, driven only by props (`button`, `date-picker`, `modal`) | **UI-kit component** |
-| A business element that several widgets repeat whole, with the same meaning (`product-card`) | **UI-kit component** (domain) |
-| Generic app-wide logic without markup and business meaning (`debounce`, `media-query`, `local-storage`) | **Shared hook** |
-
-A UI-kit component or shared hook that starts needing data (API client, loading, backend state) becomes a widget that uses it. A widget's own state goes in its `hooks/`, not in a shared hook.
-
-A business element goes to UI-kit only when several widgets contain the same element, repeated whole and with the same meaning (a product card shown in a catalog, a cart and recommendations). It stays presentational: business data comes in through props, actions go out through callbacks; no API client, no data loading, no imports from widgets, pages or bounded contexts. Its props describe what it shows (`title`, `price`), not domain types. One widget needing it, or several widgets sharing only a piece of markup, is not a reason: keep it in the widget, or extract the generic piece as a generic UI-kit component.
-
-**Widgets never import each other.** Not a widget, not its `ui/`, `hooks/` or `types.ts`. What two widgets share goes to UI-kit (an element, by the rules above) or a shared hook (logic without markup); combining widgets is the page's job.
-
-Nest a page or widget name in folders (`admin/users`) when it belongs to an area of the UI with several pages or widgets: a route group (`/admin/*`) or one section of a screen. Pages follow the route path; a widget goes under the area it serves. Otherwise keep the name flat (`order-summary`); one page or widget is no reason to start a folder. The whole path becomes the code name, so it must read as the component's name: `admin/users/list` (`AdminUsersListWidget`), not `admin/lists/user` (`AdminListsUserWidget`). Not for UI-kit components or shared hooks: they are generic and have no area. When a second page or widget joins an area, move the existing flat one into its folder with `Move or rename page` / `Move or rename widget` (`users` → `admin/users`).
-
-## React widget type
-
-Default **`with separated ui`**. Use `headless` only when consumers must supply different visuals for the same behavior, or the user asks. Use `monolithic` only on explicit request. "It's small" and "other widgets use another type" are not reasons. State any deviation in the plan.
+| Clock | Always a port (`clock`, usually in Shared Kernel). A command or query never uses it: the use case reads the time and passes it in the input. |
 
 ## Where it goes
 
 - Default: the context that owns the data and rules (`df-ps-plan-feature`, step 3).
-- Shared Layer: technical, ownerless pieces (`clock`, `mailer` ports, shared HTTP client, errors like `unauthorized`) and **universal** entities / value objects: the same meaning and rules in every context, owned by none (`money`, `email`, `address`). A Shared Layer domain service holds rules at the junction of these universal types only. Anything with one context's meaning or rules (`order-status`, `customer`) stays in that context, even if other contexts need it; they duplicate it in their own queries/commands.
+- Shared Kernel: technical, ownerless pieces (`clock`, `mailer` ports, shared HTTP client, errors like `unauthorized`) and **universal** entities / value objects: the same meaning and rules in every context, owned by none (`money`, `email`, `address`). A Shared Kernel domain service holds rules at the junction of these universal types only. Anything with one context's meaning or rules (`order-status`, `customer`) stays in that context, even if other contexts need it; they duplicate it in their own queries/commands.
 - Another context's data or behavior → a query/command in the consuming context (step 9).
 
 ## Example
@@ -97,7 +76,7 @@ Default **`with separated ui`**. Use `headless` only when consumers must supply 
 | Discount ≤ 30% | 7 | `Order.applyDiscount()`: a rule about one aggregate's state; the use case passes the discount it got from the query |
 | Place order, reorder | 8 | use cases `place-order`, `reorder` |
 | Promo code check | 9 | query `promo-code-discount`: `prisma` if `marketing` shares the database, otherwise `http` to its endpoint |
-| Email, order date | 10 | ports `mailer`, `clock` (Shared Layer) |
+| Email, order date | 10 | ports `mailer`, `clock` (Shared Kernel) |
 | Free shipping for gold customers | 13 | domain service `shipping-policy`: takes `customer` and `order`, no I/O |
 | Confirmation for both use cases | 14 | application service `order-confirmation` (gets `mailer`) |
 | Invalid promo code | 1 | error `invalid-promo-code` in namespace `order` |

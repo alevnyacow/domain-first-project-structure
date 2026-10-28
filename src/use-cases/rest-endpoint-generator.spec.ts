@@ -26,7 +26,7 @@ const generate = (withNextAdapter?: boolean) => {
     const cwd = rstest.spyOn(process, 'cwd').mockReturnValue(root);
     try {
         scaffoldRestEndpointGenerator(
-            new Folder(root).subitem(['src', 'shared']),
+            new Folder(root).subitem(['src', 'shared-kernel']),
             { withNextAdapter }
         );
         writePendingChanges();
@@ -36,7 +36,7 @@ const generate = (withNextAdapter?: boolean) => {
     return fs.readFileSync(
         path.join(
             root,
-            'src/shared/presentation/services/rest-endpoint-generator-presentation-service.ts'
+            'src/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts'
         ),
         'utf8'
     );

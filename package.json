@@ -16,7 +16,9 @@
         }
     },
     "bin": {
+        "df-init": "./dist/init.js",
         "df-scaffold": "./dist/index.js",
+        "df-react": "./dist/react.js",
         "df-integration": "./dist/integration.js",
         "df-skills": "./bin/df-skills.mjs",
         "df-lint": "./dist/lint.js"

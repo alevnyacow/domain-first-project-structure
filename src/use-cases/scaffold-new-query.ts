@@ -189,7 +189,7 @@ describe('${naming.withSpaces} query', () => {
                 `wire-${naming.fileName}-query.ts`,
                 `
 import { wireClass } from '@domain-first/wire'
-import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
+import { envBranchedWire } from '../../../../shared-kernel/wiring/env-branched-wire'
 ${implementationTypes
     .map((x) => new UnknownFormatNaming(x))
     .map(({ ClassName, fileName }) => {

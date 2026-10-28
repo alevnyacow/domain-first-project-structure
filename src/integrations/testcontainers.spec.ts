@@ -46,7 +46,7 @@ const setup = (
     if (withPrisma) {
         const prismaFolder = path.join(
             project,
-            'src/shared/infrastructure/prisma'
+            'src/shared-kernel/infrastructure/prisma'
         );
         fs.mkdirSync(prismaFolder, { recursive: true });
         fs.writeFileSync(path.join(prismaFolder, 'prisma.config.ts'), '');
@@ -85,7 +85,7 @@ test('adds config, setup files, example spec and script with deferred writes', a
     const globalSetup = fs.readFileSync(globalSetupPath, 'utf8');
     expect(globalSetup).toContain("const POSTGRES_IMAGE = 'postgres:15';");
     expect(globalSetup).toContain(
-        'npx prisma db migrate --config \\"src/shared/infrastructure/prisma/prisma.config.ts\\"'
+        'npx prisma db migrate --config \\"src/shared-kernel/infrastructure/prisma/prisma.config.ts\\"'
     );
     expect(globalSetup).not.toContain('--advance-ref');
     expect(fs.readFileSync(setupEnvPath, 'utf8')).toContain(

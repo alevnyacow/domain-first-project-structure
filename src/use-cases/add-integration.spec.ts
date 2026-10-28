@@ -6,11 +6,7 @@ import { checkbox, confirm, Separator } from '@inquirer/prompts';
 import { afterAll, expect, rstest, test } from '@rstest/core';
 import { ConfigFile } from '../config-file';
 import { File, writePendingChanges } from '../file-system';
-import {
-    addPrisma,
-    addStorybook,
-    missingDomainFirstPackages
-} from '../integrations';
+import { addPrisma, addStorybook, inMemoryDbApplied } from '../integrations';
 import { addIntegration } from './add-integration';
 
 rstest.mock('@inquirer/prompts', () => ({
@@ -23,7 +19,10 @@ rstest.mock('@inquirer/prompts', () => ({
 rstest.mock('../integrations', () => ({
     addStorybook: rstest.fn(),
     addPrisma: rstest.fn(),
-    missingDomainFirstPackages: rstest.fn(() => ['npm i @domain-first/types']),
+    addRestEndpointGenerator: rstest.fn(),
+    addInMemoryDb: rstest.fn(),
+    restEndpointGeneratorApplied: rstest.fn(() => false),
+    inMemoryDbApplied: rstest.fn(() => false),
     openapiScriptPath: 'scripts/generate-openapi.ts'
 }));
 rstest.mock('../config-file', () => ({
@@ -70,7 +69,10 @@ test('standalone use case writes files before reporting next steps', async () =>
     pickFirst();
     rstest.mocked(addStorybook).mockImplementationOnce(async () => {
         new File(filePath).data = 'created';
-        return ['npm install vitest', 'Add !shared/prisma in your linter.'];
+        return [
+            'npm install vitest',
+            'Add !shared-kernel/prisma in your linter.'
+        ];
     });
     const log = rstest.spyOn(console, 'log').mockImplementation(() => {
         expect(fs.readFileSync(filePath, 'utf8')).toBe('created');
@@ -80,11 +82,11 @@ test('standalone use case writes files before reporting next steps', async () =>
         expect(log).toHaveBeenCalledTimes(1);
         expect(stripVTControlCharacters(log.mock.calls[0][0])).toBe(
             [
-                'Run these commands to install the required dependencies:',
+                'Run this command to install the required dependencies:',
                 'npm install vitest',
                 '',
                 'Additional information:',
-                'Add !shared/prisma in your linter.'
+                'Add !shared-kernel/prisma in your linter.'
             ].join('\n')
         );
     } finally {
@@ -150,7 +152,7 @@ test('runs selected integrations in list order and merges install commands', asy
         return [
             'npm install dotenv',
             'npm install --save-dev prisma vite',
-            'Add !src/shared/infrastructure/prisma in your linter.'
+            'Add !src/shared-kernel/infrastructure/prisma in your linter.'
         ];
     });
     const log = rstest.spyOn(console, 'log').mockImplementation(() => {});
@@ -159,12 +161,11 @@ test('runs selected integrations in list order and merges install commands', asy
         expect(calls).toEqual(['storybook', 'prisma']);
         expect(stripVTControlCharacters(log.mock.calls[0][0])).toBe(
             [
-                'Run these commands to install the required dependencies:',
-                'npm install react dotenv',
-                'npm install --save-dev storybook vite prisma',
+                'Run this command to install the required dependencies:',
+                'npm install react dotenv && npm install --save-dev storybook vite prisma',
                 '',
                 'Additional information:',
-                'Add !src/shared/infrastructure/prisma in your linter.'
+                'Add !src/shared-kernel/infrastructure/prisma in your linter.'
             ].join('\n')
         );
     } finally {
@@ -185,26 +186,27 @@ test('lists new and applied integrations apart, each labeled with its group', as
     try {
         expect(await choiceNames()).toEqual([
             '-- New integrations',
+            'REST endpoint generator · backend',
+            'In-memory DB · backend',
             'Prisma 8 (PostgreSQL, RC) · backend',
             'Vitest · backend',
             'Integration tests (Testcontainers, PostgreSQL) · backend',
             'OpenAPI · backend',
-            'Missing domain-first packages · backend',
             'Storybook (React + Vite) · frontend',
             'Playwright · frontend',
             'Orval (API client) · frontend'
         ]);
         fs.writeFileSync(path.join(root, 'vitest.config.ts'), '');
         fs.writeFileSync(path.join(root, 'playwright.config.ts'), '');
-        rstest.mocked(missingDomainFirstPackages).mockReturnValueOnce([]);
+        rstest.mocked(inMemoryDbApplied).mockReturnValueOnce(true);
         const names = await choiceNames();
         expect(
             names.slice(
                 names.indexOf('-- Already applied (select to reapply)') + 1
             )
         ).toEqual([
+            'In-memory DB · backend',
             'Vitest · backend',
-            'Missing domain-first packages · backend',
             'Playwright · frontend'
         ]);
         expect(

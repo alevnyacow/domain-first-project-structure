@@ -3,12 +3,9 @@
 import { select } from '@inquirer/prompts';
 import { ConfigFile } from './config-file';
 import { Folder } from './file-system';
-import { printNextSteps } from './print-next-steps';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
 import {
-    initializeUseCase,
-    moveReactModuleUseCase,
     scaffoldNewAggregateUseCase,
     scaffoldNewApplicationPort,
     scaffoldNewApplicationService,
@@ -22,23 +19,15 @@ import {
     scaffoldNewPresentationService,
     scaffoldNewQuery,
     scaffoldNewUseCase,
-    scaffoldReactPage,
-    scaffoldReactSharedHook,
-    scaffoldReactUIKitComponent,
-    scaffoldReactWidget,
     wireDependency
 } from './use-cases';
 
 const main = async () => {
-    /**
-     * If no config file was found, initialize a project.
-     */
     if (!ConfigFile.exists) {
-        const nextSteps = await initializeUseCase();
-        if (await savePendingChanges()) {
-            printNextSteps(nextSteps);
-        }
-        return;
+        console.log(
+            'No domain-first.project-structure.config.json found: run df-init first to initialize the project.'
+        );
+        process.exit(1);
     }
 
     const rootPath = new ProjectRoot().path;
@@ -57,15 +46,9 @@ const main = async () => {
 
     const options = [
         ...currentBoundedContextOptions,
-        ConfigFile.Instance.data.useReact
-            ? {
-                  name: 'Scaffold React module',
-                  action: 'Scaffold React module'
-              }
-            : undefined,
-        { name: 'Shared Layer', action: 'Scaffold in bounded context' },
+        { name: 'Shared Kernel', action: 'Scaffold in bounded context' },
         scaffoldNewBoundedContext
-    ].filter((x) => !!x);
+    ];
 
     const result = await select({
         message: '@domain-first/project-structure',
@@ -75,53 +58,6 @@ const main = async () => {
     const { action, name } = options.find((x) => x.name === result)!;
 
     switch (action) {
-        case 'Scaffold React module': {
-            const reactFolder = new Folder(rootPath).subitem([
-                ConfigFile.Instance.data.rootFolder,
-                'presentation',
-                'react'
-            ]);
-            const action = await select({
-                message: 'Module: ',
-                choices: [
-                    'New widget',
-                    'New page',
-                    'New UI-kit component',
-                    'New shared hook',
-                    'Move or rename widget',
-                    'Move or rename page'
-                ]
-            });
-            switch (action) {
-                case 'New widget': {
-                    await scaffoldReactWidget(reactFolder);
-                    return;
-                }
-                case 'New page': {
-                    await scaffoldReactPage(reactFolder);
-                    return;
-                }
-                case 'New UI-kit component': {
-                    await scaffoldReactUIKitComponent(reactFolder);
-                    return;
-                }
-                case 'New shared hook': {
-                    await scaffoldReactSharedHook(reactFolder);
-                    return;
-                }
-                case 'Move or rename widget': {
-                    await moveReactModuleUseCase(reactFolder, 'widget');
-                    return;
-                }
-                case 'Move or rename page': {
-                    await moveReactModuleUseCase(reactFolder, 'page');
-                    return;
-                }
-                default: {
-                    return;
-                }
-            }
-        }
         case 'Scaffold new bounded context': {
             await scaffoldNewBoundedContextUseCase();
             return;
@@ -137,7 +73,7 @@ const main = async () => {
                           'bounded-contexts',
                           name.substring('Bounded Context: '.length)
                       ]
-                    : [ConfigFile.Instance.data.rootFolder, 'shared']
+                    : [ConfigFile.Instance.data.rootFolder, 'shared-kernel']
             );
 
             const layer = await select({

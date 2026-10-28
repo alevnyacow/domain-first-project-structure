@@ -125,7 +125,7 @@ export const wiredModuleKind = (wiringKind: string) =>
 
 /**
  * The kind of a module file, from its path inside a context or the
- * Shared Layer (`application/use-cases/…`), or undefined for other files
+ * Shared Kernel (`application/use-cases/…`), or undefined for other files
  * such as entities, value objects and errors.
  */
 export const fileModuleKind = (segments: string[]): ModuleKind | undefined => {

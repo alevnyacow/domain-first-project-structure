@@ -1,31 +1,18 @@
-import nodePath from 'node:path';
 import { checkbox, confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
-import { File, Folder } from '../file-system';
+import { Folder } from '../file-system';
 import { scaffoldInMemoryDb } from '../in-memory-db';
+import {
+    askNextAdapter,
+    missingDomainFirstPackages,
+    scaffoldRestEndpointGeneratorFiles
+} from '../integrations';
 import { ProjectRoot } from '../project-root';
-import { scaffoldRestEndpointGenerator } from './rest-endpoint-generator';
-
-/**
- * Whether the project's manifest lists `name` among its dependencies.
- */
-const hasDependency = (root: string, name: string) => {
-    const manifestFile = new File(nodePath.join(root, 'package.json'));
-    if (!manifestFile.exists) return false;
-    const manifest = JSON.parse(manifestFile.data);
-    return [
-        manifest.dependencies,
-        manifest.devDependencies,
-        manifest.optionalDependencies
-    ].some((dependencies) => dependencies && Object.hasOwn(dependencies, name));
-};
 
 /**
  * Initializes the project and returns the steps left to the user.
  */
 export const initializeUseCase = async (): Promise<string[]> => {
-    const nextSteps: string[] = [];
-
     const rootFolderName = await input({
         message: 'Root folder (use "/" for inner folders):',
         default: 'src'
@@ -44,8 +31,7 @@ export const initializeUseCase = async (): Promise<string[]> => {
 
     const withNextAdapter =
         domainFirstPackages.includes('@domain-first/handlers-rest') &&
-        hasDependency(new ProjectRoot().path, 'next') &&
-        (await confirm({ message: 'Use Next adapter for REST endpoints' }));
+        (await askNextAdapter());
 
     const defaultPersistenceLayerImplementation = await input({
         message: 'Default persistence layer implementation:'
@@ -94,48 +80,32 @@ export const initializeUseCase = async (): Promise<string[]> => {
     const rootFolder = new Folder(path);
 
     if (domainFirstPackages.includes('@domain-first/wire')) {
-        rootFolder.subitem([rootFolderName, 'shared', 'wiring']).createFile(
-            'env-branched-wire.ts',
-            `
+        rootFolder
+            .subitem([rootFolderName, 'shared-kernel', 'wiring'])
+            .createFile(
+                'env-branched-wire.ts',
+                `
 import { branchedWire } from '@domain-first/wire'
 
 export const envBranchedWire = branchedWire(() => {
     return process.env.NODE_ENV ?? 'development' as 'test' | 'development' | 'production'
 });
 `.trim()
-        );
-    }
-
-    if (withInMemoryDb) {
-        scaffoldInMemoryDb(rootFolder.subitem([rootFolderName, 'shared']));
-    }
-
-    if (domainFirstPackages.includes('@domain-first/errors')) {
-        rootFolder
-            .subitem([rootFolderName, 'shared'])
-            .subitem(['domain', 'errors'])
-            .createFile(
-                'index.ts',
-                `
-import { errorNamespace } from '@domain-first/errors'
-
-export const SharedErrors = errorNamespace('shared')
-            `.trim()
             );
     }
 
-    if (domainFirstPackages.includes('@domain-first/handlers-rest')) {
-        scaffoldRestEndpointGenerator(
-            rootFolder.subitem([rootFolderName, 'shared']),
-            { withNextAdapter }
+    if (withInMemoryDb) {
+        scaffoldInMemoryDb(
+            rootFolder.subitem([rootFolderName, 'shared-kernel'])
         );
+    }
 
-        if (
-            withNextAdapter &&
-            !hasDependency(path, '@domain-first/handlers-next')
-        ) {
-            nextSteps.push('npm i @domain-first/handlers-next');
-        }
+    const nextSteps = missingDomainFirstPackages();
+
+    if (domainFirstPackages.includes('@domain-first/handlers-rest')) {
+        nextSteps.push(
+            ...scaffoldRestEndpointGeneratorFiles({ withNextAdapter })
+        );
     }
 
     return nextSteps;

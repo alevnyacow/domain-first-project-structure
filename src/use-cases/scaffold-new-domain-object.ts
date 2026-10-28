@@ -20,7 +20,7 @@ export const scaffoldNewDomainObject = async (
     const aggregateNames = aggregatesFolder.content.subfolderNames;
 
     /**
-     * Without aggregates (e.g. in the Shared Layer) there is nothing to pick.
+     * Without aggregates (e.g. in the Shared Kernel) there is nothing to pick.
      */
     const aggregate = aggregateNames.length
         ? await select({

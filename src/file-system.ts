@@ -27,6 +27,28 @@ export const filesToOverwrite = () =>
         )
         .map(([filePath]) => filePath);
 
+/**
+ * Runs a generator that only adds files: its rewrites of files that
+ * already exist on disk are dropped, so files edited by the user stay.
+ */
+export const withoutOverwrites = <T>(generate: () => T): T => {
+    const before = new Map(pendingFiles);
+    const result = generate();
+    for (const [filePath, change] of pendingFiles) {
+        if (
+            before.get(filePath) === change ||
+            !change.replacesFile ||
+            !fs.existsSync(filePath)
+        ) {
+            continue;
+        }
+        const previous = before.get(filePath);
+        if (previous) pendingFiles.set(filePath, previous);
+        else pendingFiles.delete(filePath);
+    }
+    return result;
+};
+
 export const discardPendingChanges = () => {
     pendingFolders.clear();
     pendingFiles.clear();

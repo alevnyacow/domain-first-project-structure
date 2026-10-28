@@ -39,13 +39,13 @@ export default defineConfig({
         exclude: [...configDefaults.exclude, 'specs/e2e/**', 'specs/integration/**'],
         coverage: {
             provider: 'v8',
-            include: [${folder('bounded-contexts/**/*.ts')}, ${folder('shared/**/*.ts')}],
+            include: [${folder('bounded-contexts/**/*.ts')}, ${folder('shared-kernel/**/*.ts')}],
             exclude: [
                 '**/*.spec.ts',
-                ${folder('shared/infrastructure/**')},
+                ${folder('shared-kernel/infrastructure/**')},
                 ${folder('bounded-contexts/*/infrastructure/**')},
                 ${folder('bounded-contexts/*/presentation/rest/**')},
-                ${folder('shared/wiring/**')},
+                ${folder('shared-kernel/wiring/**')},
                 ${folder('bounded-contexts/*/wiring/**')}
             ],
             reporter: [['text', { skipFull: true }], 'html']

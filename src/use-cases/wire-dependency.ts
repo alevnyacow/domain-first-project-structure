@@ -82,12 +82,12 @@ export type CustomWiring = (
 ) => boolean;
 
 /**
- * Wired modules of the context, then of the Shared Layer (labelled).
+ * Wired modules of the context, then of the Shared Kernel (labelled).
  */
 const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
     const sharedFolder = new Folder(new ProjectRoot().path).subitem([
         ConfigFile.Instance.data.rootFolder,
-        'shared'
+        'shared-kernel'
     ]);
     const isShared = sharedFolder.path === boundedContextFolder.path;
 
@@ -100,13 +100,13 @@ const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
             ? []
             : findWiredModules(sharedFolder.path).map((x) => ({
                   module: x,
-                  label: `${x.typeName} (shared)`
+                  label: `${x.typeName} (shared-kernel)`
               })))
     ];
 };
 
 /**
- * Asks which modules of the current context and the Shared Layer to
+ * Asks which modules of the current context and the Shared Kernel to
  * inject into the module. Returns false if there is nothing to choose.
  */
 const promptDependencies = async (

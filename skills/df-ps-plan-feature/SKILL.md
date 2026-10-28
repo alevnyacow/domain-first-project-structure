@@ -9,21 +9,21 @@ Understand → decompose → assign → get approval → hand off. A feature cre
 
 ## 1. Understand what exists
 
-Read the config, then build an overview of the contexts and `shared/` from existing architecture docs and a file inventory:
+Read the config, then build an overview of the contexts and `shared-kernel/` from existing architecture docs and a file inventory:
 
 ```bash
-rg --files <rootFolder>/bounded-contexts <rootFolder>/shared
+rg --files <rootFolder>/bounded-contexts <rootFolder>/shared-kernel
 ```
 
 Use the overview to identify likely owners and related contexts. Search for the feature's domain terms and synonyms; don't infer ownership from folder names alone.
 
-Read the relevant code in the affected contexts: aggregates and their rules, use cases, commands/queries, ports, and behavior tests. Follow their dependencies into adapters, wiring, relevant `shared/` components, and the REST endpoints of any providing context. Note how contexts can reach each other: which database each one uses, and any message queue, RPC, or event setup. Expand the search when ownership or a dependency remains unclear; unrelated implementations do not need a full read.
+Read the relevant code in the affected contexts: aggregates and their rules, use cases, commands/queries, ports, and behavior tests. Follow their dependencies into adapters, wiring, relevant `shared-kernel/` components, and the REST endpoints of any providing context. Note how contexts can reach each other: which database each one uses, and any message queue, RPC, or event setup. Expand the search when ownership or a dependency remains unclear; unrelated implementations do not need a full read.
 
 For each affected context, note what it owns, what it does, its language, and the ports and other-context queries/commands involved in the feature. Stop expanding when you can justify ownership, identify reusable components, and verify both sides of each required cross-context interaction. Mark unresolved assumptions in the plan. If there are no contexts yet, propose an initial split in step 3.
 
 ## 2. Decompose
 
-Split the request into pieces of logic and choose each piece's component with `df-ps-scaffold/references/choosing-components.md`. Record the deciding step for the "Why" in the plan: `choosing-components, step N` for a component, `step 3, rule N` (below) for a placement.
+Split the request into pieces of logic and choose each piece's component with `df-ps-scaffold/references/choosing-components.md` (pieces of UI: `df-ps-react`, "Choosing the module"). Record the deciding step for the "Why" in the plan: `choosing-components, step N` for a component, `step 3, rule N` (below) for a placement.
 
 ## 3. Assign to contexts
 
@@ -36,7 +36,7 @@ Split the request into pieces of logic and choose each piece's component with `d
    - Nothing besides REST → the providing context's REST endpoint (`http`).
 
    Unless it's the database, plan **both sides**: check that the providing context exposes what the call needs (endpoint, queue consumer…). If not, add it (and the handler behind it: a query or command, or a use case only when one query or command isn't enough) to the plan.
-5. `shared/` holds technical, ownerless pieces and universal entities / value objects (`money`, `email`): the same meaning in every context, owned by none. Never a concept with one context's meaning or rules.
+5. `shared-kernel/` holds technical, ownerless pieces and universal entities / value objects (`money`, `email`): the same meaning in every context, owned by none. Never a concept with one context's meaning or rules.
 6. Names: kebab-case, in the context's language. Contexts are business areas (`sales`, `reviews`), not features.
 
 If two placements are plausible, ask the user and give your recommendation.
@@ -49,7 +49,7 @@ Find out why, then act:
 - **The logic spans several contexts** (e.g. "cancel only if not shipped and refunded"). It's a process: each context owns its part, and the initiating context gets the coordinating use case and reaches the others through its own queries and commands.
 - **Nobody knows, including the user.** Pick a reversible default: the initiating or closest context, other contexts behind its own queries and commands, and mark it **(provisional)** with the reason.
 
-Never: pick silently, put one context's domain logic in `shared/`, create a catch-all context (`common`, `core`, `misc`), or split arbitrarily.
+Never: pick silently, put one context's domain logic in `shared-kernel/`, create a catch-all context (`common`, `core`, `misc`), or split arbitrarily.
 
 ## 4. Present the plan
 

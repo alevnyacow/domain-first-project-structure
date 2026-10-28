@@ -113,7 +113,7 @@ describe('${naming.withSpaces}', () => {
             `wire-${naming.fileName}.ts`,
             `
 import { wireClass } from '@domain-first/wire'
-import { envBranchedWire } from '../../../${boundedContextFolder.name === 'shared' ? '' : '../'}shared/wiring/env-branched-wire'
+import { envBranchedWire } from '../../../${boundedContextFolder.name === 'shared-kernel' ? '' : '../'}shared-kernel/wiring/env-branched-wire'
 ${implementationTypes
     .map((x) => {
         return {

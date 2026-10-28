@@ -12,7 +12,7 @@ import { ProjectRoot } from './project-root';
  */
 export const lintChecks = [
     'context-isolation',
-    'shared-layer',
+    'shared-kernel',
     'layers',
     'dependencies',
     'react',

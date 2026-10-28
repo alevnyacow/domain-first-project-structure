@@ -141,14 +141,14 @@ const importsOf = (source: string, file: string, aliases: Alias[]) =>
 const isSpec = (file: string) => /\.(spec|test)\.(c|m)?tsx?$/.test(file);
 
 /**
- * Where a file of a context or the Shared Layer lives: `domain`,
+ * Where a file of a context or the Shared Kernel lives: `domain`,
  * `application`, …, then the folders below.
  */
 type Location = { owner: string; segments: string[] };
 
 /**
  * The layers below may import only these targets of a context or the
- * Shared Layer. Wiring and specs know everything.
+ * Shared Kernel. Wiring and specs know everything.
  */
 const layerImportRules: Record<
     string,
@@ -198,7 +198,7 @@ const importViolations = (
 ) => {
     const root = path.resolve(projectRoot, rootFolder);
     const contextsFolder = path.join(root, 'bounded-contexts');
-    const sharedFolder = path.join(root, 'shared');
+    const sharedFolder = path.join(root, 'shared-kernel');
     const reactFolder = path.join(root, 'presentation', 'react');
     const uiKitFolder = path.join(reactFolder, 'ui-kit');
     const widgetsFolder = path.join(reactFolder, 'widgets');
@@ -219,7 +219,7 @@ const importViolations = (
             return { owner, segments };
         }
         const inShared = inside(sharedFolder, file);
-        return inShared && { owner: 'shared', segments: inShared };
+        return inShared && { owner: 'shared-kernel', segments: inShared };
     };
 
     /**
@@ -297,15 +297,15 @@ const importViolations = (
             } else if (inside(sharedFolder, file)) {
                 const allowed =
                     !to ||
-                    to.owner === 'shared' ||
+                    to.owner === 'shared-kernel' ||
                     (to.segments[0] === 'domain' &&
                         to.segments[1] === 'errors') ||
                     (file === inMemoryDbFile &&
                         isDomainModel(to.segments, target));
                 if (!allowed) {
                     report(
-                        'shared-layer',
-                        '[shared] imports a bounded context outside its domain/errors (and domain models for the in-memory DB):',
+                        'shared-kernel',
+                        '[shared-kernel] imports a bounded context outside its domain/errors (and domain models for the in-memory DB):',
                         imported
                     );
                 }
@@ -395,11 +395,11 @@ const wiringViolations = (
     rules: DependencyRules
 ) => {
     const root = path.resolve(projectRoot, rootFolder);
-    const sharedFolder = path.join(root, 'shared');
+    const sharedFolder = path.join(root, 'shared-kernel');
     const contextsFolder = path.join(root, 'bounded-contexts');
     const sharedModules = findWiredModules(sharedFolder);
     const owners = [
-        { name: 'shared', modules: sharedModules },
+        { name: 'shared-kernel', modules: sharedModules },
         ...(fs.existsSync(contextsFolder)
             ? fs
                   .readdirSync(contextsFolder, { withFileTypes: true })
@@ -459,7 +459,7 @@ const wiringViolations = (
 const clockViolations = (projectRoot: string, rootFolder: string) => {
     const root = path.resolve(projectRoot, rootFolder);
     const folders = [
-        path.join(root, 'shared'),
+        path.join(root, 'shared-kernel'),
         ...(fs.existsSync(path.join(root, 'bounded-contexts'))
             ? fs
                   .readdirSync(path.join(root, 'bounded-contexts'))

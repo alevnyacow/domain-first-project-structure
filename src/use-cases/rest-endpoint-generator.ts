@@ -5,7 +5,7 @@ import { createPresentationService } from './scaffold-new-presentation-service';
 const name = 'rest-endpoint-generator';
 
 /**
- * The one endpoint generator of the project: a Shared Layer presentation
+ * The one endpoint generator of the project: a Shared Kernel presentation
  * service, scaffolded like any other. Every generating method is a getter
  * typed as `EndpointGenerator`. With `withNextAdapter`, the adapter is
  * `nextAdapter` of `@domain-first/handlers-next` instead of a placeholder.

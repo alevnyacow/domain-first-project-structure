@@ -108,11 +108,11 @@ export const restHandlers = restWires.map(x => x().handle)
         );
 
     /**
-     * The generator is the Shared Layer one; with wiring, the user picks
+     * The generator is the Shared Kernel one; with wiring, the user picks
      * the handler from wired modules, otherwise it stays a placeholder.
      */
     const endpointGenerator = findRestEndpointGenerator(
-        boundedContextFolder.subitem(['..', '..', 'shared'])
+        boundedContextFolder.subitem(['..', '..', 'shared-kernel'])
     );
     const handler = withWiring
         ? await promptEndpointHandler(boundedContextFolder)
@@ -124,7 +124,7 @@ export const restHandlers = restWires.map(x => x().handle)
     );
 
     /**
-     * Endpoint class. With the Shared Layer generator, `get handle()` calls
+     * Endpoint class. With the Shared Kernel generator, `get handle()` calls
      * the service itself and doesn't compile until the user picks one of
      * its generating getters.
      */

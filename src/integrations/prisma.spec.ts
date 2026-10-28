@@ -46,7 +46,7 @@ const setup = (rootFolder = '.', wire = false, dependencies = {}) => {
     return {
         project,
         configPath,
-        shared: path.join(project, rootFolder, 'shared')
+        shared: path.join(project, rootFolder, 'shared-kernel')
     };
 };
 
@@ -94,7 +94,7 @@ test('adds config, optional service and wiring with deferred writes', async () =
     expect(steps).toEqual([
         'npm install @prisma/orm-postgres temporal-polyfill dotenv',
         'npm install --save-dev prisma @prisma/cli-engine',
-        'Add !src/server/shared/infrastructure/prisma in your linter, to ignore prisma files.',
+        'Add !src/server/shared-kernel/infrastructure/prisma in your linter, to ignore prisma files.',
         'npm run prisma:emit — emit contract.json and contract.d.ts from contract.prisma',
         'npm run prisma:migration:plan — emit the contract and plan a migration',
         'npm run prisma:migration:apply — apply planned migrations to the database in DATABASE_URL'
@@ -167,16 +167,16 @@ test('rejects old Prisma without staging changes', async () => {
     expect(fs.readFileSync(path.join(project, 'package.json'), 'utf8')).toBe(
         original
     );
-    expect(fs.existsSync(path.join(project, 'shared'))).toBe(false);
+    expect(fs.existsSync(path.join(project, 'shared-kernel'))).toBe(false);
 });
 
 test('scripts quote nested paths and retain the migration sequence', () => {
     const scripts = prismaScripts('src/server app');
     expect(scripts['prisma:emit']).toContain(
-        '"src/server app/shared/infrastructure/prisma/prisma.config.ts"'
+        '"src/server app/shared-kernel/infrastructure/prisma/prisma.config.ts"'
     );
     expect(scripts['prisma:migration:plan']).toBe(
-        `${scripts['prisma:emit']} && prisma migration plan --config "src/server app/shared/infrastructure/prisma/prisma.config.ts"`
+        `${scripts['prisma:emit']} && prisma migration plan --config "src/server app/shared-kernel/infrastructure/prisma/prisma.config.ts"`
     );
     expect(scripts['prisma:migration:apply']).toContain(
         'db migrate --advance-ref db'

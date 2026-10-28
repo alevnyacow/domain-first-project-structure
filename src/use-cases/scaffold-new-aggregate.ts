@@ -250,7 +250,7 @@ describe('${aggregateNaming.withSpaces} repository', () => {
                     `wire-${aggregateNaming.fileName}-repository.ts`,
                     `
 import { wireClass } from '@domain-first/wire'
-import { envBranchedWire } from '../../../../shared/wiring/env-branched-wire'
+import { envBranchedWire } from '../../../../shared-kernel/wiring/env-branched-wire'
 ${implementationTypes
     .map((x) => new UnknownFormatNaming(x))
     .map(({ ClassName, fileName }) => {

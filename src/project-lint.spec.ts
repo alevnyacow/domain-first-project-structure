@@ -42,7 +42,7 @@ describe('lintProject', () => {
 import { PrismaInfrastructureService } from '../../services/prisma-infrastructure-service'`,
                 [`${sales}/application/use-cases/pay-use-case.spec.ts`]:
                     "import { wirePayUseCase } from '../../wiring/use-cases/wire-pay-use-case'",
-                'src/shared/presentation/services/errors.ts':
+                'src/shared-kernel/presentation/services/errors.ts':
                     "import { SalesErrors } from '../../bounded-contexts/sales/domain/errors'"
             })
         ).toEqual([]);

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Drives the interactive `df-scaffold` CLI with a scripted list of answers and
+ * Drives an interactive CLI of the package (`df-scaffold` by default, or
+ * `df-react` / `df-init` with `--bin`) with a scripted list of answers and
  * prints the files it created or changed.
  *
  * Usage:
- *   node drive.mjs [--cwd <dir>] [--delay <ms>] <step> [<step> ...]
+ *   node drive.mjs [--bin <name>] [--cwd <dir>] [--delay <ms>] <step> [<step> ...]
  *
  * Steps (one per prompt, in the order the CLI asks them):
  *   pick:<label>   select prompt: type the choice label (or a unique prefix) and press Enter
@@ -22,10 +23,12 @@ import path from 'node:path';
 const args = process.argv.slice(2);
 let cwd = process.cwd();
 let delay = 600;
+let bin = 'df-scaffold';
 const steps = [];
 
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--cwd') cwd = path.resolve(args[++i]);
+    else if (args[i] === '--bin') bin = args[++i];
     else if (args[i] === '--delay') delay = Number(args[++i]);
     else steps.push(args[i]);
 }
@@ -87,12 +90,17 @@ const snapshot = () => {
     return result;
 };
 
-const localBin = path.join(projectRoot, 'node_modules', '.bin', 'df-scaffold');
+if (!['df-scaffold', 'df-react', 'df-init'].includes(bin)) {
+    console.error(`Unknown --bin: ${bin}`);
+    process.exit(2);
+}
+
+const localBin = path.join(projectRoot, 'node_modules', '.bin', bin);
 const [command, commandArgs] = fs.existsSync(localBin)
     ? [localBin, []]
     : [
           'npm',
-          ['exec', '--yes', '--package=@domain-first/project-structure', '--', 'df-scaffold']
+          ['exec', '--yes', '--package=@domain-first/project-structure', '--', bin]
       ];
 
 const before = snapshot();

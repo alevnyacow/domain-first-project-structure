@@ -63,7 +63,7 @@ test('adds config, scripts, gitignore entry and testing library with deferred wr
     const content = fs.readFileSync(vitestConfigPath, 'utf8');
     expect(content).toContain('tsconfigPaths: true');
     expect(content).toContain('"src/server/bounded-contexts/**/*.ts"');
-    expect(content).toContain('"src/server/shared/wiring/**"');
+    expect(content).toContain('"src/server/shared-kernel/wiring/**"');
     expect(content).not.toContain('@domain-first/handlers-next');
     expect(JSON.parse(fs.readFileSync(configPath, 'utf8')).testingLibrary).toBe(
         'vitest'

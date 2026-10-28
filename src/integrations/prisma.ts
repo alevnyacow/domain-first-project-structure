@@ -12,7 +12,7 @@ export const prismaScripts = (rootFolder: string) => {
     const config = JSON.stringify(
         path.posix.join(
             rootFolder.replaceAll('\\', '/'),
-            'shared/infrastructure/prisma/prisma.config.ts'
+            'shared-kernel/infrastructure/prisma/prisma.config.ts'
         )
     );
     const emit = `prisma contract emit --config ${config}`;
@@ -86,7 +86,7 @@ export const addPrisma = async (): Promise<string[]> => {
         ...manifest.dependencies,
         ...manifest.devDependencies
     };
-    const shared = path.resolve(root, config.rootFolder, 'shared');
+    const shared = path.resolve(root, config.rootFolder, 'shared-kernel');
     const prismaFolder = path.join(shared, 'infrastructure/prisma');
 
     // Adding an integration must not silently become a major-version migration.
@@ -106,7 +106,8 @@ export const addPrisma = async (): Promise<string[]> => {
     }
 
     const withService = await confirm({
-        message: 'Create shared Prisma infrastructure service?',
+        message:
+            'Create the Prisma infrastructure service in the Shared Kernel?',
         default: true
     });
     const useByDefault =

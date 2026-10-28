@@ -6,30 +6,52 @@ import { UnknownFormatNaming } from '../unknown-format-naming';
 
 /**
  * Inside a context its name is implied, so names get no suffix. In the
- * Shared Layer they end with `Shared`, and errors with `SharedError`.
+ * Shared Kernel they end with `SharedKernel`, and errors with `SharedKernelError`.
  */
 const errorNames = (boundedContextFolder: Folder) => {
     const isShared =
         boundedContextFolder.path ===
         new Folder(new ProjectRoot().path).subitem([
             ConfigFile.Instance.data.rootFolder,
-            'shared'
+            'shared-kernel'
         ]).path;
 
     return {
         namespace: (namespaceName: string) =>
-            `${namespaceName}${isShared ? 'Shared' : ''}Errors`,
+            `${namespaceName}${isShared ? 'SharedKernel' : ''}Errors`,
         error: (errorName: string) =>
-            `${errorName}${isShared ? 'SharedError' : ''}`
+            `${errorName}${isShared ? 'SharedKernelError' : ''}`
     };
 };
+
+const namespacePattern = /export\s+const\s+(\w+)\s*=\s*errorNamespace\b/;
 
 /**
  * The namespace the file exports, so files of older naming keep working.
  */
 const exportedNamespace = (file: File, fallback: string) =>
-    /export\s+const\s+(\w+)\s*=\s*errorNamespace\b/.exec(file.data)?.[1] ??
-    fallback;
+    namespacePattern.exec(file.data)?.[1] ?? fallback;
+
+/**
+ * Contexts and the Shared Kernel start without errors: the root namespace
+ * is added to `index.ts` with the first error outside a namespace, above
+ * the re-exports of namespaces created before it.
+ */
+const rootNamespace = (indexFile: File, namespace: string, code: string) => {
+    const content = indexFile.exists ? indexFile.data.trim() : '';
+    const existing = namespacePattern.exec(content)?.[1];
+    if (existing) return existing;
+    indexFile.update(
+        [
+            `import { errorNamespace } from '@domain-first/errors'`,
+            `export const ${namespace} = errorNamespace('${code}')`,
+            content
+        ]
+            .filter((x) => !!x)
+            .join('\n\n')
+    );
+    return namespace;
+};
 
 const errorClass = (className: string, namespace: string, code: string) =>
     `export class ${className} extends ${namespace}.define('${code}') {}`;
@@ -64,9 +86,10 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
         indexFile.addLineIfMissing(
             errorClass(
                 names.error(naming.ClassName),
-                exportedNamespace(
+                rootNamespace(
                     indexFile,
-                    `${contextNaming.ClassName}Errors`
+                    `${contextNaming.ClassName}Errors`,
+                    boundedContextFolder.name
                 ),
                 naming.fileName
             ),

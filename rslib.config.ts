@@ -6,6 +6,8 @@ export default defineConfig({
       index: './src/index.ts',
       lint: './src/lint.ts',
       integration: './src/integration.ts',
+      init: './src/init.ts',
+      react: './src/react.ts',
     },
   },
   lib: [

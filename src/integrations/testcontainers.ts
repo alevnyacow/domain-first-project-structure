@@ -176,7 +176,7 @@ export const addTestcontainers = async (): Promise<string[]> => {
         path.resolve(
             root,
             config.rootFolder,
-            'shared/infrastructure/prisma/prisma.config.ts'
+            'shared-kernel/infrastructure/prisma/prisma.config.ts'
         )
     ).exists;
     // Without --advance-ref: the db ref in migrations/app/refs/db.json tracks
