@@ -4,6 +4,7 @@ import path from 'node:path';
 import { checkbox, confirm, input, select } from '@inquirer/prompts';
 import { afterAll, beforeAll, expect, rstest, test } from '@rstest/core';
 import { Folder, writePendingChanges } from './file-system';
+import { plural } from './in-memory-db';
 import {
     initializeUseCase,
     scaffoldNewAggregateUseCase,
@@ -296,4 +297,50 @@ test('an unchecked in-memory DB leaves the in-memory repository empty', async ()
             'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
         )
     ).not.toContain('this.section<');
+});
+
+test('plural adds s, es or ies', () => {
+    expect(plural('user')).toBe('users');
+    expect(plural('category')).toBe('categories');
+    expect(plural('day')).toBe('days');
+    expect(plural('box')).toBe('boxes');
+    expect(plural('status')).toBe('statuses');
+    expect(plural('match')).toBe('matches');
+    expect(plural('wish')).toBe('wishes');
+});
+
+test('plural doubles z after a single vowel', () => {
+    expect(plural('quiz')).toBe('quizzes');
+    expect(plural('whiz')).toBe('whizzes');
+    expect(plural('fez')).toBe('fezzes');
+    expect(plural('pop-quiz')).toBe('pop-quizzes');
+    expect(plural('buzz')).toBe('buzzes');
+    expect(plural('waltz')).toBe('waltzes');
+});
+
+test('plural keeps uncountable endings as they are', () => {
+    for (const word of [
+        'data',
+        'user-data',
+        'metadata',
+        'profile-info',
+        'api-usage',
+        'user-feedback',
+        'social-media',
+        'middleware',
+        'lab-equipment',
+        'contact-information',
+        'domain-knowledge',
+        'network-traffic',
+        'device-telemetry',
+        'page-analytics',
+        'time-series'
+    ]) {
+        expect(plural(word)).toBe(word);
+    }
+});
+
+test('plural matches uncountable endings case-insensitively', () => {
+    expect(plural('UserData')).toBe('UserData');
+    expect(plural('PROFILE-INFO')).toBe('PROFILE-INFO');
 });

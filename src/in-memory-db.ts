@@ -230,10 +230,35 @@ export const usesInMemoryDb = (implementationType: string) =>
     inMemoryDbScaffolded();
 
 /**
- * `user` → `users`, `category` → `categories`, `box` → `boxes`.
+ * Endings of words that stay the same in plural.
+ */
+const uncountableEndings = [
+    'data',
+    'info',
+    'usage',
+    'feedback',
+    'media',
+    'ware',
+    'equipment',
+    'information',
+    'knowledge',
+    'traffic',
+    'telemetry',
+    'analytics',
+    'series'
+];
+
+const uncountable = new RegExp(`(${uncountableEndings.join('|')})$`, 'i');
+
+/**
+ * `user` → `users`, `category` → `categories`, `box` → `boxes`,
+ * `quiz` → `quizzes`, `user-data` → `user-data`.
  */
 export const plural = (word: string) => {
+    if (uncountable.test(word)) return word;
     if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+    // A single vowel before `z` doubles it; `qu` counts as a consonant.
+    if (/(^|[^aeiou]|qu)[aeiou]z$/i.test(word)) return `${word}zes`;
     if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
     return `${word}s`;
 };
