@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, test } from '@rstest/core';
 import { resolveDependencyRules } from './dependency-rules';
 import {
+    addBranchedImplementation,
     addConstructorParameters,
     addImport,
     addWireDependencies,
@@ -12,7 +13,9 @@ import {
     type Layer,
     readWiredModule,
     relativeImport,
+    setWireBranches,
     type WiredModule,
+    wireBranches,
     wiredDependencyNames
 } from './wiring';
 
@@ -484,5 +487,93 @@ describe('readWiredModule', () => {
             'PrismaUserRepository',
             'InMemoryUserRepository'
         ]);
+    });
+});
+
+describe('branched wires', () => {
+    const wire = [
+        "import { wireClass } from '@domain-first/wire'",
+        "import { PrismaOrderRepository } from '../../infrastructure/repositories/prisma/prisma-order-repository'",
+        "import { InMemoryOrderRepository } from '../../infrastructure/repositories/in-memory/in-memory-order-repository'",
+        '',
+        'const wirePrismaImplementation = wireClass(PrismaOrderRepository, [])',
+        '',
+        'const wireInMemoryImplementation = wireClass(InMemoryOrderRepository, [])',
+        '',
+        'export const wireOrderRepository = envBranchedWire({',
+        '    test: wireInMemoryImplementation, // fast',
+        '    development: wirePrismaImplementation,',
+        '    production: wirePrismaImplementation',
+        '})'
+    ].join('\n');
+
+    test('reads the wire of each environment', () => {
+        expect([...wireBranches(wire, 'wireOrderRepository')]).toEqual([
+            ['test', 'wireInMemoryImplementation'],
+            ['development', 'wirePrismaImplementation'],
+            ['production', 'wirePrismaImplementation']
+        ]);
+    });
+
+    test('points environments at a wire, keeping comments', () => {
+        expect(
+            setWireBranches(
+                wire,
+                'wireOrderRepository',
+                ['test', 'production'],
+                'wireDynamoImplementation'
+            )
+        ).toContain(
+            [
+                '    test: wireDynamoImplementation, // fast',
+                '    development: wirePrismaImplementation,',
+                '    production: wireDynamoImplementation',
+                '})'
+            ].join('\n')
+        );
+    });
+
+    test('adds missing environments and expands shorthand ones', () => {
+        expect(
+            setWireBranches(
+                'export const wireA = envBranchedWire({ test, development: wireB })',
+                'wireA',
+                ['test', 'production'],
+                'wireC'
+            )
+        ).toBe(
+            'export const wireA = envBranchedWire({ test: wireC, development: wireB, production: wireC })'
+        );
+    });
+
+    test('adds an implementation before the module wire', () => {
+        expect(
+            addBranchedImplementation(wire, 'wireOrderRepository', {
+                importLine:
+                    "import { DynamoOrderRepository } from '../../infrastructure/repositories/dynamo/dynamo-order-repository'",
+                className: 'DynamoOrderRepository',
+                wireName: 'wireDynamoImplementation',
+                environments: ['production']
+            })
+        ).toBe(
+            [
+                "import { wireClass } from '@domain-first/wire'",
+                "import { PrismaOrderRepository } from '../../infrastructure/repositories/prisma/prisma-order-repository'",
+                "import { InMemoryOrderRepository } from '../../infrastructure/repositories/in-memory/in-memory-order-repository'",
+                "import { DynamoOrderRepository } from '../../infrastructure/repositories/dynamo/dynamo-order-repository'",
+                '',
+                'const wirePrismaImplementation = wireClass(PrismaOrderRepository, [])',
+                '',
+                'const wireInMemoryImplementation = wireClass(InMemoryOrderRepository, [])',
+                '',
+                'const wireDynamoImplementation = wireClass(DynamoOrderRepository, [])',
+                '',
+                'export const wireOrderRepository = envBranchedWire({',
+                '    test: wireInMemoryImplementation, // fast',
+                '    development: wirePrismaImplementation,',
+                '    production: wireDynamoImplementation',
+                '})'
+            ].join('\n')
+        );
     });
 });

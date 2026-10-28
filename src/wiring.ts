@@ -436,12 +436,12 @@ const closingIndex = (source: string, openIndex: number) => {
 };
 
 /**
- * Comma-separated items on the top level of a bracket's content,
- * without comments.
+ * Start and end of each comma-separated item on the top level of a
+ * bracket's content, without comments around it.
  */
-const splitTopLevel = (content: string) => {
+const topLevelItemRanges = (content: string) => {
     const code = codeOnly(content);
-    const items: string[] = [];
+    const ranges: { start: number; end: number }[] = [];
     let depth = 0;
     let itemStart = 0;
     for (let index = 0; index <= code.length; index++) {
@@ -452,19 +452,29 @@ const splitTopLevel = (content: string) => {
             depth--;
         }
         if (index === code.length || (char === ',' && depth === 0)) {
-            const item = content.slice(itemStart, index);
             const itemCode = code.slice(itemStart, index);
-            // Keep the item's own text, minus comments around it.
             const first = itemCode.search(/\S/);
             const last = itemCode.search(/\S\s*$/);
             if (first !== -1) {
-                items.push(item.slice(first, last + 1));
+                ranges.push({
+                    start: itemStart + first,
+                    end: itemStart + last + 1
+                });
             }
             itemStart = index + 1;
         }
     }
-    return items;
+    return ranges;
 };
+
+/**
+ * Comma-separated items on the top level of a bracket's content,
+ * without comments.
+ */
+const splitTopLevel = (content: string) =>
+    topLevelItemRanges(content).map(({ start, end }) =>
+        content.slice(start, end)
+    );
 
 /**
  * Appends items to a bracket's content. Existing items keep their
@@ -665,5 +675,118 @@ export const wireDependencies = (
                     `private readonly ${parameterName(x.typeName)}: ${x.typeName}`
             )
         )
+    );
+};
+
+/**
+ * Braces of the object passed to the module's `envBranchedWire`.
+ */
+const branchesRange = (source: string, wireName: string) => {
+    const match = new RegExp(
+        `export\\s+const\\s+${wireName}\\s*=\\s*envBranchedWire\\(\\s*\\{`
+    ).exec(codeOnly(source));
+    if (!match) {
+        throw new Error(`${wireName} = envBranchedWire({...}) not found`);
+    }
+    const openIndex = match.index + match[0].length - 1;
+    return {
+        declarationIndex: match.index,
+        openIndex,
+        closeIndex: closingIndex(source, openIndex)
+    };
+};
+
+/**
+ * `key: value` items of a branches object, `test` for `test: …`.
+ */
+const branchItems = (content: string) =>
+    topLevelItemRanges(content).map(({ start, end }) => {
+        const item = content.slice(start, end);
+        const colon = codeOnly(item).indexOf(':');
+        if (colon === -1) {
+            return { key: item, valueStart: start, end, shorthand: true };
+        }
+        const valueStart =
+            start + colon + 1 + item.slice(colon + 1).search(/\S/);
+        return {
+            key: item.slice(0, colon).trim(),
+            valueStart,
+            end,
+            shorthand: false
+        };
+    });
+
+/**
+ * Environment → the wire it uses, as written in the module's
+ * `envBranchedWire({...})`.
+ */
+export const wireBranches = (source: string, wireName: string) => {
+    const { openIndex, closeIndex } = branchesRange(source, wireName);
+    const content = source.slice(openIndex + 1, closeIndex);
+    return new Map(
+        branchItems(content).map(({ key, valueStart, end }) => [
+            key,
+            content.slice(valueStart, end)
+        ])
+    );
+};
+
+/**
+ * Points the environments of the module's `envBranchedWire` at the wire,
+ * adding the environments it doesn't have yet.
+ */
+export const setWireBranches = (
+    source: string,
+    wireName: string,
+    environments: string[],
+    branchWire: string
+) => {
+    const { openIndex, closeIndex } = branchesRange(source, wireName);
+    let content = source.slice(openIndex + 1, closeIndex);
+    const items = branchItems(content);
+    // From the end, so earlier positions stay valid.
+    for (const { key, valueStart, end, shorthand } of [...items].reverse()) {
+        if (environments.includes(key)) {
+            content =
+                content.slice(0, valueStart) +
+                (shorthand ? `${key}: ${branchWire}` : branchWire) +
+                content.slice(end);
+        }
+    }
+    const missing = environments.filter(
+        (environment) => !items.some((x) => x.key === environment)
+    );
+    if (missing.length) {
+        content = appendItems(
+            content,
+            missing.map((environment) => `${environment}: ${branchWire}`)
+        );
+    }
+    return source.slice(0, openIndex + 1) + content + source.slice(closeIndex);
+};
+
+/**
+ * Adds an implementation to a branched wire: its import and its own
+ * `wireClass` before the module's wire, which it serves in the given
+ * environments.
+ */
+export const addBranchedImplementation = (
+    source: string,
+    wireName: string,
+    implementation: {
+        importLine: string;
+        className: string;
+        wireName: string;
+        environments: string[];
+    }
+) => {
+    const withImport = addImport(source, implementation.importLine);
+    const { declarationIndex } = branchesRange(withImport, wireName);
+    const withWireClass = `${withImport.slice(0, declarationIndex)}const ${implementation.wireName} = wireClass(${implementation.className}, [])\n\n${withImport.slice(declarationIndex)}`;
+    return setWireBranches(
+        withWireClass,
+        wireName,
+        implementation.environments,
+        implementation.wireName
     );
 };

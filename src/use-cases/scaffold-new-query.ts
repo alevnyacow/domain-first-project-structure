@@ -1,22 +1,14 @@
 import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
-import {
-    injectInMemoryDb,
-    passInMemoryDb,
-    usesInMemoryDb
-} from '../in-memory-db';
+import { createImplementation } from '../implementations';
+import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     const queriesFolder = boundedContextFolder.subitem([
         'application',
-        'queries'
-    ]);
-
-    const infrastructureFolder = boundedContextFolder.subitem([
-        'infrastructure',
         'queries'
     ]);
 
@@ -53,55 +45,16 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     ].filter((x) => !!x);
 
     for (const implementation of implementationTypes) {
-        const formatNaming = new UnknownFormatNaming(implementation);
-
-        const implementationFile = infrastructureFolder
-            .subitem([formatNaming.fileName])
-            .createFile(
-                `${formatNaming.fileName}-${naming.fileName}-query.ts`,
-                ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/handlers'
-                )
-                    ? /** Implementation with @domain-first/handlers */
-                      `
-import { defineHandler } from '@domain-first/handlers'
-import { ${naming.ClassName}Query } from '../../../application/queries/${naming.fileName}-query'
-
-export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.ClassName}Query {
-    constructor() {
-        super()
-    }
-
-    handle = defineHandler({
-        inputSchema: ${naming.ClassName}Query.inputSchema,
-        outputSchema: ${naming.ClassName}Query.outputSchema,
-        handler: async (input) => {
-            return {}
-        }
-    })
-}
-        `.trim()
-                    : /** Implementation without @domain-first/handlers */ `
-import { ${naming.ClassName}Query } from '../../../application/queries/${naming.fileName}-query'
-
-export class ${formatNaming.ClassName}${naming.ClassName}Query extends ${naming.ClassName}Query {
-    constructor() {
-        super()
-    }
-}
-    `.trim()
-            );
-
-        /**
-         * With wiring, the in-memory DB is a suggested dependency
-         * instead, so it can be left out.
-         */
-        if (!withWiring && usesInMemoryDb(implementation)) {
-            injectInMemoryDb(
-                implementationFile,
-                `${formatNaming.ClassName}${naming.ClassName}Query`
-            );
-        }
+        createImplementation(
+            boundedContextFolder,
+            {
+                kind: 'query',
+                name: naming.fileName,
+                ownerPath: boundedContextFolder.path,
+                labels: []
+            },
+            new UnknownFormatNaming(implementation).fileName
+        );
     }
 
     if (

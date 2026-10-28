@@ -130,6 +130,10 @@ export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [
 
 Only the dependencies that respect the layers are offered: a use case can't take another use case, the domain can't take the application. To add a dependency later, choose **Wire dependency** in the context menu.
 
+### How to add an implementation
+
+Choose **Infrastructure → New Implementation** to give an existing repository, command, query or port one more implementation, say a `local` adapter of a `FileStorage` port next to `s3` and `in-memory`. With `wire`, pick the environments that use it: `test` stays on `in-memory`, `development` moves to `local`, `production` stays on `s3`.
+
 ### How to move or rename a module
 
 Choose **Move or rename** in the context menu: rename an aggregate, entity, value object, service, port, query, command or use case, move it to another bounded context or to the Shared Kernel, or move an entity in or out of an aggregate. Its files, implementations, wire, specs and every import and derived name in the project follow it: `OrderRepository`, `PrismaOrderRepository`, `wireOrderRepository`, the `orderRepository` parameter of a use case, the in-memory DB section. A move that would make one context import another is refused, with the list of imports that would cross the boundary.

@@ -281,7 +281,7 @@ export const findBackendUnits = (ownerPath: string): BackendUnit[] => {
     ];
 };
 
-const kebabName = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+export const kebabName = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 const lowerFirst = (value: string) => value[0].toLowerCase() + value.slice(1);
 

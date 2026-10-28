@@ -23,6 +23,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [New Use Case](#new-use-case)
     - [New Command and New Query](#new-command-and-new-query)
     - [New Port](#new-port)
+    - [New Implementation](#new-implementation)
     - [New Handlers-REST Endpoint](#new-handlers-rest-endpoint)
 - [Wiring](#wiring)
     - [`envBranchedWire`](#envbranchedwire)
@@ -153,7 +154,7 @@ After choosing a bounded context or the Shared Kernel, the CLI asks for a layer 
 | ----------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `Domain`          | `New Aggregate`, `New Entity`, `New Value Object`, `Errors`, `New Service`   | `New Entity`, `New Value Object`, `Errors`, `New Service` |
 | `Application`     | `New Query`, `New Command`, `New Use Case`, `New Port`, `New Service`        | `New Port`, `New Service`                            |
-| `Infrastructure`  | `New Service`                                                                | `New Service`                                        |
+| `Infrastructure`  | `New Service`, `New Implementation`                                          | `New Service`, `New Implementation`                  |
 | `Presentation`    | `New Handlers-REST Endpoint` (with `handlers-rest`), `New Service`           | `New Service`                                        |
 | `Wire dependency` | With `wire`: [Wire dependency](#wire-dependency)                             | With `wire`: [Wire dependency](#wire-dependency)     |
 | `Move or rename`  | [Move or rename](#move-or-rename)                                            | [Move or rename](#move-or-rename)                    |
@@ -423,6 +424,39 @@ With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the w
 | `infrastructure/application-adapters/<impl>/<impl>-<name>.ts`      | Per implementation | `class <Impl><Name> extends <Name>`                                |
 | `application/ports/<name>.spec.ts`                                 | With tests         | Wiring test with `wire`, construction test of the adapter otherwise |
 | `wiring/application-ports/wire-<name>.ts`                          | With `wire`        | `wire<Name>` built with [`envBranchedWire`](#envbranchedwire)      |
+
+### New Implementation
+
+`Infrastructure → New Implementation` adds one more implementation to an existing repository, command, query or port, for example a third adapter of a port so that each environment uses its own. Contracts are found by their file layout, so it works without `wire` too.
+
+**Prompts**
+
+| Prompt                 | Condition                         | Choices / value                                                                                          |
+| ---------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `Contract:`            |                                   | Repositories, commands, queries and ports of the context, with their implementations: `order (in-memory, prisma)` |
+| `Implementation type:` |                                   | Kebab-case label the contract doesn't have yet: `dynamo`, `local`                                        |
+| `Environments:`        | With `wire` and an env-branched wire | Checkbox, at least one: `test`, `development`, `production`, each with its current implementation: `development (now: s3)` |
+| `Dependencies for <Impl>:` | With `wire`                   | As in [Dependency selection](#dependency-selection), for the new implementation only                    |
+
+**Output**
+
+The implementation is the same as the one its contract's generator creates ([New Aggregate](#new-aggregate), [New Command and New Query](#new-command-and-new-query), [New Port](#new-port)), the [in-memory DB](#in-memory-db) included. With `wire`, its wire file gets the import, `const wire<Impl>Implementation = wireClass(<Impl><Contract>, [])` before the module's wire, and the chosen environments of `envBranchedWire` point at it:
+
+```ts
+const wireS3Implementation = wireClass(S3FileStorage, [])
+
+const wireInMemoryImplementation = wireClass(InMemoryFileStorage, [])
+
+const wireLocalImplementation = wireClass(LocalFileStorage, [])
+
+export const wireFileStorage = envBranchedWire({
+    test: wireInMemoryImplementation,
+    development: wireLocalImplementation,
+    production: wireS3Implementation
+})
+```
+
+An implementation that no longer serves any environment stays in the file, and the CLI says so: `S3FileStorage is no longer used in any environment.` Specs are not changed.
 
 ### New Handlers-REST Endpoint
 

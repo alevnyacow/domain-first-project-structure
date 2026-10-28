@@ -1,6 +1,7 @@
 import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { createImplementation } from '../implementations';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -46,29 +47,20 @@ export abstract class ${naming.ClassName} {
         });
     }
 
-    const infrastructureFolder = boundedContextFolder.subitem([
-        'infrastructure',
-        'application-adapters'
-    ]);
-
-    const implementationTypes = [
-        implementationType,
-        testImplementationType
-    ].filter((x) => !!x);
+    const implementationTypes = [implementationType, testImplementationType]
+        .filter((x) => !!x)
+        .map((x) => new UnknownFormatNaming(x).fileName);
 
     for (const implementation of implementationTypes) {
-        const currentNaming = new UnknownFormatNaming(
-            `${implementation}-${naming.fileName}`
-        );
-        infrastructureFolder.subitem([implementation]).createFile(
-            `${currentNaming.fileName}.ts`,
-            `
-import { ${naming.ClassName} } from '../../../application/ports/${naming.fileName}'
-
-export class ${currentNaming.ClassName} extends ${naming.ClassName} {
-
-}
-            `.trim()
+        createImplementation(
+            boundedContextFolder,
+            {
+                kind: 'port',
+                name: naming.fileName,
+                ownerPath: boundedContextFolder.path,
+                labels: []
+            },
+            implementation
         );
     }
 

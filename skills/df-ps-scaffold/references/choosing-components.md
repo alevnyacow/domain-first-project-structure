@@ -32,6 +32,7 @@ Split the request into pieces of logic (one responsibility each). For each piece
 - A rule about a **set** of aggregates (uniqueness, "at most N per day") = a repository method that queries it, plus a check and a domain error in the use case. No separate component.
 - Steps 9–10 beat 11–15. The other-context or external part becomes a query/command or a port. What remains may be a service that **receives it in its constructor**.
 - Another context (step 9): input/output are this context's own models, duplicated in its terms, never the other context's. The implementation reaches the other context the simplest available way: a shared database → directly (the persistence label, e.g. `prisma`); otherwise the way chosen by `df-ps-plan-feature` (step 3, rule 4): if the project has several ways to reach a context (REST, message queue, RPC…), ask the user; with REST only, its REST endpoint (`http`). The test implementation returns fixed data. No imports from the other context.
+- Another way to perform an **existing** repository, command, query or port (another storage, provider or environment) is a new implementation of it (Infrastructure → New Implementation, `units/implementation.md`), not a new contract.
 - Don't create components "just in case": a command only when storage access deserves its own contract, an application service only when reused.
 
 ## Port or service?

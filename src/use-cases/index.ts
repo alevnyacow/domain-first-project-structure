@@ -11,6 +11,7 @@ export * from './scaffold-new-domain-object';
 export * from './scaffold-new-domain-service';
 export * from './scaffold-new-error';
 export * from './scaffold-new-handlers-rest-endpoint';
+export * from './scaffold-new-implementation';
 export * from './scaffold-new-infrastructure-service';
 export * from './scaffold-new-presentation-service';
 export * from './scaffold-new-query';

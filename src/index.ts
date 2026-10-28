@@ -16,6 +16,7 @@ import {
     scaffoldNewDomainService,
     scaffoldNewErrorUseCase,
     scaffoldNewHandlersRestEndpoint,
+    scaffoldNewImplementation,
     scaffoldNewInfrastructureService,
     scaffoldNewPresentationService,
     scaffoldNewQuery,
@@ -193,10 +194,14 @@ const main = async () => {
             if (layer === 'Infrastructure') {
                 const operation = await select({
                     message: 'Infrastructure layer operation:',
-                    choices: ['New Service']
+                    choices: ['New Service', 'New Implementation']
                 });
 
                 switch (operation) {
+                    case 'New Implementation': {
+                        await scaffoldNewImplementation(boundedContextFolder);
+                        return;
+                    }
                     case 'New Service': {
                         await scaffoldNewInfrastructureService(
                             boundedContextFolder

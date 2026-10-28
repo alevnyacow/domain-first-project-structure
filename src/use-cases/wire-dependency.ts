@@ -180,6 +180,30 @@ export const wireNewModuleDependencies = async (
     }
 };
 
+/**
+ * The last step of adding an implementation to a branched wire: only
+ * the new implementation is asked about.
+ */
+export const wireNewImplementationDependencies = async (
+    boundedContextFolder: Folder,
+    wireFile: File,
+    className: string,
+    customWiring?: CustomWiring
+) => {
+    const consumer = readWiredModule(wireFile.path, boundedContextFolder.path);
+    const implementation = consumer?.implementations.find(
+        (x) => x.className === className
+    );
+    if (consumer && implementation) {
+        await promptDependencies(
+            boundedContextFolder,
+            consumer,
+            [implementation],
+            customWiring
+        );
+    }
+};
+
 export const wireDependency = async (boundedContextFolder: Folder) => {
     const modules = findWiredModules(boundedContextFolder.path);
 

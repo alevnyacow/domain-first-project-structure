@@ -1,16 +1,11 @@
 import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
-import { File, type Folder } from '../file-system';
+import type { Folder } from '../file-system';
 import {
-    addInMemoryDbSection,
-    inMemoryDbSectionMembers,
-    inMemoryDbTypeImport,
-    isInMemoryDb,
-    keepInMemoryDbSection,
-    passInMemoryDb,
-    usesInMemoryDb,
-    wireInMemoryDb
-} from '../in-memory-db';
+    createImplementation,
+    inMemoryRepositoryWiring
+} from '../implementations';
+import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -123,68 +118,23 @@ describe('${aggregateNaming.withSpaces}', () => {
             });
         }
 
-        /**
-         * Infrastructure scaffolding.
-         */
-        const infrastructureRepositoriesFolder = boundedContextFolder.subitem([
-            'infrastructure',
-            'repositories'
-        ]);
-
         const implementationTypes = [
             infrastructureImplementationType,
             testImplementationType
         ].filter((x) => !!x);
 
+        const repository = {
+            kind: 'aggregate' as const,
+            name: aggregateName,
+            ownerPath: boundedContextFolder.path,
+            labels: []
+        };
+
         for (const implementation of implementationTypes) {
-            const naming = new UnknownFormatNaming(implementation);
-            const repositoryFolder = infrastructureRepositoriesFolder.subitem([
-                naming.fileName
-            ]);
-            const repositoryFileName = `${naming.fileName}-${aggregateName}-repository.ts`;
-
-            /**
-             * An in-memory repository keeps its aggregates in their own
-             * section of the shared in-memory DB.
-             */
-            /**
-             * With wiring, the in-memory DB is a suggested dependency
-             * instead, so it can be left out.
-             */
-            if (
-                usesInMemoryDb(implementation) &&
-                !ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/wire'
-                )
-            ) {
-                const section = addInMemoryDbSection(
-                    aggregateNaming,
-                    aggregatesFolder.path
-                );
-                repositoryFolder.createFile(
-                    repositoryFileName,
-                    `
-${inMemoryDbTypeImport(repositoryFolder.subitem([repositoryFileName]).path)}
-import { ${aggregateNaming.ClassName}Repository } from '../../../domain/aggregates/${aggregateName}'
-
-export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implements ${aggregateNaming.ClassName}Repository {
-    ${inMemoryDbSectionMembers(section, false)}
-}
-                        `.trim()
-                );
-                continue;
-            }
-
-            repositoryFolder.createFile(
-                repositoryFileName,
-                `
-import { ${aggregateNaming.ClassName}Repository } from '../../../domain/aggregates/${aggregateName}'
-
-export class ${naming.ClassName}${aggregateNaming.ClassName}Repository implements ${aggregateNaming.ClassName}Repository {
-    constructor() {}
-}
-
-                        `.trim()
+            createImplementation(
+                boundedContextFolder,
+                repository,
+                new UnknownFormatNaming(implementation).fileName
             );
         }
 
@@ -274,27 +224,14 @@ export const wire${aggregateNaming.ClassName}Repository = envBranchedWire({
     `.trim()
                 );
 
-            /**
-             * An in-memory repository keeps only its aggregate's section
-             * of the in-memory DB.
-             */
             await wireNewModuleDependencies(
                 boundedContextFolder,
                 wireFile,
-                (implementation, dependency) => {
-                    if (!isInMemoryDb(dependency)) {
-                        return false;
-                    }
-                    keepInMemoryDbSection(
-                        new File(implementation.file),
-                        addInMemoryDbSection(
-                            aggregateNaming,
-                            aggregatesFolder.path
-                        )
-                    );
-                    wireInMemoryDb(wireFile, implementation.className);
-                    return true;
-                }
+                inMemoryRepositoryWiring(
+                    boundedContextFolder,
+                    repository,
+                    wireFile
+                )
             );
         }
     }

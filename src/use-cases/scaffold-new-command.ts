@@ -1,22 +1,14 @@
 import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
-import {
-    injectInMemoryDb,
-    passInMemoryDb,
-    usesInMemoryDb
-} from '../in-memory-db';
+import { createImplementation } from '../implementations';
+import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     const commandsFolder = boundedContextFolder.subitem([
         'application',
-        'commands'
-    ]);
-
-    const infrastructureFolder = boundedContextFolder.subitem([
-        'infrastructure',
         'commands'
     ]);
 
@@ -53,55 +45,16 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     ].filter((x) => !!x);
 
     for (const implementation of implementationTypes) {
-        const formatNaming = new UnknownFormatNaming(implementation);
-
-        const implementationFile = infrastructureFolder
-            .subitem([formatNaming.fileName])
-            .createFile(
-                `${formatNaming.fileName}-${naming.fileName}-command.ts`,
-                ConfigFile.Instance.data.domainFirstPackages.includes(
-                    '@domain-first/handlers'
-                )
-                    ? /** Implementation with @domain-first/handlers */
-                      `
-import { defineHandler } from '@domain-first/handlers'
-import { ${naming.ClassName}Command } from '../../../application/commands/${naming.fileName}-command'
-
-export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${naming.ClassName}Command {
-    constructor() {
-        super()
-    }
-
-    handle = defineHandler({
-        inputSchema: ${naming.ClassName}Command.inputSchema,
-        outputSchema: ${naming.ClassName}Command.outputSchema,
-        handler: async (input) => {
-            return {}
-        }
-    })
-}
-        `.trim()
-                    : /** Implementation without @domain-first/handlers */ `
-import { ${naming.ClassName}Command } from '../../../application/commands/${naming.fileName}-command'
-
-export class ${formatNaming.ClassName}${naming.ClassName}Command extends ${naming.ClassName}Command {
-    constructor() {
-        super()
-    }
-}
-    `.trim()
-            );
-
-        /**
-         * With wiring, the in-memory DB is a suggested dependency
-         * instead, so it can be left out.
-         */
-        if (!withWiring && usesInMemoryDb(implementation)) {
-            injectInMemoryDb(
-                implementationFile,
-                `${formatNaming.ClassName}${naming.ClassName}Command`
-            );
-        }
+        createImplementation(
+            boundedContextFolder,
+            {
+                kind: 'command',
+                name: naming.fileName,
+                ownerPath: boundedContextFolder.path,
+                labels: []
+            },
+            new UnknownFormatNaming(implementation).fileName
+        );
     }
 
     if (

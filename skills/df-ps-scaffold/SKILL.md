@@ -104,6 +104,7 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 | Use case | `use-case.md` | Application → New Use Case |
 | Command, query | `command-query.md` | Application → New Command / New Query |
 | Port + adapters | `port.md` | Application → New Port |
+| One more implementation of a repository, command, query or port | `implementation.md` | Infrastructure → New Implementation |
 | REST endpoint | `endpoint.md` | Presentation → New Handlers-REST Endpoint |
 | Dependency of an existing module | `wire-dependency.md` | Wire dependency |
 | Moving or renaming a module | `move-or-rename.md` | Move or rename |
@@ -141,11 +142,11 @@ Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the planned fi
 | -------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
 | Domain         | New Aggregate, New Entity, New Value Object, Errors, New Service | New Entity, New Value Object, Errors, New Service |
 | Application    | New Query, New Command, New Use Case, New Port, New Service      | New Port, New Service                             |
-| Infrastructure | New Service                                                      | New Service                                       |
+| Infrastructure | New Service, New Implementation                                  | New Service, New Implementation                   |
 | Presentation   | New Handlers-REST Endpoint (needs handlers-rest), New Service    | New Service                                       |
 
 With `@domain-first/wire`, the layer menu of a context and of the Shared Kernel also has `Wire dependency`: it adds dependencies to an existing wired module. Every layer menu has `Move or rename`.
 
 The main menu also has `Scaffold new bounded context`. React modules come from a separate CLI, `df-react`: see `df-ps-react`.
 
-Run order in a plan: new contexts → domain (aggregates before their entities and value objects) → application (ports, commands/queries, use cases) → endpoints → React (`df-ps-react`).
+Run order in a plan: new contexts → domain (aggregates before their entities and value objects) → application (ports, commands/queries, use cases) → new implementations of existing contracts → endpoints → React (`df-ps-react`).
