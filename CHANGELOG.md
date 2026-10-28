@@ -1,3 +1,10 @@
+## [7.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.1.0...v7.1.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* plural form fixes ([18a5a99](https://github.com/alevnyacow/domain-first-project-structure/commit/18a5a99add204284014d71ee1423c09f6901a0d3))
+
 # [7.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.0.0...v7.1.0) (2026-10-28)
 
 
