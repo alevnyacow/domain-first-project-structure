@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { select } from '@inquirer/prompts';
+import { runCLI } from './agent-cli';
 import { ConfigFile } from './config-file';
 import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
@@ -262,9 +263,19 @@ const main = async () => {
 };
 
 const run = async () => {
+    if (process.argv.includes('--help') || process.argv.includes('-h')) {
+        console.log(
+            'Usage: df-scaffold [--describe | --request <json|->]\nWithout arguments, opens the interactive menu.'
+        );
+        return;
+    }
+
     await main();
 
     await savePendingChanges();
 };
 
-run();
+void runCLI('df-scaffold', run).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

@@ -1,16 +1,18 @@
-import { input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input, select } from '../interaction';
 import { NestedName } from '../nested-name';
 
 export const scaffoldReactWidget = async (presentationReactFolder: Folder) => {
     const widgetName = await input({
+        key: 'name',
         message: 'Name (folders split by "/"): ',
         validate: NestedName.validate
     });
 
     const widgetType = await select({
         choices: ['monolithic', 'with separated ui', 'headless'],
+        key: 'widgetType',
         message: 'Type: '
     });
 

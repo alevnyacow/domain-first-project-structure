@@ -13,7 +13,7 @@ React modules live in `<rootFolder>/presentation/react/` (`…/react/` below) an
 2. A feature that also needs backend work → plan it with `df-ps-plan-feature`; React runs come last in the plan.
 3. Choose a module for each piece of UI ("Choosing the module").
 4. Show the work plan in the `df-ps-scaffold` rule 1 format and **stop until it's approved**. CLI paths are `df-react → New widget` etc.; list every answer and the files from `references/generators.md`.
-5. Run the generators with the driver in plan order (shared hooks → UI-kit → widgets → pages); check each output.
+5. Run the generators with `df-react --request` JSON in plan order (shared hooks → UI-kit → widgets → pages); check each output.
 6. Implement ("Implementing"), after the backend and the regenerated API client.
 7. Run `npx df-lint` and the project's tsc/lint/tests. Report against the plan.
 
@@ -41,16 +41,22 @@ A business element goes to UI-kit only when several widgets contain the same ele
 
 ## Running df-react
 
-`df-react` is interactive. Drive it with the driver of `df-ps-scaffold` and `--bin df-react`; it answers the prompts, then lists created (`+`) and changed (`~`) files:
+Prefer `npx df-react --describe` and `npx df-react --request` JSON. The installed schema lists operations (`page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`), fields and current React modules. For example:
+
+```bash
+npx df-react --request '{"operation":"widget","name":"cart","widgetType":"separated"}'
+```
+
+Read `df-ps-scaffold` [agent-mode.md](../df-ps-scaffold/references/agent-mode.md) for previews, overwrite control and JSON result checks; [agent-operations.md](../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) covers all React operations and naming conditions. Initialization remains a human task. For older CLI versions without JSON support, use the interactive driver with `--bin df-react`:
 
 ```bash
 node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react [--cwd <dir>] [--delay <ms>] <step>...
 node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react "pick:New widget" text:cart "pick:with separated ui"
 ```
 
-Steps and checks are the same as for `df-scaffold` ("Running the driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`. Prompts and output of each: `references/generators.md`.
+Steps and checks are the same as for `df-scaffold` ("Legacy interactive driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`. Prompts and output of each: `references/generators.md`.
 
-If the CLI can't run, give the user the menu path and answers to run `! npx df-react` themselves. Never hand-write its output.
+If the CLI cannot run, report the failure and give the user the prepared JSON command (a menu path only for a legacy CLI). Never hand-write its output.
 
 ### Moving and renaming
 

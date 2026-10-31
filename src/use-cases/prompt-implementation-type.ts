@@ -1,4 +1,3 @@
-import { input, select } from '@inquirer/prompts';
 import { kebabName } from '../backend-module-move';
 import { crossContextImplementation } from '../context-dependencies';
 import {
@@ -7,6 +6,13 @@ import {
     rememberImplementation,
     savedImplementations
 } from '../implementation-choices';
+import {
+    answerFor,
+    input,
+    isNonInteractive,
+    RequestError,
+    select
+} from '../interaction';
 import { systemImplementationChoices } from '../system-implementations';
 
 export const enterImplementationTypeOnce = Symbol(
@@ -68,6 +74,46 @@ export const promptImplementationType = async (
         choices.find(
             ({ value }) => value === defaultType && !existing.includes(value)
         ) ?? choices.find(({ value }) => !existing.includes(value));
+    const validateLabel = (value: string) => {
+        const label = value.trim();
+        if (!allowCrossContext && label === crossContextImplementation)
+            return 'Cross-context implementations require an application port with a neighboring bounded context.';
+        if (!kebabName.test(label))
+            return 'Use lowercase kebab-case, e.g. prisma or in-memory.';
+        return existing.includes(label)
+            ? `The ${label} implementation already exists.`
+            : true;
+    };
+    if (isNonInteractive()) {
+        const key =
+            purpose === 'test' ? 'testImplementation' : 'implementation';
+        const implementation = answerFor(key) as
+            | { type: string; save?: boolean }
+            | undefined;
+        if (!implementation)
+            throw new RequestError('MISSING_PARAMETER', `Provide ${key}.`, {
+                field: key
+            });
+        const valid = validateLabel(implementation.type);
+        if (valid !== true)
+            throw new RequestError('INVALID_IMPLEMENTATION', valid, {
+                field: key
+            });
+        const label = implementation.type.trim();
+        const saveForFutureUse = implementation.save ?? false;
+        if (
+            remember &&
+            saveForFutureUse &&
+            !system.some((choice) => choice.value === label)
+        ) {
+            rememberImplementation(
+                kind,
+                purpose === 'all' ? 'primary' : purpose,
+                label
+            );
+        }
+        return { label, saveForFutureUse };
+    }
     const type = await select<
         string | null | typeof enterImplementationTypeOnce
     >({
@@ -88,16 +134,7 @@ export const promptImplementationType = async (
         await input({
             message,
             default: defaultType ?? '',
-            validate: (value) => {
-                const label = value.trim();
-                if (!allowCrossContext && label === crossContextImplementation)
-                    return 'Cross-context implementations require an application port with a neighboring bounded context.';
-                if (!kebabName.test(label))
-                    return 'Use lowercase kebab-case, e.g. prisma or in-memory.';
-                return existing.includes(label)
-                    ? `The ${label} implementation already exists.`
-                    : true;
-            }
+            validate: validateLabel
         })
     ).trim();
     if (

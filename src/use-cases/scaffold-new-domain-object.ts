@@ -1,6 +1,6 @@
-import { input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input, select } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 
 const noAggregate = 'No aggregate';
@@ -9,7 +9,7 @@ export const scaffoldNewDomainObject = async (
     boundedContextFolder: Folder,
     kind: 'entity' | 'value-object'
 ) => {
-    const name = await input({ message: 'Name: ' });
+    const name = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
     const aggregatesFolder = boundedContextFolder.subitem([
@@ -24,6 +24,7 @@ export const scaffoldNewDomainObject = async (
      */
     const aggregate = aggregateNames.length
         ? await select({
+              key: 'aggregate',
               message: 'Aggregate:',
               choices: [...aggregateNames, noAggregate]
           })

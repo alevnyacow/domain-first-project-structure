@@ -1,6 +1,6 @@
-import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -10,7 +10,7 @@ export const scaffoldNewUseCase = async (boundedContextFolder: Folder) => {
         'use-cases'
     ]);
 
-    const useCaseName = await input({ message: 'Name: ' });
+    const useCaseName = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(useCaseName);
 
     const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);

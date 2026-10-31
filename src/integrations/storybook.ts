@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File, Folder } from '../file-system';
+import { confirm } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
 import { addPackageScripts, describeScripts } from './package-scripts';
@@ -78,6 +78,8 @@ export const addStorybook = async (): Promise<string[]> => {
                 config.frontend?.react?.storybookFramework !==
                     storybookFrameworkPackage)) &&
         !(await confirm({
+            key: 'configureReact',
+            requestRequired: true,
             message: `Configure React scaffolding with ${storybookFrameworkPackage}?`,
             default: false
         }))

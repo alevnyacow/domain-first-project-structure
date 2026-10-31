@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { checkbox, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
+import { checkbox, input } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
 import { defaultOpenapiPath, openapiScriptPath } from './openapi';
@@ -159,12 +159,14 @@ export const addOrval = async (): Promise<string[]> => {
     const generatedOpenapiPath = openapiOutputPath(root);
 
     const openapiPath = await input({
+        key: 'openapiPath',
         message: 'OpenAPI document path:',
         default: generatedOpenapiPath ?? defaultOpenapiPath(withNext),
         validate: (value) => (value.trim() ? true : 'Path is required')
     });
     const targets: OrvalTarget[] = useReact
         ? await checkbox({
+              key: 'targets',
               message: 'Generate:',
               choices: [
                   { name: 'React Query hooks', value: 'hooks', checked: true },

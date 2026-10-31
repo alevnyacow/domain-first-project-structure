@@ -1,4 +1,3 @@
-import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import {
@@ -6,6 +5,7 @@ import {
     inMemoryRepositoryWiring
 } from '../implementations';
 import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
+import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
@@ -14,6 +14,7 @@ export const scaffoldNewAggregateUseCase = async (
     boundedContextFolder: Folder
 ) => {
     const aggregateName = await input({
+        key: 'name',
         message: 'Aggregate name:'
     });
 
@@ -22,6 +23,7 @@ export const scaffoldNewAggregateUseCase = async (
     const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const withRepository = await confirm({
+        key: 'withRepository',
         message: 'With Repository'
     });
 
@@ -109,6 +111,7 @@ describe('${aggregateNaming.withSpaces}', () => {
         let testImplementationType: string = '';
 
         addTestImplementation = await confirm({
+            key: 'withTestImplementation',
             message: 'Add a test implementation for Repository'
         });
 

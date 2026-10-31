@@ -1,6 +1,7 @@
-import { checkbox, Separator, select } from '@inquirer/prompts';
+import { moduleId } from '../agent-identifiers';
 import { ConfigFile } from '../config-file';
 import { type File, Folder } from '../file-system';
+import { checkbox, report, Separator, select } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import {
     availableDependencies,
@@ -158,6 +159,8 @@ const promptDependencies = async (
             : [];
 
         const dependencies = await checkbox({
+            key: `dependencies.${implementation.className}`,
+            id: (value) => moduleId(value.module),
             message: consumer.branched
                 ? `Dependencies for ${implementation.className}:`
                 : 'Dependencies:',
@@ -225,7 +228,7 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
     const modules = findWiredModules(boundedContextFolder.path);
 
     if (!modules.length) {
-        console.log('No wired modules here yet.');
+        report('No wired modules here yet.');
         return;
     }
 
@@ -234,6 +237,9 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
      * wired alone.
      */
     const { module: consumer, implementation } = await select({
+        key: 'module',
+        id: (value) =>
+            `${moduleId(value.module)}:${value.implementation.className}`,
         message: 'Module:',
         choices: groupedChoices(
             modules.flatMap((x) =>
@@ -256,7 +262,7 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
             implementation
         ]))
     ) {
-        console.log('No dependencies available for this module.');
+        report('No dependencies available for this module.');
     }
 };
 
@@ -272,6 +278,8 @@ export const promptEndpointHandler = async (boundedContextFolder: Folder) => {
     return handlers.length
         ? (
               await select({
+                  key: 'handler',
+                  id: (value) => moduleId(value.module),
                   message: 'Handler:',
                   choices: groupedChoices(handlers),
                   pageSize: groupedPageSize,

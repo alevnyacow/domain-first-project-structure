@@ -1,4 +1,6 @@
-# df-react generators: prompts and output
+# df-react generators: operations and output
+
+Prefer JSON requests; [agent operations](../../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) maps all six React operations and fields. The scripted prompt sequences below are the legacy interactive fallback. Generated files and story templates apply to both modes.
 
 Settings: `project.rootFolder` and `frontend.react.storybookFramework`. The frontend section must be configured by the user before these runs.
 

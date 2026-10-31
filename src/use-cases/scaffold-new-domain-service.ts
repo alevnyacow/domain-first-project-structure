@@ -1,15 +1,13 @@
-import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewDomainService = async (
     boundedContextFolder: Folder
 ) => {
-    const portName = await input({
-        message: 'Name:'
-    });
+    const portName = await input({ key: 'name', message: 'Name:' });
     const naming = new UnknownFormatNaming(portName);
 
     const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);

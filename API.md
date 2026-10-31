@@ -4,6 +4,7 @@ Technical specification of the command-line interface of `@domain-first/project-
 
 - [Package](#package)
 - [Commands overview](#commands-overview)
+- [Non-interactive JSON mode](#non-interactive-json-mode)
 - [`df-init`](#df-init)
 - [`df-scaffold`](#df-scaffold)
     - [Run lifecycle](#run-lifecycle)
@@ -72,7 +73,7 @@ Notation used below:
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
 | Runtime        | Node.js 22.13+ within the Node 22 release line, or 24+   |
-| Interaction    | Interactive prompts only; `df-scaffold` takes no arguments, `df-init` supports `--section` and `--help`; `df-react` and `df-integration` only `--help` |
+| Interaction    | `df-scaffold`, `df-react`, `df-integration`: interactive by default, or `--describe` / `--request <json|->`; `df-init` stays interactive with `--section` and `--help` |
 
 ## Commands overview
 
@@ -93,6 +94,72 @@ npx df-integration
 npx df-skills [--claude] [--codex] [--global]
 npx df-lint [rootFolder]
 ```
+
+## Non-interactive JSON mode
+
+`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` remains a human setup command; `df-lint` and `df-skills` already run without interactive generation menus.
+
+```bash
+npx df-scaffold --describe
+npx df-scaffold --request '{"operation":"query","context":"sales","name":"orders","implementation":{"type":"prisma","save":false},"dependencies":{"PrismaOrdersQuery":["shared-kernel:PrismaInfrastructureService"]}}'
+npx df-react --request '{"operation":"page","name":"admin/orders"}'
+npx df-integration --request '{"operation":"add","integrations":["storybook"]}'
+```
+
+`--request` accepts a JSON literal, or `-` for one JSON document on stdin. `--describe` and `--request` are mutually exclusive. There is no prompt fallback: malformed requests, missing parameters and invalid selections return a JSON error with exit code 1.
+
+### Discovery and request schemas
+
+`--describe` returns `schemaVersion: 1`, the command name, a JSON Schema in `requestSchema`, and the current project inventory. It works before initialization, but execution requires the appropriate configured section. Description reads files without migrating them.
+
+The inventory includes contexts (`shared-kernel` is reserved for the Shared Kernel), units, contracts, modules, eligible dependencies per implementation, saved/system implementation types, integration IDs/availability and React modules. IDs are strings:
+
+| Kind | Example | Request use |
+| --- | --- | --- |
+| Context | `sales`, `shared-kernel` | `context`, `targetContext` |
+| Dependency / handler | `shared-kernel:PrismaInfrastructureService`, `billing:InvoiceQuery` | `dependencies`, `handler` |
+| Wiring target | `sales:OrdersQuery:PrismaOrdersQuery` | `module` for `wire-dependency` |
+| Unit / contract | `query:orders`, `aggregate:order`, `entity:order/line` | `module` for backend moves, `contract` for implementations |
+| React module | `admin/orders` | `module` for React moves |
+
+Dependency availability follows the same context, layer and per-kind rules as the interactive menus. Already-wired dependencies are excluded from the available lists. Refresh inventory after changes; never use display labels or list indexes as IDs.
+
+### Operations and options
+
+The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`. Integrations use `operation: "add"` and an `integrations` list.
+
+- `name` and `context` use lowercase kebab-case. React page/widget names allow nested paths. Shared Kernel restrictions match the menus.
+- `implementation` and optional `testImplementation` are `{ "type": "prisma", "save": false }`. The primary type is required for queries, commands, ports and new implementations. `save` defaults to false; true records an ordinary type by category and environment role. System labels are plain `cross-context` / `in-memory`, without the UI prefix. Their existing behavior and boundaries remain in force.
+- Aggregates use `withRepository: true` plus an implementation when a repository is wanted; absent means no repository. Entities/value objects may specify `aggregate`; errors may specify an existing `namespace`.
+- `dependencies` maps each implementation/class name to qualified dependency IDs. Omitted entries keep checked suggestions; an explicit `[]` disables suggestions. Every supplied group must apply to the operation, otherwise nothing is written.
+- New implementations select a `contract` and, with a branched wire, an explicit nonempty `environments` list. Their dependency groups refer to the new concrete class.
+- Backend moves select a unit ID in `module`, with optional `name`, `targetContext` and `aggregate`. React moves use `module` and a new nested `name`. Moves use the same validation/import rewriting as the menus.
+- Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created. REST tooling must already be configured.
+- Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
+- `dryRun: true` computes the full proposed operation and migration without writing anything.
+- `overwrite: true` allows replacing changed existing generated files. Without it the command returns `OVERWRITE_REQUIRED` and the affected paths. Identical generated contents do not require this flag. Metadata edits such as implementation choices and normal wiring updates retain their existing behavior.
+
+### Results and failures
+
+Success uses exit code 0 and this shape (all paths are relative to the project root):
+
+```ts
+type Result = {
+    schemaVersion: 1;
+    ok: true;
+    operation: string;
+    dryRun: boolean;
+    files: { created: string[]; updated: string[]; deleted: string[] };
+    directories: string[];
+    overwriteRequired: string[];
+    nextSteps: string[];
+    messages: string[];
+};
+```
+
+`nextSteps` contains install commands and follow-up notes; nothing is installed or executed. `overwriteRequired` is useful when reviewing a dry run. Generator diagnostics are captured in `messages`, keeping stdout to a single JSON document.
+
+Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, and configuration/precondition errors. Validation failures discard staged source, config, migration and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
 
 ## `df-init`
 
@@ -985,7 +1052,7 @@ npx df-skills [options]
 | Skill                   | Purpose                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------- |
 | `df-ps-plan-feature`    | Turns a feature request into a plan of bounded contexts and components                   |
-| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules and the CLI driver       |
+| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules, JSON workflow and legacy CLI driver       |
 | `df-ps-react`           | Chooses, generates (`df-react`), moves and implements pages, widgets, UI-kit and hooks    |
 | `df-ps-implement`       | Fills in the generated backend code                                                      |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |
@@ -1020,5 +1087,5 @@ npx df-lint [rootFolder]
 | Edits             | Constructor and factory edits during dependency selection change existing files without an overwrite question.                  |
 | Interruption      | Interrupting at any prompt leaves the project unchanged.                                                                        |
 | Folders           | Missing folders are created.                                                                                                     |
-| State             | Project settings live in the configuration file; saved implementation types live in the separate implementations file. Bounded contexts, aggregates, error namespaces, controllers, wired modules and React modules are found by scanning the folders on each run. |
+| State             | Project settings and saved implementation types live in the configuration file (`backend.implementations` for choices). Bounded contexts, aggregates, error namespaces, controllers, wired modules and React modules are found by scanning the folders on each run. |
 | Installation      | No command installs packages or runs project scripts.                                                                            |

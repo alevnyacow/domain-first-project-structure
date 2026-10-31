@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
+import { confirm, input } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { compilerOption } from '../tsconfig';
 import { reactPageContent } from '../use-cases/scaffold-react-page';
@@ -120,10 +120,12 @@ export const addOpenapi = async (): Promise<string[]> => {
     };
 
     const routePrefix = await input({
+        key: 'routePrefix',
         message: 'Route prefix the REST handlers are served under:',
         default: '/api'
     });
     const outputPath = await input({
+        key: 'openapiPath',
         message: 'OpenAPI document path:',
         default: defaultOpenapiPath(Boolean(dependencies.next)),
         validate: (value) =>
@@ -131,6 +133,7 @@ export const addOpenapi = async (): Promise<string[]> => {
     });
 
     const withExtractor = await confirm({
+        key: 'withExtractor',
         message:
             'Fill operationId, summary and description from the endpoint logic TSDoc?',
         default: true
@@ -139,6 +142,7 @@ export const addOpenapi = async (): Promise<string[]> => {
     const withSwaggerPage =
         Boolean(ConfigFile.Instance.data.frontend?.react) &&
         (await confirm({
+            key: 'swaggerPage',
             message: 'Add a Swagger UI page?',
             default: true
         }));

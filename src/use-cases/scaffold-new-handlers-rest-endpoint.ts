@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input, select } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { relativeImport } from '../wiring';
 import { findRestEndpointGenerator } from './rest-endpoint-generator';
@@ -17,14 +17,13 @@ export const scaffoldNewHandlersRestEndpoint = async (
     const controllers = restPresentationFolder.content.subfolderNames;
 
     let controller = await select({
+        key: 'controllerSelection',
         message: 'Controller: ',
         choices: [...controllers, 'New controller']
     });
 
     if (controller === 'New controller') {
-        controller = await input({
-            message: 'Name: '
-        });
+        controller = await input({ key: 'controllerName', message: 'Name: ' });
 
         if (
             ConfigFile.backend.domainFirstPackages.includes(
@@ -65,14 +64,13 @@ export const restHandlers = restWires.map(x => x().handle)
     }
 
     const method = await select({
+        key: 'method',
         message: 'Method:',
         choices: ['get', 'post', 'patch', 'delete', 'put']
     });
 
     const routeSegments = (
-        await input({
-            message: 'Relative path (split by "/"):'
-        })
+        await input({ key: 'path', message: 'Relative path (split by "/"):' })
     )
         .split('/')
         .filter((x) => !!x);
@@ -200,6 +198,6 @@ export const wire${endpointClassName} = wireClass(
 
         wiringFolder
             .file('index.ts')
-            .addLine(`export * from './${wireNaming.fileName}'`);
+            .addLineIfMissing(`export * from './${wireNaming.fileName}'`);
     }
 };

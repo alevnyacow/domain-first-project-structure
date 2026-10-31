@@ -1,8 +1,8 @@
-import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { hasNeighboringBoundedContext } from '../context-dependencies';
 import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
+import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
@@ -10,7 +10,7 @@ import { wireNewModuleDependencies } from './wire-dependency';
 export const scaffoldNewApplicationPort = async (
     boundedContextFolder: Folder
 ) => {
-    const name = await input({ message: 'Name: ' });
+    const name = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
     const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
@@ -45,6 +45,7 @@ export abstract class ${naming.ClassName} {
     );
 
     const addTestImplementation = await confirm({
+        key: 'withTestImplementation',
         message: 'With test implementation'
     });
     let testImplementationType = '';

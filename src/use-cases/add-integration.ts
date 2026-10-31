@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { checkbox, Separator } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import {
@@ -16,6 +15,7 @@ import {
     openapiScriptPath,
     restEndpointGeneratorApplied
 } from '../integrations';
+import { checkbox, Separator } from '../interaction';
 import { printNextSteps } from '../print-next-steps';
 import { ProjectRoot } from '../project-root';
 import { savePendingChanges } from '../save-pending-changes';
@@ -37,7 +37,20 @@ const createdInRoot = (...segments: string[]) =>
  * of OpenAPI, integration tests read the Prisma config and the Vitest
  * config, Orval reads the OpenAPI document path.
  */
+export const integrationIds = [
+    'storybook',
+    'rest-endpoint-generator',
+    'in-memory-db',
+    'prisma',
+    'vitest',
+    'playwright',
+    'testcontainers',
+    'openapi',
+    'orval'
+] as const;
+
 const integrations: {
+    id: (typeof integrationIds)[number];
     name: string;
     group: 'backend' | 'frontend';
     run: () => string[] | Promise<string[]>;
@@ -45,12 +58,14 @@ const integrations: {
     applied: () => boolean;
 }[] = [
     {
+        id: 'storybook',
         name: 'Storybook (React + Vite)',
         group: 'frontend',
         run: addStorybook,
         applied: () => createdInRoot('presentation/react/.storybook/main.ts')
     },
     {
+        id: 'rest-endpoint-generator',
         name: 'REST endpoint generator',
         group: 'backend',
         run: addRestEndpointGenerator,
@@ -58,12 +73,14 @@ const integrations: {
         applied: restEndpointGeneratorApplied
     },
     {
+        id: 'in-memory-db',
         name: 'In-memory DB',
         group: 'backend',
         run: addInMemoryDb,
         applied: inMemoryDbApplied
     },
     {
+        id: 'prisma',
         name: 'Prisma 8 (PostgreSQL, RC)',
         group: 'backend',
         run: addPrisma,
@@ -73,24 +90,28 @@ const integrations: {
             )
     },
     {
+        id: 'vitest',
         name: 'Vitest',
         group: 'backend',
         run: addVitest,
         applied: () => created('vitest.config.ts')
     },
     {
+        id: 'playwright',
         name: 'Playwright',
         group: 'frontend',
         run: addPlaywright,
         applied: () => created('playwright.config.ts')
     },
     {
+        id: 'testcontainers',
         name: 'Integration tests (Testcontainers, PostgreSQL)',
         group: 'backend',
         run: addTestcontainers,
         applied: () => created('specs/integration/vitest.config.ts')
     },
     {
+        id: 'openapi',
         name: 'OpenAPI',
         group: 'backend',
         run: addOpenapi,
@@ -98,6 +119,7 @@ const integrations: {
         applied: () => created(openapiScriptPath)
     },
     {
+        id: 'orval',
         name: 'Orval (API client)',
         group: 'frontend',
         run: addOrval,
@@ -108,7 +130,11 @@ const integrations: {
     }
 ];
 
-export const addIntegration = async () => {
+export const addIntegration = async ({
+    save = true
+}: {
+    save?: boolean;
+} = {}) => {
     const available = integrations
         .filter(
             ({ group, available }) =>
@@ -140,6 +166,8 @@ export const addIntegration = async () => {
     ];
     // Every section stays visible without scrolling
     const selected = await checkbox({
+        key: 'integrations',
+        id: (integration) => integration.id,
         message: 'Integrations:',
         choices,
         pageSize: choices.length
@@ -150,7 +178,19 @@ export const addIntegration = async () => {
     )) {
         nextSteps.push(...(await integration.run()));
     }
-    if (await savePendingChanges()) {
+    if (save && (await savePendingChanges())) {
         printNextSteps(nextSteps);
     }
+    return nextSteps;
 };
+
+export const integrationDescriptions = () =>
+    integrations.map((integration) => ({
+        id: integration.id,
+        name: integration.name,
+        group: integration.group,
+        available:
+            (integration.group !== 'backend' ||
+                Boolean(ConfigFile.Instance.data.backend)) &&
+            (integration.available?.() ?? true)
+    }));

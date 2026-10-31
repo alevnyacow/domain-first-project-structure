@@ -1,5 +1,5 @@
-import { input } from '@inquirer/prompts';
 import type { Folder } from '../file-system';
+import { input } from '../interaction';
 import { NestedName } from '../nested-name';
 
 /**
@@ -22,6 +22,7 @@ export const ${ClassName}Page: FC<${ClassName}PageProps> = (props) => {
 
 export const scaffoldReactPage = async (presentationReactFolder: Folder) => {
     const name = await input({
+        key: 'name',
         message: 'Provide name (folders split by "/"):',
         validate: NestedName.validate
     });

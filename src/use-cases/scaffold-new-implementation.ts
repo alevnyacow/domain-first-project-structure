@@ -1,4 +1,4 @@
-import { checkbox, Separator, select } from '@inquirer/prompts';
+import { unitId } from '../agent-identifiers';
 import type { BackendUnit } from '../backend-module-move';
 import { ConfigFile } from '../config-file';
 import { hasNeighboringBoundedContext } from '../context-dependencies';
@@ -13,6 +13,7 @@ import {
     implementationWireName,
     inMemoryRepositoryWiring
 } from '../implementations';
+import { checkbox, report, Separator, select } from '../interaction';
 import { systemImplementationChoices } from '../system-implementations';
 import {
     addBranchedImplementation,
@@ -54,11 +55,13 @@ const branchesOf = (wireFile: File, wireName: string) => {
 export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
     const contracts = findContracts(ownerFolder.path);
     if (!contracts.length) {
-        console.log('No repositories, commands, queries or ports here yet.');
+        report('No repositories, commands, queries or ports here yet.');
         return;
     }
 
     const unit = await select<BackendUnit>({
+        key: 'contract',
+        id: unitId,
         message: 'Contract:',
         choices: contractKinds.flatMap((kind) => {
             const group = contracts.filter((x) => x.kind === kind);
@@ -129,7 +132,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
     const branches = branchesOf(wireFile, wireName);
     if (!branches) {
         rememberFor(['development']);
-        console.log(
+        report(
             `${wireFile.path} has no ${wireName} = envBranchedWire({...}): wire ${className} there yourself.`
         );
         return;
@@ -139,6 +142,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         unit.labels.map((x) => [implementationWireName(x), x])
     );
     const chosenEnvironments = await checkbox({
+        key: 'environments',
         message: 'Environments:',
         choices: [...new Set([...environments, ...branches.keys()])].map(
             (environment) => {
@@ -169,7 +173,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         (x) => !after?.implementations.some((y) => y.className === x.className)
     );
     for (const implementation of unused) {
-        console.log(
+        report(
             `${implementation.className} is no longer used in any environment.`
         );
     }

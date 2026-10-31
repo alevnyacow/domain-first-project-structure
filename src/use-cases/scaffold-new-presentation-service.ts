@@ -1,6 +1,6 @@
-import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -88,7 +88,7 @@ export const wire${naming.ClassName}PresentationService = wireClass(
 export const scaffoldNewPresentationService = async (
     boundedContextFolder: Folder
 ) => {
-    const name = await input({ message: 'Name: ' });
+    const name = await input({ key: 'name', message: 'Name: ' });
 
     const wireFile = createPresentationService(boundedContextFolder, name);
 

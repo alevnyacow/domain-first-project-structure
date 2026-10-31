@@ -27,6 +27,21 @@ The full technical specification lives in [API.md](./API.md).
 
 ## Guide
 
+### Non-interactive mode for agents
+
+`df-scaffold`, `df-react` and `df-integration` accept JSON requests. Humans can keep using the interactive menus. Agents can discover schemas and project IDs first:
+
+```bash
+npx df-scaffold --describe
+npx df-scaffold --request '{"operation":"query","context":"sales","name":"orders","implementation":{"type":"prisma","save":false},"dependencies":{"PrismaOrdersQuery":["shared-kernel:PrismaInfrastructureService"]}}'
+npx df-react --request '{"operation":"widget","name":"admin/orders","widgetType":"separated"}'
+npx df-integration --request '{"operation":"add","integrations":["storybook"]}'
+```
+
+`--request -` reads JSON from stdin. `dryRun: true` previews changes without writing; `overwrite: true` explicitly allows replacing changed existing generated files. Responses are JSON with file lists, next steps and diagnostics. Errors return `ok: false` and a nonzero exit code without falling back to prompts; invalid requests discard staged changes. Initialization stays with the human through `df-init`.
+
+The [API reference](API.md#non-interactive-json-mode) describes request fields, discovery IDs and result semantics.
+
 ### How to initialize a project
 
 Run `df-init` in a project with a `package.json`. Setup visits **Project → Backend → Frontend** in order. Each section asks whether to configure it now: answer No to configure it later. Skipping Project keeps the source folder `src`; skipping Backend or Frontend leaves that section absent.

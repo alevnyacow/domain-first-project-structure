@@ -1,5 +1,5 @@
-import { input, select } from '@inquirer/prompts';
 import type { File } from '../file-system';
+import { input, select } from '../interaction';
 
 export const addPackageScripts = async (
     file: File,
@@ -14,12 +14,14 @@ export const addPackageScripts = async (
         let target = name;
         if (Object.hasOwn(scripts, name) && scripts[name] !== command) {
             const action = await select({
+                key: `scriptConflicts.${name}`,
                 message: `Script "${name}" already exists: ${scripts[name]}`,
                 choices: ['Keep existing', 'Replace', 'Use another name']
             });
             if (action === 'Keep existing') continue;
             if (action === 'Use another name') {
                 target = await input({
+                    key: `scriptNames.${name}`,
                     message: 'New script name:',
                     validate: (value) =>
                         /^[a-zA-Z0-9:_-]+$/.test(value) &&

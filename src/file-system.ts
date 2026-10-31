@@ -19,13 +19,46 @@ const pendingDeletions = new Map<string, string>();
 /**
  * Existing files a full rewrite would replace, whatever their content.
  */
-export const filesToOverwrite = () =>
+export const filesToOverwrite = ({
+    changedOnly = false
+}: {
+    changedOnly?: boolean;
+} = {}) =>
     [...pendingFiles]
         .filter(
-            ([filePath, { replacesFile }]) =>
-                replacesFile && fs.existsSync(filePath)
+            ([filePath, { replacesFile, content }]) =>
+                replacesFile &&
+                fs.existsSync(filePath) &&
+                (!changedOnly || fs.readFileSync(filePath, 'utf8') !== content)
         )
         .map(([filePath]) => filePath);
+
+/** Review the staged transaction before it is written or discarded. */
+export const pendingChanges = () => ({
+    created: [
+        ...new Set([
+            ...[...pendingFiles.keys()].filter((file) => !fs.existsSync(file)),
+            ...pendingMoves.keys()
+        ])
+    ].sort(),
+    updated: [...pendingFiles]
+        .filter(
+            ([file, change]) =>
+                fs.existsSync(file) &&
+                fs.readFileSync(file, 'utf8') !== change.content
+        )
+        .map(([file]) => file)
+        .sort(),
+    deleted: [
+        ...new Set([
+            ...pendingDeletions.keys(),
+            ...[...pendingMoves.values()].map((move) => move.sourcePath)
+        ])
+    ].sort(),
+    directories: [...pendingFolders]
+        .filter((folder) => !fs.existsSync(folder))
+        .sort()
+});
 
 /**
  * Runs a generator that only adds files: its rewrites of files that

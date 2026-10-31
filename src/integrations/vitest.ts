@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
+import { confirm } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
 import { addPackageScripts, describeScripts } from './package-scripts';
@@ -61,6 +61,8 @@ export const addVitest = async (): Promise<string[]> => {
         ConfigFile.backend.testingLibrary &&
         ConfigFile.backend.testingLibrary !== 'vitest' &&
         !(await confirm({
+            key: 'replaceTestingLibrary',
+            requestRequired: true,
             message: `Replace testing library "${ConfigFile.backend.testingLibrary}" with vitest for generated tests?`,
             default: false
         }))

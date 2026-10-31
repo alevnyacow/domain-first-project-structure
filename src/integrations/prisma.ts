@@ -1,8 +1,8 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { rememberImplementation } from '../implementation-choices';
+import { confirm } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
@@ -111,6 +111,7 @@ export const addPrisma = async (): Promise<string[]> => {
     }
 
     const withService = await confirm({
+        key: 'withService',
         message:
             'Create the Prisma infrastructure service in the Shared Kernel?',
         default: true

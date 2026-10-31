@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File, Folder, withoutOverwrites } from '../file-system';
+import { confirm } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import {
     findRestEndpointGenerator,
@@ -93,6 +93,7 @@ export const askNextAdapter = async ({
         (nextSelected ??
             (framework ? framework === 'next' : hasDependency('next'))) &&
         (await confirm({
+            key: 'nextAdapter',
             message: 'Use @domain-first/handlers-next for REST endpoints'
         }))
     );
