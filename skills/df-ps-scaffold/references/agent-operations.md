@@ -128,7 +128,7 @@ Use `operation: "add"` and a nonempty `integrations` array. Select only IDs mark
 | Integration ID | Relevant fields and conditions |
 | --- | --- |
 | `storybook` | Shared React + Vite setup. `configureReact` is required when React is absent or another Storybook framework is configured; true aligns it with the shared preset, false skips this setup. |
-| `rest-endpoint-generator` | Backend must have `@domain-first/handlers-rest`. `nextAdapter` applies only when Next.js is selected or detected for a legacy config; omitted means no Next adapter in JSON mode. Existing support files are preserved with a manual connection note as needed. |
+| `rest-endpoint-generator` | Backend must have `@domain-first/handlers-rest`. `nextAdapter` applies only when `frontend.react.framework` is `next`; omitted means no Next adapter in JSON mode. Existing support files are preserved with a manual connection note as needed. |
 | `in-memory-db` | Backend required. Enables the DB flag and restores missing support files while keeping edited files. No extra fields. |
 | `prisma` | Backend required. `withService` defaults to true; false skips the infrastructure service and its wire. Registers `prisma` implementation choices. Existing incompatible Prisma setups are rejected rather than upgraded. |
 | `vitest` | Backend required. `replaceTestingLibrary` is required if a different testing library is configured; true changes it to Vitest, false skips this setup. |

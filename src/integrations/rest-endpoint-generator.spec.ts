@@ -29,7 +29,8 @@ afterEach(() => {
 let sequence = 0;
 const setup = (
     domainFirstPackages: string[],
-    dependencies: Record<string, string> = {}
+    dependencies: Record<string, string> = {},
+    framework?: 'react' | 'next'
 ) => {
     const project = path.join(root, String(sequence++));
     fs.mkdirSync(project);
@@ -40,9 +41,9 @@ const setup = (
     fs.writeFileSync(
         path.join(project, 'domain-first.project-structure.config.json'),
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages,
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages },
+            ...(framework ? { frontend: { react: { framework } } } : {})
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
@@ -65,8 +66,20 @@ test('without next, scaffolds the generator with an adapter placeholder and no r
     expect(restEndpointGeneratorApplied()).toBe(true);
 });
 
-test('with the Next adapter, scaffolds the catch-all route and reports handlers-next', async () => {
+test('an installed next package alone does not offer the Next adapter', async () => {
     const project = setup(['@domain-first/handlers-rest'], { next: '16' });
+    expect(await addRestEndpointGenerator()).toEqual([]);
+    expect(confirm).not.toHaveBeenCalled();
+    writePendingChanges();
+    expect(fs.existsSync(path.join(project, 'app'))).toBe(false);
+});
+
+test('with the Next adapter, scaffolds the catch-all route and reports handlers-next', async () => {
+    const project = setup(
+        ['@domain-first/handlers-rest'],
+        { next: '16' },
+        'next'
+    );
     rstest.mocked(confirm).mockResolvedValueOnce(true);
     expect(await addRestEndpointGenerator()).toEqual([
         'npm i @domain-first/handlers-next'
@@ -85,7 +98,8 @@ test('with the Next adapter, scaffolds the catch-all route and reports handlers-
 test('with wiring, the route serves restHandlers and warns until the first endpoint', async () => {
     const project = setup(
         ['@domain-first/handlers-rest', '@domain-first/wire'],
-        { next: '16', '@domain-first/handlers-next': '2' }
+        { next: '16', '@domain-first/handlers-next': '2' },
+        'next'
     );
     rstest.mocked(confirm).mockResolvedValueOnce(true);
     expect(await addRestEndpointGenerator()).toEqual([
@@ -105,7 +119,8 @@ test('with wiring, the route serves restHandlers and warns until the first endpo
 test('with wiring and endpoints, the route in src/app serves restHandlers', async () => {
     const project = setup(
         ['@domain-first/handlers-rest', '@domain-first/wire'],
-        { next: '16', '@domain-first/handlers-next': '2' }
+        { next: '16', '@domain-first/handlers-next': '2' },
+        'next'
     );
     fs.mkdirSync(path.join(project, 'src/app'), { recursive: true });
     fs.mkdirSync(path.join(project, 'src/presentation/rest'), {
@@ -123,10 +138,11 @@ test('with wiring and endpoints, the route in src/app serves restHandlers', asyn
 });
 
 test('reapplying keeps the edited generator and route', async () => {
-    const project = setup(['@domain-first/handlers-rest'], {
-        next: '16',
-        '@domain-first/handlers-next': '2'
-    });
+    const project = setup(
+        ['@domain-first/handlers-rest'],
+        { next: '16', '@domain-first/handlers-next': '2' },
+        'next'
+    );
     for (const file of [generatorPath, 'app/api/[...path]/route.ts']) {
         fs.mkdirSync(path.dirname(path.join(project, file)), {
             recursive: true

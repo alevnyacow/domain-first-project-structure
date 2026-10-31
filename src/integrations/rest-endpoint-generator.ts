@@ -70,7 +70,7 @@ const scaffoldNextRoute = (root: string): string[] => {
 };
 
 /**
- * Explicit framework selection takes precedence over installed packages.
+ * Offered only when the config selects Next.js (or the caller says so).
  */
 export const askNextAdapter = async ({
     nextSelected

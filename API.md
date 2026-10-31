@@ -193,7 +193,7 @@ Current settings prefill the prompts. Only the chosen sections change; opting in
 
 React and Next.js both enable `df-react` and use the same `@storybook/react-vite` integration. Enabling Storybook scaffolds its configs, scripts and `.gitignore` entry during initialization. The Storybook framework package is fixed; no package input is shown. Existing custom framework settings are aligned with the shared preset when Storybook is enabled. The framework select uses the saved value first, otherwise Next.js if `next` is declared, otherwise React. The Next adapter question follows the Next.js selection once, even if `next` has not been installed yet. Declining it keeps the frontend choice without adding REST support. Selecting React skips it even when `next` is installed.
 
-When backend is deferred, frontend does not create or configure backend settings. Later backend setup sees the saved Next.js choice and offers the adapter. A backend-only run also retains dependency-based detection for old configs without an explicit framework choice. REST support is generated after frontend selection, so a new full setup generates the chosen adapter directly. Existing generators/routes are kept as in the integration, with a manual connection note if necessary.
+When backend is deferred, frontend does not create or configure backend settings. Later backend setup sees the saved Next.js choice and offers the adapter. REST support is generated after frontend selection, so a new full setup generates the chosen adapter directly. Existing generators/routes are kept as in the integration, with a manual connection note if necessary.
 
 **Output**
 
@@ -306,7 +306,7 @@ type Config = {
 | `backend.withInMemoryDb` | Enables the shared [in-memory DB](#in-memory-db) behavior for repository, command and query implementations. |
 | `backend.testingLibrary` | Test imports: `describe`, `test`, `expect`, `beforeEach`. Omitted: no generated specs. |
 | `frontend.react` | Its presence enables `df-react`, OpenAPI's Swagger UI page and Orval's React Query hooks. An empty object enables React without stories. |
-| `frontend.react.framework` | `react` or `next`, selected by frontend setup; both use React generators. Omitted: legacy React settings with package-based Next detection. |
+| `frontend.react.framework` | `react` or `next`, selected by frontend setup; both use React generators. Omitted (legacy React settings): treated as React. Installed packages never switch on Next.js behavior; select Next.js with `df-init --section frontend`. |
 | `frontend.react.storybookFramework` | Package used for story imports. Omitted: no generated stories. |
 | `backend.implementations` | Saved implementation labels, separated by contract kind and primary/test role. |
 | `backend.rules.dependencies` | Explicit dependency lists for every module kind, scaffolded by backend setup. Entries can be edited or replaced with `add`/`remove` patches. Missing kinds use defaults. |
@@ -787,7 +787,7 @@ Repository, command, query and port tests reference wiring factories with `wire`
 
 **Output**: `react/pages/<folders>/<file>-page.tsx` with `type <Name>PageProps = {}` and `const <Name>Page: FC<<Name>PageProps>`.
 
-With Next.js (`frontend.react.framework: next`, or `next` installed when no framework is set), the page also gets its App Router route at the same path: `app/<folders>/<name>/page.tsx` (`src/app/…` when that folder exists), a default export that renders `<Name>Page`. An existing route file is kept and the CLI says to render the page there. Moving or renaming a page updates the route's import but leaves the route where it is: move it yourself when the URL changes.
+With Next.js (`frontend.react.framework: next`), the page also gets its App Router route at the same path: `app/<folders>/<name>/page.tsx` (`src/app/…` when that folder exists), a default export that renders `<Name>Page`. An existing route file is kept and the CLI says to render the page there. Moving or renaming a page updates the route's import but leaves the route where it is: move it yourself when the URL changes.
 
 ### New widget
 
@@ -857,7 +857,7 @@ The list has two sections: `New integrations`, then `Already applied (select to 
 
 ### REST endpoint generator
 
-With Next.js selected in `frontend.react.framework`, asks `Use @domain-first/handlers-next for REST endpoints`, even before Next.js is installed. For legacy configs without an explicit framework, `next` in `package.json` enables the question; an explicit React choice skips it. Writes the [endpoint generator](#endpoint-generator) with its spec and wire as for [New Service](#new-service), and with the Next adapter the catch-all route `app/api/[...path]/route.ts` (`src/app/api/[...path]/route.ts` when `src/app` exists and `app` doesn't):
+With Next.js selected in `frontend.react.framework`, asks `Use @domain-first/handlers-next for REST endpoints`, even before Next.js is installed. Otherwise the question is skipped, even when `next` is in `package.json`. Writes the [endpoint generator](#endpoint-generator) with its spec and wire as for [New Service](#new-service), and with the Next adapter the catch-all route `app/api/[...path]/route.ts` (`src/app/api/[...path]/route.ts` when `src/app` exists and `app` doesn't):
 
 ```ts
 import { nextEndpoints } from '@domain-first/handlers-next'

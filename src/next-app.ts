@@ -1,18 +1,11 @@
 import path from 'node:path';
 import { ConfigFile } from './config-file';
 import { Folder } from './file-system';
-import { hasDependency } from './integrations/missing-domain-first-packages';
 
-/**
- * Explicit framework selection takes precedence over installed packages;
- * configs without one fall back to the `next` dependency.
- */
-export const usesNext = () => {
-    const framework = ConfigFile.exists
-        ? ConfigFile.Instance.data.frontend?.react?.framework
-        : undefined;
-    return framework ? framework === 'next' : hasDependency('next');
-};
+/** Next.js is used only when the config selects it explicitly. */
+export const usesNext = () =>
+    ConfigFile.exists &&
+    ConfigFile.Instance.data.frontend?.react?.framework === 'next';
 
 /**
  * The App Router folder: `app` or `src/app`, whichever exists, `app` by
