@@ -1,5 +1,7 @@
 # df-react generators: prompts and output
 
+Settings: `project.rootFolder` and `frontend.react.storybookFramework`. The frontend section must be configured by the user before these runs.
+
 Notation: `…/react/` = `<rootFolder>/presentation/react/`. `n` = the entered kebab-case name, `N` = PascalCase. Every step list goes after `--bin df-react`; the first prompt is the module menu. If the run would replace existing files, the last prompt is the confirm `Overwrite them?` (the files are listed above it).
 
 ## New page

@@ -56,7 +56,8 @@ export const DELETE = handler
  * doesn't compile, and the returned note says so.
  */
 const scaffoldNextRoute = (root: string): string[] => {
-    const { rootFolder, domainFirstPackages } = ConfigFile.Instance.data;
+    const { rootFolder } = ConfigFile.Instance.data.project;
+    const { domainFirstPackages } = ConfigFile.backend;
     const routePath = nextRoutePath(root);
     const routeFile = path.join(root, routePath);
     if (new File(routeFile).exists) return [];
@@ -80,11 +81,22 @@ const scaffoldNextRoute = (root: string): string[] => {
 };
 
 /**
- * Asked only in projects with `next` among their dependencies.
+ * Explicit framework selection takes precedence over installed packages.
  */
-export const askNextAdapter = async () =>
-    hasDependency('next') &&
-    (await confirm({ message: 'Use Next adapter for REST endpoints' }));
+export const askNextAdapter = async ({
+    nextSelected
+}: {
+    nextSelected?: boolean;
+} = {}) => {
+    const framework = ConfigFile.Instance.data.frontend?.react?.framework;
+    return (
+        (nextSelected ??
+            (framework ? framework === 'next' : hasDependency('next'))) &&
+        (await confirm({
+            message: 'Use @domain-first/handlers-next for REST endpoints'
+        }))
+    );
+};
 
 /**
  * The Shared Kernel endpoint generator and, with the Next adapter, the
@@ -101,7 +113,7 @@ export const scaffoldRestEndpointGeneratorFiles = ({
     const routeNotes = withoutOverwrites(() => {
         scaffoldRestEndpointGenerator(
             new Folder(root).subitem([
-                ConfigFile.Instance.data.rootFolder,
+                ConfigFile.Instance.data.project.rootFolder,
                 'shared-kernel'
             ]),
             { withNextAdapter }
@@ -129,7 +141,7 @@ export const restEndpointGeneratorApplied = () =>
     Boolean(
         findRestEndpointGenerator(
             new Folder(new ProjectRoot().path).subitem([
-                ConfigFile.Instance.data.rootFolder,
+                ConfigFile.Instance.data.project.rootFolder,
                 'shared-kernel'
             ])
         )

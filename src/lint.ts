@@ -11,7 +11,7 @@ Reports what breaks the Domain-First rules in the project:
 bounded context isolation, layers, dependency rules (imports and wiring),
 React modules, and reading the time without the clock port.
 rootFolder defaults to the one in domain-first.project-structure.config.json,
-whose optional \`rules\` change the dependency rules and turn checks off.
+whose optional \`backend.rules\` change the dependency rules and turn checks off.
 Exits with 1 when something is found.
 
 Options:
@@ -29,10 +29,10 @@ if (values.help) {
 
 const projectRoot = new ProjectRoot().path;
 const config = ConfigFile.exists ? ConfigFile.Instance.data : undefined;
-const rootFolder = positionals[0] ?? config?.rootFolder ?? 'src';
+const rootFolder = positionals[0] ?? config?.project.rootFolder ?? 'src';
 const violations = lintProject(projectRoot, rootFolder, {
     rules: configuredDependencyRules(),
-    checks: config?.rules?.lint
+    checks: config?.backend?.rules?.lint
 });
 
 if (violations.length) {

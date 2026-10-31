@@ -161,11 +161,11 @@ describe('in memory db', () => {
 `.trim();
 
 const withWiring = () =>
-    ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire');
+    ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
 const sharedFolder = () =>
     new Folder(new ProjectRoot().path).subitem([
-        ConfigFile.Instance.data.rootFolder,
+        ConfigFile.Instance.data.project.rootFolder,
         'shared-kernel'
     ]);
 
@@ -187,7 +187,7 @@ const wireFile = () =>
  * The shared in-memory DB with its spec and wire, as the config says.
  */
 export const scaffoldInMemoryDb = (shared: Folder) => {
-    const { testingLibrary } = ConfigFile.Instance.data;
+    const { testingLibrary } = ConfigFile.backend;
     const servicesFolder = shared.subitem(['infrastructure', 'services']);
 
     servicesFolder.createFile(
@@ -224,7 +224,7 @@ export const inMemoryDbScaffolded = () =>
  * enabled in the config and its files are there.
  */
 export const usesInMemoryDb = (implementationType: string) =>
-    Boolean(ConfigFile.Instance.data.withInMemoryDb) &&
+    Boolean(ConfigFile.Instance.data.backend?.withInMemoryDb) &&
     new UnknownFormatNaming(implementationType).fileName ===
         inMemoryImplementationType &&
     inMemoryDbScaffolded();

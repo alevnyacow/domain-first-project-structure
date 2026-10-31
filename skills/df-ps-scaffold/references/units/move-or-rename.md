@@ -12,7 +12,7 @@ Prompts: `Module:` (select, grouped by kind; entities and value objects of an ag
 
 Every file of the module moves (contract, implementations, wire, specs; an aggregate with its whole folder), every import of it follows, and derived names change in the module and its importers: `OrderRepository`, `PrismaOrderRepository`, `wireOrderRepository`, dependents' `orderRepository` parameters, an aggregate's in-memory DB section. An entity leaving its aggregate is no longer re-exported there; its importers import its file.
 
-Before `Apply?` the CLI lists the files to move and to update: check them against the plan. A move that would make a context import another one prints `Nothing was moved: these imports would cross a bounded context boundary.` with the imports: nothing changed. Fix the design instead (`../choosing-components.md`, step 9: the other context gets its own query or command), or move the dependency first.
+Before `Apply?` the CLI lists the files to move and to update: check them against the plan. A move that would introduce a forbidden context import prints `Nothing was moved: these imports would cross a bounded context boundary.` with the imports: nothing changed. Fix the design instead (`../choosing-components.md`, step 9: the consuming context gets a port with a cross-context adapter), or move the dependency first.
 
 In the plan, list a move as a run: old → new place and name, the files to move (`→`) and the files whose imports or names change (`~`).
 

@@ -4,6 +4,7 @@ import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
 import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
@@ -13,17 +14,15 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     ]);
 
     const commandName = await input({ message: 'Name: ' });
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
     const naming = new UnknownFormatNaming(commandName);
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
-    const implementationType = await input({
-        message: 'Command infrastructure implementation type:',
-        default: ConfigFile.Instance.data.defaultPersistenceLayerImplementation
-    });
+    const { label: implementationType } = await promptImplementationType(
+        'Command infrastructure implementation type:',
+        'commands'
+    );
 
     let addTestImplementation: boolean = false;
     let testImplementationType: string = '';
@@ -33,10 +32,13 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     });
 
     if (addTestImplementation) {
-        testImplementationType = await input({
-            message: 'Test Command infrastructure implementation type:',
-            default: 'in-memory'
-        });
+        testImplementationType = (
+            await promptImplementationType(
+                'Test Command infrastructure implementation type:',
+                'commands',
+                { existing: [implementationType], purpose: 'test' }
+            )
+        ).label;
     }
 
     const implementationTypes = [
@@ -58,7 +60,7 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     }
 
     if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
+        ConfigFile.backend.domainFirstPackages.includes(
             '@domain-first/handlers'
         )
     ) {
@@ -92,7 +94,7 @@ export abstract class ${naming.ClassName}Command {
         const specFile = commandsFolder.createFile(
             `${naming.fileName}-command.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
@@ -124,11 +126,7 @@ describe('${naming.withSpaces} command', () => {
         }
     }
 
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
-    ) {
+    if (ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')) {
         const implementationNaming = new UnknownFormatNaming(
             implementationType
         );

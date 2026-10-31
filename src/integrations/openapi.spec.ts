@@ -40,7 +40,6 @@ const setup = (
         JSON.stringify({
             rootFolder,
             domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'api',
             useReact
         })
     );

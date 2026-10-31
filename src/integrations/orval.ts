@@ -143,7 +143,11 @@ const openapiOutputPath = (root: string) => {
 };
 
 export const addOrval = async (): Promise<string[]> => {
-    const { rootFolder, useReact } = ConfigFile.Instance.data;
+    const {
+        project: { rootFolder },
+        frontend
+    } = ConfigFile.Instance.data;
+    const useReact = Boolean(frontend?.react);
     const root = new ProjectRoot().path;
     const manifestFile = new File(path.join(root, 'package.json'));
     const manifest = JSON.parse(manifestFile.data);

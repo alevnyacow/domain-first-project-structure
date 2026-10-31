@@ -29,7 +29,8 @@ export const ${ClassName}: FC<${ClassName}Props> = (props) => {
         `.trim()
     );
 
-    const { storybookFramework } = ConfigFile.Instance.data;
+    const { storybookFramework } =
+        ConfigFile.Instance.data.frontend?.react ?? {};
 
     if (storybookFramework) {
         componentFolder.createFile(

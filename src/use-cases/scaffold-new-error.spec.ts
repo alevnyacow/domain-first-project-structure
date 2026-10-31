@@ -25,7 +25,6 @@ beforeEach(() => {
         JSON.stringify({
             rootFolder: 'src',
             domainFirstPackages: ['@domain-first/errors'],
-            defaultPersistenceLayerImplementation: 'prisma',
             useReact: false
         })
     );

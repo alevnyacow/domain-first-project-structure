@@ -11,23 +11,24 @@ Generated files contain placeholders: empty classes, `{}` schemas, `[]` dependen
 
 - New files need an approved work plan (`df-ps-scaffold`, rule 1) and come only via df-scaffold or its listed exceptions (rule 2). Edits to existing files don't need approval; report them.
 - Keep generated names and paths: barrels, wiring, specs, and `presentation/rest/wires.ts` import them. To rename or move a module, use `Move or rename` of df-scaffold (`df-ps-scaffold/references/units/move-or-rename.md`), never by hand.
-- Layers: domain imports nothing from other layers. Application uses domain and its own abstractions. Infrastructure implements repositories, contracts, and ports, and may use application ports (of its context and the Shared Kernel), never other application modules. Infrastructure needing logic from an application service means the logic is misplaced: pure logic without ports → a domain service; logic over ports → call those ports directly; technical logic (mapping, retries, formatting for an external API) → an infrastructure service. Presentation calls application handlers. Only `wiring/` knows concrete classes.
+- Layers: domain imports nothing from other layers. Application uses domain and its own abstractions. Infrastructure implements repositories, contracts, and ports, and may use application ports (of its context and the Shared Kernel). Cross-context port adapters may also inject neighboring application handlers under the boundary rules below. Infrastructure needing logic from an application service means the logic is misplaced: pure logic without ports → a domain service; logic over ports → call those ports directly; technical logic (mapping, retries, formatting for an external API) → an infrastructure service. Presentation calls application handlers. Only `wiring/` knows concrete classes.
 - Constructors take abstractions (`OrderRepository`, abstract `PlaceOrderCommand`, port `PaymentGateway`), never `PrismaOrderRepository`.
 - Implementation order: domain → application → schema tool runs (migrations, only if infrastructure needs data the database lacks) → infrastructure (repositories, commands/queries, adapters) → endpoints → other tool runs (OpenAPI, API client) → React. Widgets need the regenerated client. How to run tools and handle their output: the project's scripts skill (`project-scripts`), if there is one.
 - Run the project's tsc/lint/tests after each component.
-- What each kind of module may use follows the defaults in these skills unless `rules.dependencies` in the config changes them; then follow the config, in imports as well as in wiring.
+- What each kind of module may use follows the defaults in these skills unless `backend.rules.dependencies` in the config changes them; then follow the config, in imports as well as in wiring.
 
 ## Bounded context isolation
 
-A file in context A imports **nothing** from context B: no types (`import type` too), barrels, aliases, errors, or wiring. No exceptions: every context must be movable to its own service.
+Context A's domain and application import nothing from B. Direct calls are confined to port adapters under `infrastructure/application-adapters/cross-context/` and their matching wiring, so their implementation can be replaced when B becomes a separate service. All other cross-context imports remain forbidden, including domain models, errors, repositories, services, concrete infrastructure and barrels.
 
-- A needs B's data or behavior → a **query** (read) or **command** (write) in A. Its input/output are A's own models, duplicated in A's terms; B's models never appear in A.
-- Its infrastructure implementation reaches B's data **the simplest available way**: a shared database → query it directly (e.g. `prisma`); otherwise the way chosen in the plan (`df-ps-plan-feature`, step 3, rule 4), by default B's REST endpoint (`http`), like an external service. Either way it maps the result to A's models and errors and imports nothing from B. Its test implementation returns fixed data, so A's tests never run B.
+- A needs B's data or behavior → an **application port** in A. Its input/output are A's own models, duplicated in A's terms; B's models never appear in A.
+- A direct port adapter (reserved type `cross-context`) injects B's application queries, commands or use cases. Its constructor imports the handler type; its wire imports B's matching factory. Use the CLI's context-qualified aliases (`BillingInvoiceQuery`, `wireBillingInvoiceQuery`) and map input, output and errors to A's contract. Never expose B's models through A's application contract.
+- Database and transport implementations use the integration chosen in the plan (`df-ps-plan-feature`, step 3, rule 4) and import nothing from B. The test implementation returns fixed data, so A's tests never run B.
 - Refer to B's entities by id only.
 - `shared-kernel/` may import any context's **`domain/errors`** (e.g. to map them to HTTP statuses), and nothing else from a context. The one exception: the shared in-memory DB, `shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts`, may also import any context's **domain models** (aggregate roots, entities, value objects: the `domainType` classes under `domain/aggregates/`, `domain/entities/`, `domain/value-objects/`) to type its sections, never repository contracts or anything outside `domain/`. Don't move a context's domain concepts into `shared-kernel/` to share them between contexts; only universal entities / value objects (`money`, `email`) live there.
 - `<rootFolder>/presentation/rest/` (the generated `wires.ts`, `index.ts`) may import every context's REST wiring.
 - `<rootFolder>/presentation/react/` imports **nothing** from contexts whenever it can avoid it: a generated API client first, `import type` of endpoint contracts only without one (`df-ps-react`, "Talking to the backend").
-- Need a forbidden import? A's own query or command is missing. Plan it and generate it.
+- Need a forbidden import? A's own port or its cross-context adapter is missing. Plan it and generate it.
 
 Check before reporting done; fix every finding:
 
@@ -43,7 +44,7 @@ Run it from the project root; `rootFolder` defaults to the config's. It resolves
 - a widget importing another widget (a widget = the nearest folder under `presentation/react/widgets/` with a `*-widget.tsx`, nested widgets included), UI-kit importing widgets, pages or contexts, shared hooks importing UI-kit, widgets, pages or contexts;
 - `new Date()` / `Date.now()` in domain or application (use the `clock` port).
 
-It exits with 1 when anything is found. Checks turned off in the config (`rules.lint`) aren't reported; don't turn checks off yourself.
+It exits with 1 when anything is found. Checks turned off in the config (`backend.rules.lint`) aren't reported; don't turn checks off yourself.
 
 ## Units
 

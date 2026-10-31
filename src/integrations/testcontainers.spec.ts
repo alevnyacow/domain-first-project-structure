@@ -39,7 +39,6 @@ const setup = (
         JSON.stringify({
             rootFolder: 'src',
             domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'prisma',
             useReact: false
         })
     );

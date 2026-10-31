@@ -9,7 +9,7 @@ description: Generate Domain-First components with the `df-scaffold` CLI (@domai
 
 Follow this order for every request:
 
-1. Read `domain-first.project-structure.config.json` (beside the nearest `package.json`). If missing, stop and tell the user to initialize the project with `npx df-init` first. Its optional `rules.dependencies` changes what each kind of module may depend on; where it differs from the defaults in these skills, the config wins.
+1. Read `domain-first.project-structure.config.json` beside the nearest `package.json`: `project.rootFolder`, `backend` (including `backend.implementations` and `backend.rules`), and `frontend`. `frontend.react.framework` records React (`react`) or Next.js (`next`); both use `df-react`. Initialization and configuration belong to the human: never run `df-init` or manually add/change these settings. If the config is missing, tell the user to run `npx df-init`; if backend work needs an absent `backend`, tell them to run `npx df-init --section backend`. Continue only with work whose required sections are configured. The CLI also accepts the old flat config and merges a legacy `domain-first.project-structure.implementations.json` on read; use those choices when present, without migrating files by hand. `df-init` scaffolds explicit standard lists and enabled lint checks under `backend.rules`; read the saved values as authoritative. Older or partial configs may omit entries, which retain the defaults. Backend reconfiguration by the user fills missing entries without resetting existing rules.
 2. Feature request without named contexts/components → `df-ps-plan-feature` (it covers steps 3–5).
 3. Choose a component for each piece of logic with `references/choosing-components.md`. Pieces of UI (pages, widgets, UI-kit components, shared hooks): `df-ps-react`.
 4. Read `references/units/<unit>.md` for every unit in the plan ("Units" below) and prepare the run details ("Preparing runs").
@@ -82,11 +82,11 @@ Moving or renaming a module (aggregate, entity, value object, service, port, que
 With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-scaffold`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-scaffold` added.
 
 - List each module's dependencies in the plan as run options (`deps: OrderRepository`), with a `Wire dependency` run for existing modules.
-- A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `rules.dependencies` in the config) or by context isolation: change the design (a port, a query or command, an infrastructure service) instead of adding it by hand.
+- A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `backend.rules.dependencies` in the config) or by context isolation: change the design (a port, a query or command, an infrastructure service) instead of adding it by hand.
 - A value that isn't a wired module (a database or SDK client, a config value) lives in an infrastructure service named after the implementation label (`prisma`, `in-memory-db`, `stripe`): the service creates or reads it itself (`readonly client = new PrismaClient()`), with no constructor parameter for it. Implementations get the service through `df-scaffold`, where it shows up under `Suggested`. Wrap the service's wire in `memoWire(...)` when one instance must be shared (a connection pool, an in-memory store). No `wireValue(...)`. A domain or application module never gets such a value directly: it depends on a port whose adapter uses the service.
 - An endpoint generated with `handler: never` gets its handler by re-running the endpoint generator once the handler exists, as an approved overwrite.
 
-### 4. Bounded contexts never import each other
+### 4. Cross-context calls stay in application port adapters
 
 Details and the check script: `df-ps-implement`, "Bounded context isolation".
 
@@ -115,7 +115,7 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 - **Contexts**: subfolders of `<rootFolder>/bounded-contexts/` (menu: `Bounded Context: <name>`).
 - **Names**: lowercase kebab-case, no generator suffix (`place-order`, not `place-order-use-case`). No empty segments (`a--b`).
 - **Collisions**: before writing, the CLI asks `Overwrite them?` if the run would replace existing files. Check the target paths; rename, or flag the overwrite in the plan and end that run's steps with `yes`.
-- **Tests**: with `testingLibrary` set, df-scaffold always generates specs; add a test implementation (`in-memory`/`mock`) to repositories, commands/queries, and ports. Otherwise the spec wires the real one. Without `testingLibrary`, tell the user once and suggest adding it with `! npx df-integration` (Vitest); don't edit the config yourself.
+- **Tests**: with `backend.testingLibrary` set, df-scaffold always generates specs; add a test implementation (`in-memory`/`mock`) to repositories, commands/queries, and ports. Otherwise the spec wires the real one. Without `backend.testingLibrary`, tell the user once and suggest adding it with `! npx df-integration` (Vitest); don't edit the config yourself.
 - **Prompts**: take the exact sequence for the generator and config from its unit file, and the `Dependencies:` step from `references/generators.md`.
 
 ## Running the driver
@@ -124,15 +124,20 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 
 ```bash
 node <this-skill-dir>/scripts/drive.mjs [--bin df-react] [--cwd <dir>] [--delay <ms>] <step>...
-node scripts/drive.mjs "pick:Bounded Context: sales" pick:Domain "pick:New Aggregate" text:order yes default yes default
+node scripts/drive.mjs "pick:Bounded Context: sales" pick:Domain "pick:New Aggregate" text:order yes "pick:Enter implementation type and save for future use" text:prisma no
 ```
 
 | Step                   | Prompt   | Effect                                                                                                           |
 | ---------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | `pick:<label>`         | select   | Types a **prefix of the choice text** + Enter. Aborts before submitting if the highlighted choice doesn't match. |
-| `text:<v>` / `default` | input    | Types a value / accepts the default.                                                                             |
+| `text:<v>`             | input        | Types a value. |
+| `default`              | input/select | Accepts the suggested input value or the highlighted default choice. |
 | `yes` / `no`           | confirm  |                                                                                                                  |
-| `toggle:1,3` / `none`  | checkbox | Init, `Dependencies:`, `Dependencies for <Implementation>:`. `Suggested` items come checked: toggling unchecks. |
+| `toggle:1,3` / `none`  | checkbox | `Dependencies:`, `Dependencies for <Implementation>:`. `Suggested` items come checked: toggling unchecks. |
+
+Implementation-type menus contain saved names and active system choices, without automatic `api` or `mock` presets. Use `pick:prisma` only when saved for that category, `"pick:System: cross-context"` for a port with a neighboring context, or `"pick:System: in-memory"` for a repository/command/query with the shared DB integration ready. New ordinary names take two steps: `"pick:Enter implementation type and save for future use" text:redis` or `"pick:Enter implementation type for this run only" text:redis`. Use the complete manual-entry label to distinguish saving from run-only input. `default` accepts the selected choice.
+
+Custom types entered with the save action update `backend.implementations` in `domain-first.project-structure.config.json`; include that generated config update in the work plan. The run-only action generates code without adding saved choices. These generator-managed choice updates are allowed; project/backend/frontend setup remains a human task. Changes are staged with the generated code and cancelled with it. Repository, command, query and port choices are independent; read that category's saved `primary`/`test` lists before preparing answers.
 
 Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the planned files. "Still waiting for input" means too few steps; nothing was written. If the raw output ends at `Overwrite them?`, the run would replace files the plan didn't flag: show the user the listed files and ask, never just add `yes`. If prompts get out of sync, retry with `--delay 1200`.
 

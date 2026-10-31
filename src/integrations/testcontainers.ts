@@ -175,14 +175,14 @@ export const addTestcontainers = async (): Promise<string[]> => {
     const withPrisma = new File(
         path.resolve(
             root,
-            config.rootFolder,
+            config.project.rootFolder,
             'shared-kernel/infrastructure/prisma/prisma.config.ts'
         )
     ).exists;
     // Without --advance-ref: the db ref in migrations/app/refs/db.json tracks
     // the development database and must not move to the container's state.
     const migrationCommand = withPrisma
-        ? `npx ${prismaScripts(config.rootFolder)['prisma:migration:apply'].replace(' --advance-ref db', '')}`
+        ? `npx ${prismaScripts(config.project.rootFolder)['prisma:migration:apply'].replace(' --advance-ref db', '')}`
         : undefined;
 
     const folder = path.join(root, integrationFolder);

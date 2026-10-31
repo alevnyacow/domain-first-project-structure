@@ -162,6 +162,92 @@ const wiredModule = (kind: string, layer: Layer): WiredModule => ({
 });
 
 describe('canDependOn', () => {
+    test('limits foreign handlers to cross-context application port adapters', () => {
+        const module = (
+            context: string,
+            kind: string,
+            layer: Layer,
+            label = 'cross-context'
+        ): WiredModule => {
+            const suffix =
+                {
+                    queries: '-query',
+                    commands: '-command',
+                    'use-cases': '-use-case'
+                }[kind] ?? '';
+            return {
+                ...wiredModule(kind, layer),
+                wireFile: `/project/src/bounded-contexts/${context}/wiring/${kind}/wire-x${suffix}.ts`,
+                typeFile: `/project/src/bounded-contexts/${context}/${layer}/${kind === 'application-ports' ? 'ports' : kind}/x${suffix}.ts`,
+                implementations: [
+                    {
+                        className: 'Implementation',
+                        file: `/project/src/bounded-contexts/${context}/infrastructure/${kind === 'application-ports' ? 'application-adapters' : kind}/${label}/${label}-x${suffix}.ts`
+                    }
+                ],
+                implementationsLayer: [
+                    'queries',
+                    'commands',
+                    'application-ports'
+                ].includes(kind)
+                    ? 'infrastructure'
+                    : layer
+            };
+        };
+        const port = module('sales', 'application-ports', 'application');
+        for (const kind of ['queries', 'commands', 'use-cases']) {
+            const foreign = module('billing', kind, 'application');
+            expect(canDependOn(port, foreign)).toBe(true);
+            expect(
+                canDependOn(
+                    module('sales', 'application-ports', 'application', 'api'),
+                    foreign
+                )
+            ).toBe(false);
+            expect(
+                canDependOn(module('sales', 'queries', 'application'), foreign)
+            ).toBe(false);
+            expect(
+                canDependOn(module('sales', 'commands', 'application'), foreign)
+            ).toBe(false);
+            expect(
+                canDependOn(
+                    module('sales', 'use-cases', 'application'),
+                    foreign
+                )
+            ).toBe(false);
+            expect(
+                canDependOn(
+                    module(
+                        'sales',
+                        'infrastructure-services',
+                        'infrastructure'
+                    ),
+                    foreign
+                )
+            ).toBe(false);
+        }
+        expect(
+            canDependOn(
+                port,
+                module('billing', 'application-ports', 'application')
+            )
+        ).toBe(false);
+        expect(
+            canDependOn(
+                port,
+                module('billing', 'infrastructure-services', 'infrastructure')
+            )
+        ).toBe(false);
+        expect(
+            canDependOn(
+                module('sales', 'queries', 'application'),
+                module('billing', 'commands', 'application'),
+                resolveDependencyRules({ queries: { add: ['commands'] } })
+            )
+        ).toBe(false);
+    });
+
     const repository = wiredModule('repositories', 'domain');
     const port = wiredModule('application-ports', 'application');
     const query = wiredModule('queries', 'application');

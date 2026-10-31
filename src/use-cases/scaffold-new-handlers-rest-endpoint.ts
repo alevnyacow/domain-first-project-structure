@@ -27,7 +27,7 @@ export const scaffoldNewHandlersRestEndpoint = async (
         });
 
         if (
-            ConfigFile.Instance.data.domainFirstPackages.includes(
+            ConfigFile.backend.domainFirstPackages.includes(
                 '@domain-first/wire'
             )
         ) {
@@ -103,9 +103,7 @@ export const restHandlers = restWires.map(x => x().handle)
         .join('');
 
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
     /**
      * The generator is the Shared Kernel one; with wiring, the user picks

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { crossContextImportAllowed } from './context-dependencies';
 import { File } from './file-system';
 import { plural } from './in-memory-db';
 import {
@@ -381,15 +382,19 @@ const inMemoryDbFile = (rootFolderPath: string) =>
     );
 
 /**
- * Whether `from` may import `to` by bounded context isolation: never
- * another context; the Shared Kernel only a context's errors, and the
- * in-memory DB also its domain models.
+ * Whether `from` may import `to` by bounded context isolation, including
+ * cross-context port adapters. The Shared Kernel sees only a context's
+ * errors, and the in-memory DB also its domain models.
  */
 const isolationAllows = (rootFolderPath: string, from: string, to: string) => {
     const fromOwner = ownerOf(rootFolderPath, from);
     const toOwner = ownerOf(rootFolderPath, to);
     if (!fromOwner || !toOwner?.context) return true;
-    if (fromOwner.context) return fromOwner.context === toOwner.context;
+    if (fromOwner.context)
+        return (
+            fromOwner.context === toOwner.context ||
+            crossContextImportAllowed(from, to) === true
+        );
     const inside = (folder: string) =>
         to === path.join(toOwner.path, folder) ||
         to.startsWith(path.join(toOwner.path, folder) + path.sep);

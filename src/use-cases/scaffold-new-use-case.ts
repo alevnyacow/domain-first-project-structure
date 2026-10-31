@@ -13,16 +13,14 @@ export const scaffoldNewUseCase = async (boundedContextFolder: Folder) => {
     const useCaseName = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(useCaseName);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
     useCasesFolder.createFile(
         `${naming.fileName}-use-case.ts`,
-        ConfigFile.Instance.data.domainFirstPackages.includes(
+        ConfigFile.backend.domainFirstPackages.includes(
             '@domain-first/handlers'
         )
             ? /** implementation with @domain-first */
@@ -58,7 +56,7 @@ export class ${naming.ClassName}UseCase {
         useCasesFolder.createFile(
             `${naming.fileName}-use-case.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}UseCase } from './${naming.fileName}-use-case'

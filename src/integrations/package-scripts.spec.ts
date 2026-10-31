@@ -118,7 +118,6 @@ test('Storybook integration stages config, is repeatable and flags edited files'
         JSON.stringify({
             rootFolder: 'src/client',
             domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'prisma',
             useReact: true
         })
     );
@@ -144,7 +143,8 @@ test('Storybook integration stages config, is repeatable and flags edited files'
             'resolve(import.meta.dirname, "../../../../..")'
         );
         expect(
-            JSON.parse(fs.readFileSync(configPath, 'utf8')).storybookFramework
+            JSON.parse(fs.readFileSync(configPath, 'utf8')).frontend.react
+                .storybookFramework
         ).toBe('@storybook/react-vite');
         expect(
             JSON.parse(

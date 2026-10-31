@@ -110,7 +110,7 @@ generateOpenAPI(${withExtractor ? 'handlers' : 'restHandlers'}, {
 };
 
 export const addOpenapi = async (): Promise<string[]> => {
-    const { rootFolder } = ConfigFile.Instance.data;
+    const { rootFolder } = ConfigFile.Instance.data.project;
     const root = new ProjectRoot().path;
     const manifestFile = new File(path.join(root, 'package.json'));
     const manifest = JSON.parse(manifestFile.data);
@@ -137,7 +137,7 @@ export const addOpenapi = async (): Promise<string[]> => {
     });
 
     const withSwaggerPage =
-        ConfigFile.Instance.data.useReact &&
+        Boolean(ConfigFile.Instance.data.frontend?.react) &&
         (await confirm({
             message: 'Add a Swagger UI page?',
             default: true

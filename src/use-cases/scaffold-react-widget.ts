@@ -84,7 +84,8 @@ export const ${ClassName}WidgetUI: FC<${ClassName}WidgetUIProps> = (props) => {
             `.trim()
             );
 
-            const { storybookFramework } = ConfigFile.Instance.data;
+            const { storybookFramework } =
+                ConfigFile.Instance.data.frontend?.react ?? {};
 
             if (storybookFramework) {
                 folder.subitem(['ui']).createFile(

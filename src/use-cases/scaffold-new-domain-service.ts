@@ -12,12 +12,10 @@ export const scaffoldNewDomainService = async (
     });
     const naming = new UnknownFormatNaming(portName);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
     const domainServicesFolder = boundedContextFolder.subitem([
         'domain',
@@ -40,7 +38,7 @@ export class ${naming.ClassName}DomainService {
         domainServicesFolder.createFile(
             `${naming.fileName}-domain-service.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}DomainService } from './${naming.fileName}-domain-service'

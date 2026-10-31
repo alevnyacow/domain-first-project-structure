@@ -4,6 +4,7 @@ import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
 import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
@@ -13,17 +14,15 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     ]);
 
     const queryName = await input({ message: 'Name: ' });
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
     const naming = new UnknownFormatNaming(queryName);
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
-    const implementationType = await input({
-        message: 'Query infrastructure implementation type:',
-        default: ConfigFile.Instance.data.defaultPersistenceLayerImplementation
-    });
+    const { label: implementationType } = await promptImplementationType(
+        'Query infrastructure implementation type:',
+        'queries'
+    );
 
     let addTestImplementation: boolean = false;
     let testImplementationType: string = '';
@@ -33,10 +32,13 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     });
 
     if (addTestImplementation) {
-        testImplementationType = await input({
-            message: 'Test Query infrastructure implementation type:',
-            default: 'in-memory'
-        });
+        testImplementationType = (
+            await promptImplementationType(
+                'Test Query infrastructure implementation type:',
+                'queries',
+                { existing: [implementationType], purpose: 'test' }
+            )
+        ).label;
     }
 
     const implementationTypes = [
@@ -58,7 +60,7 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     }
 
     if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
+        ConfigFile.backend.domainFirstPackages.includes(
             '@domain-first/handlers'
         )
     ) {
@@ -92,7 +94,7 @@ export abstract class ${naming.ClassName}Query {
         const specFile = queriesFolder.createFile(
             `${naming.fileName}-query.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}Query } from './${naming.fileName}-query'
@@ -124,11 +126,7 @@ describe('${naming.withSpaces} query', () => {
         }
     }
 
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
-    ) {
+    if (ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')) {
         const implementationNaming = new UnknownFormatNaming(
             implementationType
         );

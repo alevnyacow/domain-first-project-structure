@@ -58,10 +58,10 @@ export default defineConfig({
 export const addVitest = async (): Promise<string[]> => {
     const config = ConfigFile.Instance.data;
     if (
-        config.testingLibrary &&
-        config.testingLibrary !== 'vitest' &&
+        ConfigFile.backend.testingLibrary &&
+        ConfigFile.backend.testingLibrary !== 'vitest' &&
         !(await confirm({
-            message: `Replace testing library "${config.testingLibrary}" with vitest for generated tests?`,
+            message: `Replace testing library "${ConfigFile.backend.testingLibrary}" with vitest for generated tests?`,
             default: false
         }))
     ) {
@@ -78,14 +78,16 @@ export const addVitest = async (): Promise<string[]> => {
 
     const configFile = new File(path.join(root, 'vitest.config.ts'));
     const content = vitestConfig(
-        config.rootFolder,
+        config.project.rootFolder,
         Boolean(dependencies['@domain-first/handlers-next'])
     );
     if (!configFile.exists || configFile.data !== content) {
         configFile.data = content;
     }
-    if (config.testingLibrary !== 'vitest') {
-        ConfigFile.write({ ...config, testingLibrary: 'vitest' });
+    if (ConfigFile.backend.testingLibrary !== 'vitest') {
+        ConfigFile.update({
+            backend: { ...ConfigFile.backend, testingLibrary: 'vitest' }
+        });
     }
     addGitignoreEntry(root, '/coverage/');
 

@@ -32,10 +32,20 @@ const main = async () => {
         process.exit(1);
     }
 
+    if (!ConfigFile.Instance.data.backend) {
+        console.log(
+            'Backend is not configured: run df-init --section backend.'
+        );
+        process.exit(1);
+    }
+
     const rootPath = new ProjectRoot().path;
 
     const currentBoundedContextOptions = new Folder(rootPath)
-        .subitem([ConfigFile.Instance.data.rootFolder, 'bounded-contexts'])
+        .subitem([
+            ConfigFile.Instance.data.project.rootFolder,
+            'bounded-contexts'
+        ])
         .content.subfolderNames.map((name) => ({
             name: `Bounded Context: ${name}`,
             action: 'Scaffold in bounded context' as const
@@ -71,11 +81,14 @@ const main = async () => {
             ).subitem(
                 specificContext
                     ? [
-                          ConfigFile.Instance.data.rootFolder,
+                          ConfigFile.Instance.data.project.rootFolder,
                           'bounded-contexts',
                           name.substring('Bounded Context: '.length)
                       ]
-                    : [ConfigFile.Instance.data.rootFolder, 'shared-kernel']
+                    : [
+                          ConfigFile.Instance.data.project.rootFolder,
+                          'shared-kernel'
+                      ]
             );
 
             const layer = await select({
@@ -85,7 +98,7 @@ const main = async () => {
                     'Application',
                     'Infrastructure',
                     'Presentation',
-                    ConfigFile.Instance.data.domainFirstPackages.includes(
+                    ConfigFile.backend.domainFirstPackages.includes(
                         '@domain-first/wire'
                     )
                         ? 'Wire dependency'
@@ -215,7 +228,7 @@ const main = async () => {
                     message: 'Presentation layer operation:',
                     choices: specificContext
                         ? [
-                              ConfigFile.Instance.data.domainFirstPackages.includes(
+                              ConfigFile.backend.domainFirstPackages.includes(
                                   '@domain-first/handlers-rest'
                               )
                                   ? 'New Handlers-REST Endpoint'

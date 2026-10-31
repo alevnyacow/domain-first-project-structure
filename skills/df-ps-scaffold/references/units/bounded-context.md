@@ -10,4 +10,4 @@ Name: a business area in kebab-case (`sales`, `reviews`), not a feature.
 
 ## Implement
 
-Nothing to fill in. Everything inside comes from the other units. The context imports nothing from other contexts and they import nothing from it (`df-ps-implement`, "Bounded context isolation").
+Nothing to fill in. Everything inside comes from the other units. Domain and application stay isolated; cross-context port adapters may reach neighboring application handlers through their matching wiring (`df-ps-implement`, "Bounded context isolation").

@@ -10,12 +10,10 @@ export const scaffoldNewInfrastructureService = async (
     const name = await input({ message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
@@ -39,7 +37,7 @@ export class ${naming.ClassName}InfrastructureService {
         infrastructureServicesFolder.createFile(
             `${naming.fileName}-infrastructure-service.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}InfrastructureService } from './${naming.fileName}-infrastructure-service'

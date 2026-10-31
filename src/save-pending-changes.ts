@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { confirm } from '@inquirer/prompts';
+import { ConfigFile } from './config-file';
 import {
     discardPendingChanges,
     filesToOverwrite,
@@ -9,6 +10,7 @@ import { ProjectRoot } from './project-root';
 
 /** Shared commit step for standalone use cases and the CLI. */
 export const savePendingChanges = async (): Promise<boolean> => {
+    ConfigFile.migrate();
     const overwrittenFiles = filesToOverwrite();
     if (overwrittenFiles.length) {
         const root = new ProjectRoot().path;

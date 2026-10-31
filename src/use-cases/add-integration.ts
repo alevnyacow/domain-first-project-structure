@@ -21,19 +21,19 @@ import { ProjectRoot } from '../project-root';
 import { savePendingChanges } from '../save-pending-changes';
 
 const withHandlersRest = () =>
-    ConfigFile.Instance.data.domainFirstPackages.includes(
+    ConfigFile.Instance.data.backend?.domainFirstPackages.includes(
         '@domain-first/handlers-rest'
-    );
+    ) ?? false;
 
 /** Whether a file the integration creates exists, relative to the project root. */
 const created = (...segments: string[]) =>
     new File(path.join(new ProjectRoot().path, ...segments)).exists;
 const createdInRoot = (...segments: string[]) =>
-    created(ConfigFile.Instance.data.rootFolder, ...segments);
+    created(ConfigFile.Instance.data.project.rootFolder, ...segments);
 
 /**
  * Integrations are shown by group, but selected ones run in this order, each one seeing the changes of
- * the previous ones: Storybook turns on `useReact` for the Swagger UI page
+ * the previous ones: Storybook configures `frontend.react` for the Swagger UI page
  * of OpenAPI, integration tests read the Prisma config and the Vitest
  * config, Orval reads the OpenAPI document path.
  */
@@ -110,7 +110,12 @@ const integrations: {
 
 export const addIntegration = async () => {
     const available = integrations
-        .filter(({ available }) => available?.() ?? true)
+        .filter(
+            ({ group, available }) =>
+                (group !== 'backend' ||
+                    Boolean(ConfigFile.Instance.data.backend)) &&
+                (available?.() ?? true)
+        )
         .map((value) => ({ value, applied: value.applied() }));
     // Backend first, then frontend; the run order stays the list order
     const section = (title: string, applied: boolean) => {

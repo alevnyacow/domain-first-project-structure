@@ -41,7 +41,7 @@ export const scaffoldNewDomainObject = async (
     /**
      * Domain types close their constructors: instances come from `of`.
      */
-    const withTypes = ConfigFile.Instance.data.domainFirstPackages.includes(
+    const withTypes = ConfigFile.backend.domainFirstPackages.includes(
         '@domain-first/types'
     );
 
@@ -72,7 +72,7 @@ export class ${naming.ClassName} extends domainType() {
             );
     }
 
-    const { testingLibrary } = ConfigFile.Instance.data;
+    const { testingLibrary } = ConfigFile.backend;
 
     if (testingLibrary) {
         folder.createFile(

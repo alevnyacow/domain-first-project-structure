@@ -26,7 +26,6 @@ test('integration tests selected with Prisma and Vitest see their changes', asyn
         JSON.stringify({
             rootFolder: 'src',
             domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'prisma',
             useReact: false
         })
     );

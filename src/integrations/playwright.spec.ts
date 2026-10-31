@@ -33,7 +33,6 @@ const setup = (manifest: object) => {
         JSON.stringify({
             rootFolder: 'src',
             domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'api',
             useReact: false
         })
     );

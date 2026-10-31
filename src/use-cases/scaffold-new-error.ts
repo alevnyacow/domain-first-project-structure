@@ -12,7 +12,7 @@ const errorNames = (boundedContextFolder: Folder) => {
     const isShared =
         boundedContextFolder.path ===
         new Folder(new ProjectRoot().path).subitem([
-            ConfigFile.Instance.data.rootFolder,
+            ConfigFile.Instance.data.project.rootFolder,
             'shared-kernel'
         ]).path;
 

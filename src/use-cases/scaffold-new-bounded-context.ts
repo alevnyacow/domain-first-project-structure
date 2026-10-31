@@ -13,7 +13,7 @@ export const scaffoldNewBoundedContextUseCase = async () => {
 
     const rootFolder = new Folder(path);
     const folder = rootFolder.subitem([
-        ConfigFile.Instance.data.rootFolder,
+        ConfigFile.Instance.data.project.rootFolder,
         'bounded-contexts',
         name
     ]);

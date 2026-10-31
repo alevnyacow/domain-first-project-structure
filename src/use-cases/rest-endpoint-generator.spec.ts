@@ -19,7 +19,6 @@ const generate = (withNextAdapter?: boolean) => {
         JSON.stringify({
             rootFolder: 'src',
             domainFirstPackages: ['@domain-first/handlers-rest'],
-            defaultPersistenceLayerImplementation: 'prisma',
             useReact: false
         })
     );

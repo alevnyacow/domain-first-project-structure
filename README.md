@@ -29,29 +29,78 @@ The full technical specification lives in [API.md](./API.md).
 
 ### How to initialize a project
 
-Run `df-init` in a project with a `package.json`. It asks for the source folder, the `@domain-first` packages you use, the default persistence implementation, whether to scaffold a shared in-memory DB for test implementations, React, Storybook and the testing library, then writes `domain-first.project-structure.config.json` and the Shared Kernel files these answers need. With `@domain-first/handlers-rest`, it also scaffolds the [endpoint generator](#how-to-add-a-rest-endpoint); if `next` is among your dependencies, it offers to connect `nextAdapter` from `@domain-first/handlers-next` right away and adds the catch-all route `app/api/[...path]/route.ts`. Finally it prints one command that installs the missing packages.
+Run `df-init` in a project with a `package.json`. Setup visits **Project → Backend → Frontend** in order. Each section asks whether to configure it now: answer No to configure it later. Skipping Project keeps the source folder `src`; skipping Backend or Frontend leaves that section absent.
 
-```
+```bash
 npx df-init
+# Return to one section later:
+npx df-init --section backend
+npx df-init --section frontend
 ```
+
+Project asks for the source folder. Backend asks for the `@domain-first` packages, shared in-memory DB and testing library, then adds the required Shared Kernel files. With `@domain-first/handlers-rest`, it adds the [endpoint generator](#how-to-add-a-rest-endpoint). Frontend offers **React** or **Next.js**, then Storybook. Enabling Storybook runs the existing React + Vite integration: it creates `.storybook` configs, package scripts and the build-output `.gitignore` entry. Selecting Next.js with a configured backend asks **Use @domain-first/handlers-next for REST endpoints** once. Yes adds `handlers-rest` to the backend packages if needed, connects `nextAdapter` and creates the catch-all route. This works before `next` is installed. With backend deferred, REST setup waits until backend configuration. Missing packages are printed as an install command; nothing is installed automatically.
+
+All settings and saved implementation types live in `domain-first.project-structure.config.json`:
 
 ```json
 {
-    "rootFolder": "src",
-    "domainFirstPackages": [
-        "@domain-first/types",
-        "@domain-first/errors",
-        "@domain-first/handlers",
-        "@domain-first/wire"
-    ],
-    "defaultPersistenceLayerImplementation": "prisma",
-    "withInMemoryDb": true,
-    "useReact": false,
-    "testingLibrary": "vitest"
+    "project": { "rootFolder": "src" },
+    "backend": {
+        "domainFirstPackages": ["@domain-first/wire", "@domain-first/handlers"],
+        "withInMemoryDb": true,
+        "testingLibrary": "vitest",
+        "implementations": {
+            "repositories": { "primary": ["prisma", "mongo"], "test": ["stub"] },
+            "commands": { "primary": ["sql"], "test": [] },
+            "queries": { "primary": ["elastic"], "test": ["fake"] },
+            "ports": { "primary": ["s3"], "test": [] }
+        },
+        "rules": {
+            "dependencies": {
+                "domain-services": ["domain-services"],
+                "repositories": ["domain-services", "application-ports", "infrastructure-services"],
+                "application-ports": ["repositories", "domain-services", "application-ports", "infrastructure-services"],
+                "application-services": ["repositories", "domain-services", "application-ports", "commands", "queries"],
+                "use-cases": ["repositories", "domain-services", "application-ports", "application-services", "commands", "queries"],
+                "commands": ["infrastructure-services"],
+                "queries": ["infrastructure-services"],
+                "infrastructure-services": ["repositories", "domain-services", "application-ports", "infrastructure-services"],
+                "presentation-services": ["application-ports", "application-services", "use-cases", "commands", "queries", "presentation-services"]
+            },
+            "lint": {
+                "context-isolation": true,
+                "shared-kernel": true,
+                "layers": true,
+                "dependencies": true,
+                "react": true,
+                "clock": true
+            }
+        }
+    },
+    "frontend": {
+        "react": { "framework": "react", "storybookFramework": "@storybook/react-vite" }
+    }
 }
 ```
 
-Commit the config to share it with your team. `df-init` runs once: with a config in place it exits with an error. Change the config by hand; add the endpoint generator or the in-memory DB later with [`df-integration`](#how-to-add-tooling). The other commands need the config and point to `df-init` without it. Every `df-scaffold` run performs one operation from the menu.
+Commit the config to share it with your team. Rerunning `df-init` offers **Project**, **Backend**, **Frontend** and **All sections**, using current values as defaults. A single-section update keeps the other sections and saved choices. Backend setup writes all standard dependency lists and enabled lint checks into `backend.rules`, so they can be edited directly. On reconfiguration, only missing rules are filled; existing lists, `add`/`remove` patches and disabled checks are preserved. Backend setup preserves existing support files and restores missing ones. Changing the source folder affects future generation; existing source is not moved. React is enabled by the presence of `frontend.react`; its `framework` is `react` or `next`, so Next.js uses the same React generators. Frontend selection is prefilled from the saved value, falling back to Next.js when `next` is declared in `package.json`. Both choices use `@storybook/react-vite` from the Storybook integration; there is no separate Storybook framework prompt. Framework settings remain grouped under `frontend.<framework>`.
+
+The old flat config, the previous root-level `rules`/`implementations` sections and `domain-first.project-structure.implementations.json` remain readable. On the next saved CLI operation, their contents migrate into `backend` in this config and the old implementations file is removed. Cancellation discards the migration too. An absent backend or React section produces a message pointing to the corresponding `df-init --section` command. Initialization and configuration are performed by the project owner; agent skills only read these settings and ask the owner to configure missing sections.
+
+### Saved implementation types
+
+Repository, command, query and port generators offer a menu of implementation types. **Enter implementation type and save for future use** accepts a new kebab-case name and saves it under `backend.implementations` in the shared config. **Enter implementation type for this run only** generates code without adding a saved choice. Both actions apply to primary and test implementations, including additions to existing contracts.
+
+Each category and its primary/test choices are separate and shared by all contexts in the project. Ordinary types such as `api` and `mock` are not presets: enter them manually or save them for later. Menus contain saved choices, available system implementations and the two manual-entry actions.
+
+System implementations are marked explicitly:
+
+- **System: cross-context (calls handlers in another bounded context)** — port adapters, only when another bounded context exists.
+- **System: in-memory (uses the shared in-memory database)** — repositories, commands and queries, only when the shared in-memory DB integration is enabled and its files are ready.
+
+The first available saved type is selected by default, then an available system type; otherwise the save-entry action is selected and its name input is empty. Adding an implementation to an existing contract shows both primary and test choices. With the save action, ordinary types are remembered according to their selected environments; the run-only action never registers them.
+
+Updates to `backend.implementations` preserve all other config sections and are saved together with generated files; cancellation discards both. Prisma integration adds `prisma` to repository, command and query choices. There is no global persistence-default setting.
 
 ### How to create a bounded context
 
@@ -116,7 +165,7 @@ Tests get the test implementation, everything else gets the primary one.
 
 ### How to wire dependencies
 
-As the last step, generators with wiring offer the modules the new one may depend on, from the same bounded context and the Shared Kernel. Each choice is added to the factory and to the constructor:
+As the last step, generators with wiring offer the modules the new one may depend on, from the same bounded context and the Shared Kernel. Cross-context port adapters also see the application handlers of neighboring contexts. Each choice is added to the factory and to the constructor:
 
 ```ts
 export class PlaceOrderUseCase {
@@ -136,7 +185,7 @@ Choose **Infrastructure → New Implementation** to give an existing repository,
 
 ### How to move or rename a module
 
-Choose **Move or rename** in the context menu: rename an aggregate, entity, value object, service, port, query, command or use case, move it to another bounded context or to the Shared Kernel, or move an entity in or out of an aggregate. Its files, implementations, wire, specs and every import and derived name in the project follow it: `OrderRepository`, `PrismaOrderRepository`, `wireOrderRepository`, the `orderRepository` parameter of a use case, the in-memory DB section. A move that would make one context import another is refused, with the list of imports that would cross the boundary.
+Choose **Move or rename** in the context menu: rename an aggregate, entity, value object, service, port, query, command or use case, move it to another bounded context or to the Shared Kernel, or move an entity in or out of an aggregate. Its files, implementations, wire, specs and every import and derived name in the project follow it: `OrderRepository`, `PrismaOrderRepository`, `wireOrderRepository`, the `orderRepository` parameter of a use case, the in-memory DB section. A move that would introduce a forbidden import between contexts is refused, with the list of imports that would cross the boundary.
 
 ### How to add errors
 
@@ -150,7 +199,15 @@ Names don't repeat the context: an error of the `payment` namespace in `sales` i
 
 ### How to share code between contexts
 
-Bounded contexts don't import each other. Put cross-context errors, entities, value objects, ports and services into the **Shared Kernel** (`src/shared-kernel`). Its modules are offered as dependencies in every context.
+Keep each context's domain and application models local. For another context's data or behavior, create an **application port** in the consuming context (**Application → New Port**) and choose **Cross-context** (`cross-context`) for its adapter. No transport or endpoint is required.
+
+Port adapter menus contain saved port types and both manual-entry actions, plus **System: cross-context (calls handlers in another bounded context)** when another bounded context exists. There are no automatic `api`, `mock` or `in-memory` port choices. Saved primary and test port types remain separate; adding another adapter shows both lists. Choices from repositories, commands and queries are not added to port menus.
+
+With `wire`, **Dependencies for CrossContext…** and **Wire dependency** offer queries, commands and use cases from every neighboring context, labelled with their context, such as `InvoiceQuery (billing)`. The CLI injects each handler into the adapter and imports its factory in wiring. Names include the context to avoid collisions: `BillingInvoiceQuery`, `wireBillingInvoiceQuery`.
+
+Define the capability's methods in your port and implement them in the adapter: map your input, call the injected handler, and map its result and errors to your own models. Keep a separate `mock` or `stub` test adapter so tests do not run the neighboring context. Without `wire`, inject the handlers through the constructor and compose them in wiring yourself.
+
+Only port adapters under `infrastructure/application-adapters/cross-context/` may import neighboring handlers. Wiring may inject them only into those adapters; query/command implementations and other adapter types remain isolated. The `cross-context` type is unavailable for Shared Kernel ports. Shared universal models, technical ports and services belong in the **Shared Kernel** (`src/shared-kernel`).
 
 ### How to add a REST endpoint
 
@@ -183,7 +240,7 @@ With wiring, the endpoint takes the generator and a handler you pick from the co
 
 ### How to scaffold React modules
 
-With `useReact`, run `npx df-react`: pages, widgets (monolithic, with separated UI, or headless), UI-kit components with Storybook stories, and shared hooks. Names may include folders:
+With `frontend.react` configured, run `npx df-react`: pages, widgets (monolithic, with separated UI, or headless), UI-kit components with Storybook stories, and shared hooks. Names may include folders:
 
 ```text
 admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPanelUsersPage)
@@ -203,21 +260,31 @@ The endpoint generator and the in-memory DB are what `df-init` scaffolds; as int
 npx df-lint
 ```
 
-It reports what breaks the Domain-First rules: imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
+It reports what breaks the Domain-First rules: forbidden imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
 
-The rules are a default. Teams that work differently change them in the config: what each kind of module may depend on (`rules.dependencies`) and which checks run (`rules.lint`). `df-scaffold` offers dependencies by the same rules. Without `rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
+`df-init` scaffolds all standard rules into `backend.rules` during backend setup. Teams can edit these entries directly: what each kind of module may depend on (`backend.rules.dependencies`) and which checks run (`backend.rules.lint`). `df-scaffold` offers dependencies by the same rules. For older or manually shortened configs without `backend.rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
 
-- Kinds in `rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `infrastructure-services`, `presentation-services`.
+- Kinds in `backend.rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `infrastructure-services`, `presentation-services`.
 - A kind's value: a list that replaces its defaults, or `{ "add": [...], "remove": [...] }`.
-- Checks in `rules.lint`: `context-isolation`, `shared-kernel`, `layers`, `dependencies`, `react`, `clock`.
+- Checks in `backend.rules.lint`: `context-isolation`, `shared-kernel`, `layers`, `dependencies`, `react`, `clock`.
 
 Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](API.md#df-lint).
 
 ```json
 {
-    "rules": {
-        "dependencies": { "use-cases": { "add": ["use-cases"] } },
-        "lint": { "clock": false }
+    "backend": {
+        "rules": {
+            "dependencies": {
+                "use-cases": {
+                    "add": [
+                        "use-cases"
+                    ]
+                }
+            },
+            "lint": {
+                "clock": false
+            }
+        }
     }
 }
 ```

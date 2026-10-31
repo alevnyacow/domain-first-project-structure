@@ -7,6 +7,7 @@ import {
 } from '../implementations';
 import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewAggregateUseCase = async (
@@ -18,7 +19,7 @@ export const scaffoldNewAggregateUseCase = async (
 
     const aggregateNaming = new UnknownFormatNaming(aggregateName);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const withRepository = await confirm({
         message: 'With Repository'
@@ -33,7 +34,7 @@ export const scaffoldNewAggregateUseCase = async (
     /**
      * Domain types close their constructors: instances come from `of`.
      */
-    const withTypes = ConfigFile.Instance.data.domainFirstPackages.includes(
+    const withTypes = ConfigFile.backend.domainFirstPackages.includes(
         '@domain-first/types'
     );
 
@@ -64,7 +65,7 @@ export class ${aggregateNaming.ClassName} extends domainType() {
         aggregatesFolder.createFile(
             `${aggregateNaming.fileName}.aggregate-root.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 import { ${aggregateNaming.ClassName} } from './${aggregateNaming.fileName}.aggregate-root'
 
 let ${aggregateNaming.variableName}: ${aggregateNaming.ClassName}
@@ -98,11 +99,11 @@ describe('${aggregateNaming.withSpaces}', () => {
         /**
          * Infrastructure prompts
          */
-        const infrastructureImplementationType = await input({
-            message: 'Repository infrastructure implementation type:',
-            default:
-                ConfigFile.Instance.data.defaultPersistenceLayerImplementation
-        });
+        const { label: infrastructureImplementationType } =
+            await promptImplementationType(
+                'Repository infrastructure implementation type:',
+                'repositories'
+            );
 
         let addTestImplementation: boolean = false;
         let testImplementationType: string = '';
@@ -112,10 +113,16 @@ describe('${aggregateNaming.withSpaces}', () => {
         });
 
         if (addTestImplementation) {
-            testImplementationType = await input({
-                message: 'Test Repository infrastructure implementation type:',
-                default: 'in-memory'
-            });
+            testImplementationType = (
+                await promptImplementationType(
+                    'Test Repository infrastructure implementation type:',
+                    'repositories',
+                    {
+                        purpose: 'test',
+                        existing: [infrastructureImplementationType]
+                    }
+                )
+            ).label;
         }
 
         const implementationTypes = [
@@ -145,9 +152,9 @@ describe('${aggregateNaming.withSpaces}', () => {
             const specFile = aggregatesFolder.createFile(
                 `${aggregateNaming.fileName}-repository.spec.ts`,
                 `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
-    ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire')
+    ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
         ? `import { wire${aggregateNaming.ClassName}Repository } from '../../../wiring/repositories/wire-${aggregateNaming.fileName}-repository'
 import type { ${aggregateNaming.ClassName}Repository } from './${aggregateNaming.fileName}-repository'`
         : `import { ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository } from '../../../infrastructure/repositories/${implementationNaming.fileName}/${implementationNaming.fileName}-${aggregateNaming.fileName}-repository'
@@ -158,11 +165,11 @@ type ${aggregateNaming.ClassName}Repository = ${implementationNaming.ClassName}$
 let ${aggregateNaming.variableName}Repository: ${aggregateNaming.ClassName}Repository
 
 beforeEach(() => {
-    ${aggregateNaming.variableName}Repository = ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? `wire${aggregateNaming.ClassName}Repository()` : `new ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository()`}
+    ${aggregateNaming.variableName}Repository = ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? `wire${aggregateNaming.ClassName}Repository()` : `new ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository()`}
 })
 
 describe('${aggregateNaming.withSpaces} repository', () => {
-    test('can be ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
+    test('can be ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
         expect(${aggregateNaming.variableName}Repository).toBeDefined()
     })
 })
@@ -170,7 +177,7 @@ describe('${aggregateNaming.withSpaces} repository', () => {
             );
 
             if (
-                !ConfigFile.Instance.data.domainFirstPackages.includes(
+                !ConfigFile.backend.domainFirstPackages.includes(
                     '@domain-first/wire'
                 ) &&
                 usesInMemoryDb(infrastructureImplementationType)
@@ -183,7 +190,7 @@ describe('${aggregateNaming.withSpaces} repository', () => {
         }
 
         if (
-            ConfigFile.Instance.data.domainFirstPackages.includes(
+            ConfigFile.backend.domainFirstPackages.includes(
                 '@domain-first/wire'
             )
         ) {

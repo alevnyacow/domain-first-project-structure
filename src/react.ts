@@ -18,7 +18,7 @@ const help = `Usage: df-react
 
 Scaffolds React modules of a Domain-First project: pages, widgets, UI-kit
 components and shared hooks, and moves or renames pages and widgets.
-Needs "useReact": true in domain-first.project-structure.config.json.
+Needs frontend.react in domain-first.project-structure.config.json.
 
 Options:
   -h, --help show this help`;
@@ -39,16 +39,16 @@ if (!ConfigFile.exists) {
     process.exit(1);
 }
 
-if (!ConfigFile.Instance.data.useReact) {
+if (!ConfigFile.Instance.data.frontend?.react) {
     console.log(
-        'React is off: set "useReact": true in domain-first.project-structure.config.json or add Storybook with df-integration.'
+        'React is not configured: run df-init --section frontend or add Storybook with df-integration.'
     );
     process.exit(1);
 }
 
 const main = async () => {
     const reactFolder = new Folder(new ProjectRoot().path).subitem([
-        ConfigFile.Instance.data.rootFolder,
+        ConfigFile.Instance.data.project.rootFolder,
         'presentation',
         'react'
     ]);

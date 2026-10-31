@@ -30,4 +30,4 @@ export const missingPackages = (packages: string[]): string[] => {
 };
 
 export const missingDomainFirstPackages = (): string[] =>
-    missingPackages(ConfigFile.Instance.data.domainFirstPackages);
+    missingPackages(ConfigFile.backend.domainFirstPackages);

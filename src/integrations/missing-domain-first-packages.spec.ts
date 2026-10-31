@@ -12,7 +12,6 @@ const check = (packages: string[], manifest: object) => {
     const configText = JSON.stringify({
         rootFolder: 'src',
         domainFirstPackages: packages,
-        defaultPersistenceLayerImplementation: 'prisma',
         useReact: false
     });
     const manifestPath = path.join(root, 'package.json');

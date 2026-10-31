@@ -27,11 +27,12 @@ rstest.mock('../integrations', () => ({
 }));
 rstest.mock('../config-file', () => ({
     ConfigFile: {
+        migrate: () => {},
         Instance: {
             data: {
-                rootFolder: 'src',
-                domainFirstPackages: [],
-                useReact: false
+                project: { rootFolder: 'src' },
+                backend: { domainFirstPackages: [] },
+                frontend: {}
             }
         }
     }
@@ -117,20 +118,32 @@ test('cancelled overwrite discards changes and suppresses next steps', async () 
 test('offers OpenAPI and Orval with @domain-first/handlers-rest', async () => {
     const log = rstest.spyOn(console, 'log').mockImplementation(() => {});
     const orval = 'Orval (API client) · frontend';
-    const config = ConfigFile.Instance.data as {
-        domainFirstPackages: string[];
-        useReact: boolean;
-    };
+    const config = ConfigFile.Instance.data;
     try {
-        config.useReact = true;
+        config.frontend = { react: {} };
         expect(await choiceNames()).not.toContain('OpenAPI · backend');
         expect(await choiceNames()).not.toContain(orval);
-        config.domainFirstPackages.push('@domain-first/handlers-rest');
-        config.useReact = false;
+        config.backend!.domainFirstPackages.push('@domain-first/handlers-rest');
+        config.frontend = {};
         expect(await choiceNames()).toContain('OpenAPI · backend');
         expect(await choiceNames()).toContain(orval);
     } finally {
         log.mockRestore();
+    }
+});
+
+test('frontend tooling remains usable when backend configuration is deferred', async () => {
+    const config = ConfigFile.Instance.data;
+    const backend = config.backend;
+    delete config.backend;
+    try {
+        const names = await choiceNames();
+        expect(names).toContain('Storybook (React + Vite) · frontend');
+        expect(names).toContain('Playwright · frontend');
+        expect(names.some((name) => name.endsWith('· backend'))).toBe(false);
+        expect(names).not.toContain('Orval (API client) · frontend');
+    } finally {
+        config.backend = backend;
     }
 });
 
@@ -175,12 +188,10 @@ test('runs selected integrations in list order and merges install commands', asy
 
 test('lists new and applied integrations apart, each labeled with its group', async () => {
     const log = rstest.spyOn(console, 'log').mockImplementation(() => {});
-    const config = ConfigFile.Instance.data as {
-        domainFirstPackages: string[];
-    };
-    config.domainFirstPackages.splice(
+    const config = ConfigFile.Instance.data;
+    config.backend!.domainFirstPackages.splice(
         0,
-        config.domainFirstPackages.length,
+        config.backend!.domainFirstPackages.length,
         '@domain-first/handlers-rest'
     );
     try {

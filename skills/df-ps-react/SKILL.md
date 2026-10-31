@@ -1,6 +1,6 @@
 ---
 name: df-ps-react
-description: Build the React part of a Domain-First project with the `df-react` CLI (@domain-first/project-structure) — choose between pages, widgets (separated UI, headless, monolithic), UI-kit components and shared hooks, generate them with Storybook stories, move or rename pages and widgets, and implement them against the backend without importing bounded contexts. Use when the project has domain-first.project-structure.config.json with "useReact": true and the user asks for screens, UI blocks, components, hooks or stories, or to move, rename or regroup a page or widget.
+description: Build the React part of a Domain-First project with the `df-react` CLI (@domain-first/project-structure) — choose between pages, widgets (separated UI, headless, monolithic), UI-kit components and shared hooks, generate them with Storybook stories, move or rename pages and widgets, and implement them against the backend without importing bounded contexts. Use when the project has domain-first.project-structure.config.json with frontend.react configured and the user asks for screens, UI blocks, components, hooks or stories, or to move, rename or regroup a page or widget.
 ---
 
 # React modules with df-react
@@ -9,7 +9,7 @@ React modules live in `<rootFolder>/presentation/react/` (`…/react/` below) an
 
 ## Workflow
 
-1. Read `domain-first.project-structure.config.json`. Without it, tell the user to run `npx df-init`. With `"useReact": false`, `df-react` refuses to run: tell the user to turn React on (or add Storybook with `! npx df-integration`); don't edit the config yourself.
+1. Read `domain-first.project-structure.config.json`: source root is `project.rootFolder`; React is enabled by `frontend.react`; `frontend.react.framework` is `react` or `next`, and both use `df-react`. Stories use `frontend.react.storybookFramework` (initialization uses `@storybook/react-vite` for both React and Next.js via the shared Storybook integration). The CLI accepts legacy `useReact`/`storybookFramework` settings too. Without the config, tell the user to run `npx df-init`; without React configured, tell them to run `npx df-init --section frontend`. Initialization and configuration belong to the human: do not run `df-init` or edit these settings yourself.
 2. A feature that also needs backend work → plan it with `df-ps-plan-feature`; React runs come last in the plan.
 3. Choose a module for each piece of UI ("Choosing the module").
 4. Show the work plan in the `df-ps-scaffold` rule 1 format and **stop until it's approved**. CLI paths are `df-react → New widget` etc.; list every answer and the files from `references/generators.md`.
@@ -70,7 +70,7 @@ Only these (`df-ps-scaffold`, rule 2, exceptions 3–4), for modules generated b
 - Widgets never import other widgets (their component, `ui/`, `hooks/` or `types.ts`). Shared markup → UI-kit, shared logic → a shared hook, combining widgets → the page.
 - UI-kit components: presentational, driven only by props; no API client, no data loading, no imports from widgets, pages, or contexts. Other UI-kit components and shared hooks (`hooks/`) are fine. Business terms only in a domain UI-kit component; its props describe what it shows, not domain types.
 - Shared hooks (`…/react/hooks/use-<name>.ts`): generic app-wide logic, driven only by arguments; no business terms, no API client, no imports from UI-kit, widgets, pages, or contexts.
-- Stories (`storybookFramework`): fill `args` of `Default` with valid props and add one story per meaningful state (`Disabled`, `Loading`, `WithError`). Keep `meta`, the file name, and the title (`UI-kit/N` or `Widgets/N`). For widget UI, the stories cover the UI states that its UI model produces.
+- Stories (`frontend.react.storybookFramework`): fill `args` of `Default` with valid props and add one story per meaningful state (`Disabled`, `Loading`, `WithError`). Keep `meta`, the file name, and the title (`UI-kit/N` or `Widgets/N`). For widget UI, the stories cover the UI states that its UI model produces.
 
 ### Talking to the backend
 

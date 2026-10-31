@@ -9,13 +9,15 @@ import { ProjectRoot } from '../project-root';
  */
 export const addInMemoryDb = (): string[] => {
     const config = ConfigFile.Instance.data;
-    if (!config.withInMemoryDb) {
-        ConfigFile.write({ ...config, withInMemoryDb: true });
+    if (!ConfigFile.backend.withInMemoryDb) {
+        ConfigFile.update({
+            backend: { ...ConfigFile.backend, withInMemoryDb: true }
+        });
     }
     withoutOverwrites(() =>
         scaffoldInMemoryDb(
             new Folder(new ProjectRoot().path).subitem([
-                config.rootFolder,
+                config.project.rootFolder,
                 'shared-kernel'
             ])
         )
@@ -24,4 +26,5 @@ export const addInMemoryDb = (): string[] => {
 };
 
 export const inMemoryDbApplied = () =>
-    Boolean(ConfigFile.Instance.data.withInMemoryDb) && inMemoryDbScaffolded();
+    Boolean(ConfigFile.Instance.data.backend?.withInMemoryDb) &&
+    inMemoryDbScaffolded();

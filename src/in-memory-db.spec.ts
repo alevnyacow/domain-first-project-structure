@@ -40,7 +40,16 @@ const answer = (answers: Record<string, unknown>) => {
     };
     rstest.mocked(input).mockImplementation(reply as any);
     rstest.mocked(confirm).mockImplementation(reply as any);
-    rstest.mocked(select).mockImplementation(reply as any);
+    rstest
+        .mocked(select)
+        .mockImplementation((async ({ message }: { message: string }) =>
+            /^(Test )?(Query|Command|Repository) infrastructure implementation type:/.test(
+                message
+            )
+                ? message.startsWith('Test ')
+                    ? 'in-memory'
+                    : null
+                : reply({ message })) as any);
     rstest
         .mocked(checkbox)
         .mockImplementation((async ({ message, choices }: any) =>
@@ -67,9 +76,10 @@ const createProject = async (packages: string[], withInMemoryDb = true) => {
     answer({
         'Root folder (use "/" for inner folders):': 'src',
         '@domain-first packages': packages,
-        'Default persistence layer implementation:': 'prisma',
         'Scaffold in-memory DB for test implementations': withInMemoryDb,
-        'Use React': false,
+        'Configure project now?': true,
+        'Configure backend now?': true,
+        'Configure frontend now?': false,
         'Scaffold unit tests': true,
         'Unit testing library:': 'vitest'
     });
@@ -112,7 +122,7 @@ test('initialization saves the flag and scaffolds the shared in-memory DB', () =
             'utf8'
         )
     );
-    expect(config.withInMemoryDb).toBe(true);
+    expect(config.backend.withInMemoryDb).toBe(true);
     expect(
         wired.read(
             'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'

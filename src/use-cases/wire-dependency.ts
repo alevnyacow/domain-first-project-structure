@@ -82,14 +82,18 @@ export type CustomWiring = (
 ) => boolean;
 
 /**
- * Wired modules of the context, then of the Shared Kernel (labelled).
+ * Local, Shared Kernel and neighboring modules, labelled by owner.
  */
-const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
+const dependencyOptions = (boundedContextFolder: Folder): Option[] => {
     const sharedFolder = new Folder(new ProjectRoot().path).subitem([
-        ConfigFile.Instance.data.rootFolder,
+        ConfigFile.Instance.data.project.rootFolder,
         'shared-kernel'
     ]);
     const isShared = sharedFolder.path === boundedContextFolder.path;
+    const contextsFolder = new Folder(new ProjectRoot().path).subitem([
+        ConfigFile.Instance.data.project.rootFolder,
+        'bounded-contexts'
+    ]);
 
     return [
         ...findWiredModules(boundedContextFolder.path).map((x) => ({
@@ -101,13 +105,26 @@ const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
             : findWiredModules(sharedFolder.path).map((x) => ({
                   module: x,
                   label: `${x.typeName} (shared-kernel)`
-              })))
+              }))),
+        ...(isShared
+            ? []
+            : contextsFolder.content.subfolderNames
+                  .filter((name) => name !== boundedContextFolder.name)
+                  .sort()
+                  .flatMap((name) =>
+                      findWiredModules(contextsFolder.subitem([name]).path).map(
+                          (module) => ({
+                              module,
+                              label: `${module.typeName} (${name})`
+                          })
+                      )
+                  ))
     ];
 };
 
 /**
- * Asks which modules of the current context and the Shared Kernel to
- * inject into the module. Returns false if there is nothing to choose.
+ * Asks which permitted modules to inject. Returns false if there is
+ * nothing to choose.
  */
 const promptDependencies = async (
     boundedContextFolder: Folder,
@@ -115,7 +132,7 @@ const promptDependencies = async (
     implementations: WiredClass[] = consumer.implementations,
     customWiring?: CustomWiring
 ) => {
-    const options = contextAndSharedModules(boundedContextFolder);
+    const options = dependencyOptions(boundedContextFolder);
     let asked = false;
 
     /**

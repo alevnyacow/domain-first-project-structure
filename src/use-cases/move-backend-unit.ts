@@ -22,7 +22,10 @@ const noAggregate = 'No aggregate';
  */
 export const moveBackendUnitUseCase = async (ownerFolder: Folder) => {
     const root = new ProjectRoot().path;
-    const rootFolderPath = path.join(root, ConfigFile.Instance.data.rootFolder);
+    const rootFolderPath = path.join(
+        root,
+        ConfigFile.Instance.data.project.rootFolder
+    );
     const sharedKernelPath = path.join(rootFolderPath, 'shared-kernel');
     const units = findBackendUnits(ownerFolder.path);
     if (!units.length) {

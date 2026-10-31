@@ -39,7 +39,6 @@ const setup = (
         JSON.stringify({
             rootFolder,
             domainFirstPackages: ['@domain-first/handlers-rest'],
-            defaultPersistenceLayerImplementation: 'api',
             useReact
         })
     );

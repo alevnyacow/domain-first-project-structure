@@ -42,7 +42,6 @@ const setup = (
         JSON.stringify({
             rootFolder: 'src',
             domainFirstPackages,
-            defaultPersistenceLayerImplementation: 'prisma',
             useReact: false
         })
     );
@@ -154,9 +153,7 @@ test('in-memory DB turns on withInMemoryDb and adds only its missing wire', () =
     fs.writeFileSync(path.join(project, servicePath), 'edited');
     expect(inMemoryDbApplied()).toBe(false);
     expect(addInMemoryDb()).toEqual([]);
-    expect(filesToOverwrite()).toEqual([
-        path.join(project, 'domain-first.project-structure.config.json')
-    ]);
+    expect(filesToOverwrite()).toEqual([]);
     writePendingChanges();
     expect(read(project, servicePath)).toBe('edited');
     expect(
@@ -167,7 +164,7 @@ test('in-memory DB turns on withInMemoryDb and adds only its missing wire', () =
     ).toContain('InMemoryDbInfrastructureService');
     expect(
         JSON.parse(read(project, 'domain-first.project-structure.config.json'))
-            .withInMemoryDb
+            .backend.withInMemoryDb
     ).toBe(true);
     expect(inMemoryDbApplied()).toBe(true);
 });
