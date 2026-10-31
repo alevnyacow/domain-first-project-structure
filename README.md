@@ -214,7 +214,7 @@ Names don't repeat the context: an error of the `payment` namespace in `sales` i
 
 ### How to share code between contexts
 
-Keep each context's domain and application models local. For another context's data or behavior, create an **application port** in the consuming context (**Application → New Port**) and choose **Cross-context** (`cross-context`) for its adapter. No transport or endpoint is required.
+Keep each context's domain and application models local. For another context's data or behavior, create an **application port** in the consuming context (**Application → New Port**) and choose **System: cross-context (calls handlers in another bounded context)** for its adapter. No transport or endpoint is required.
 
 Port adapter menus contain saved port types and both manual-entry actions, plus **System: cross-context (calls handlers in another bounded context)** when another bounded context exists. There are no automatic `api`, `mock` or `in-memory` port choices. Saved primary and test port types remain separate; adding another adapter shows both lists. Choices from repositories, commands and queries are not added to port menus.
 

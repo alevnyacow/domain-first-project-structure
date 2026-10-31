@@ -2,6 +2,7 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { checkbox, input } from '../interaction';
+import { usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
 import { defaultOpenapiPath, openapiScriptPath } from './openapi';
@@ -155,7 +156,7 @@ export const addOrval = async (): Promise<string[]> => {
         ...manifest.dependencies,
         ...manifest.devDependencies
     };
-    const withNext = Boolean(dependencies.next);
+    const withNext = usesNext();
     const generatedOpenapiPath = openapiOutputPath(root);
 
     const openapiPath = await input({

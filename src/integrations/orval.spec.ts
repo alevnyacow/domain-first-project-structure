@@ -26,7 +26,15 @@ let sequence = 0;
 const setup = (
     rootFolder: string,
     manifest: Record<string, unknown>,
-    { useReact = true, targets = ['hooks'] } = {}
+    {
+        useReact = true,
+        targets = ['hooks'],
+        framework
+    }: {
+        useReact?: boolean;
+        targets?: string[];
+        framework?: 'react' | 'next';
+    } = {}
 ) => {
     const project = path.join(root, String(sequence++));
     fs.mkdirSync(project);
@@ -36,11 +44,21 @@ const setup = (
     );
     fs.writeFileSync(
         path.join(project, 'domain-first.project-structure.config.json'),
-        JSON.stringify({
-            rootFolder,
-            domainFirstPackages: ['@domain-first/handlers-rest'],
-            useReact
-        })
+        JSON.stringify(
+            framework
+                ? {
+                      project: { rootFolder },
+                      backend: {
+                          domainFirstPackages: ['@domain-first/handlers-rest']
+                      },
+                      frontend: { react: { framework } }
+                  }
+                : {
+                      rootFolder,
+                      domainFirstPackages: ['@domain-first/handlers-rest'],
+                      useReact
+                  }
+        )
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
     rstest.mocked(checkbox).mockResolvedValue(targets);
@@ -53,9 +71,11 @@ const setup = (
 };
 
 test('adds config, mutator, query provider, script and gitignore entry with deferred writes', async () => {
-    const { project, read } = setup('.', {
-        dependencies: { next: '16.0.0' }
-    });
+    const { project, read } = setup(
+        '.',
+        { dependencies: { next: '16.0.0' } },
+        { framework: 'next' }
+    );
     const steps = await addOrval();
     const configPath = 'presentation/react/data-layer/orval.config.ts';
     expect(fs.existsSync(path.join(project, configPath))).toBe(false);
@@ -87,6 +107,15 @@ test('adds config, mutator, query provider, script and gitignore entry with defe
 
     await addOrval();
     expect(filesToOverwrite()).toEqual([]);
+});
+
+test('an installed next package alone does not add the Next.js base URL', async () => {
+    const { read } = setup('.', { dependencies: { next: '16.0.0' } });
+    await addOrval();
+    writePendingChanges();
+    const config = read('presentation/react/data-layer/orval.config.ts');
+    expect(config).toContain("input: '../../../openapi.json'");
+    expect(config).not.toContain('NEXT_PUBLIC_API_BASE_URL');
 });
 
 test('reads the document path from the OpenAPI generator and keeps edited mutator and query provider', async () => {

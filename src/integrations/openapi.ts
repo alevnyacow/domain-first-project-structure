@@ -2,6 +2,7 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { confirm, input } from '../interaction';
+import { usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import { compilerOption } from '../tsconfig';
 import { reactPageContent } from '../use-cases/scaffold-react-page';
@@ -127,7 +128,7 @@ export const addOpenapi = async (): Promise<string[]> => {
     const outputPath = await input({
         key: 'openapiPath',
         message: 'OpenAPI document path:',
-        default: defaultOpenapiPath(Boolean(dependencies.next)),
+        default: defaultOpenapiPath(usesNext()),
         validate: (value) =>
             splitPath(value).length ? true : 'Path is required'
     });

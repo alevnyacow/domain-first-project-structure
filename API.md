@@ -213,7 +213,7 @@ The endpoint generator and the route are written as by the [REST endpoint genera
 ### Run lifecycle
 
 1. The [project root](#project-root) is located.
-2. If the backend section is absent, the CLI prints `Backend is not configured: run df-init --section backend.` and exits with 1. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. `df-react` and `df-integration` do the same.
+2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. If the backend section is absent, it prints `Backend is not configured: run df-init --section backend.` and exits with 1. `df-react` and `df-integration` check the configuration file the same way; `df-react` also needs `frontend.react` ([React modules](#react-modules-df-react)), and `df-integration` hides backend integrations until backend is configured.
 3. Otherwise the [main menu](#main-menu) is shown, and exactly one operation runs.
 4. Every file change of the operation is staged in memory. At the end, the staged changes are written in one step. See [Runtime semantics](#runtime-semantics).
 
@@ -329,10 +329,10 @@ Legacy flat configs are read without side effects. The next saved CLI operation 
 }
 ```
 
-- Categories are `repositories`, `commands`, `queries` and `ports`; absent categories or roles are empty. Values are arrays of lowercase kebab-case labels. Invalid JSON, unknown categories and invalid labels stop implementation selection; a malformed file is never silently overwritten.
+- Categories are `repositories`, `commands`, `queries` and `ports`; absent categories or roles are empty. Values are arrays of lowercase kebab-case labels. Unknown categories or invalid labels make the configuration file invalid: the CLI stops without overwriting it.
 - **Enter implementation type and save for future use** remembers a new label only for that category and role (`primary` or `test`). Categories are project-wide, shared by all bounded contexts. Active system types need not be stored.
 - **Enter implementation type for this run only** uses the entered name for the current operation without adding a saved choice to this section. The generated source files are still saved normally. The same choice works for primary/test prompts and **New Implementation**, regardless of selected environments.
-- Menus merge available system implementations with the saved labels, deduplicate them, disable types already implemented by the contract, and retain the conditional `Cross-context` restriction for port adapters. Saved `cross-context` entries cannot bypass that restriction.
+- Menus merge available system implementations with the saved labels, deduplicate them, disable types already implemented by the contract, and keep `System: cross-context` limited to port adapters with a neighboring bounded context. Saved `cross-context` entries cannot bypass that restriction.
 - The first available saved label is the default, falling back to an available system implementation, then the save-entry action. Manual input has no suggested name without an available saved label. There are no ordinary presets or implicit `api`/`mock` defaults.
 - **New Implementation** shows both primary and test choices plus available system implementations. It adds no ordinary presets. A new custom label entered with the save action is saved as `test` when used in that environment and as `primary` for other environments; without usable wiring it is saved as primary.
 - Updates are staged with source files. Cancellation or declined overwrites discard both. Updating this section preserves the other sections and does not request a config overwrite confirmation. The config can be committed and edited by hand; reordering saved arrays changes defaults for later runs.
@@ -516,7 +516,7 @@ Bounded contexts only. Both generators are identical except for the folder (`com
 | `Add a test implementation for <Suffix>`            |                                         |                          |
 | `Test <Suffix> infrastructure implementation type:` | Saved/system type or manual entry                             | With test implementation |
 
-Both implementation prompts use the [implementation choices file](#implementation-choices-file), separately for `commands` and `queries` and their primary/test roles. Menus contain saved types, `System: in-memory (uses the shared in-memory database)` when its integration is ready, and both manual-entry actions. There are no automatic `api` or `mock` choices. Saving remembers a new ordinary label for that category/role; the run-only action leaves the catalog unchanged. `cross-context` is reserved for application port adapters and is rejected here. Queries and commands cannot directly import neighboring contexts.
+Both implementation prompts use the [saved implementation choices](#saved-implementation-choices), separately for `commands` and `queries` and their primary/test roles. Menus contain saved types, `System: in-memory (uses the shared in-memory database)` when its integration is ready, and both manual-entry actions. There are no automatic `api` or `mock` choices. Saving remembers a new ordinary label for that category/role; the run-only action leaves the catalog unchanged. `cross-context` is reserved for application port adapters and is rejected here. Queries and commands cannot directly import neighboring contexts.
 
 **Files**
 
@@ -562,7 +562,7 @@ A `cross-context` adapter can inject queries, commands and use cases from any ne
 | Prompt                 | Condition                         | Choices / value                                                                                          |
 | ---------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `Contract:`            |                                   | Repositories, commands, queries and ports of the context, with their implementations: `order (in-memory, prisma)` |
-| `Implementation type:` |                                   | Saved primary and test types for the contract category, available system implementations and both manual-entry actions; ports offer `Cross-context` only when another bounded context exists (never in the Shared Kernel). Existing types are disabled; duplicate custom labels are rejected                                        |
+| `Implementation type:` |                                   | Saved primary and test types for the contract category, available system implementations and both manual-entry actions; ports offer `System: cross-context (calls handlers in another bounded context)` only when another bounded context exists (never in the Shared Kernel). Existing types are disabled; duplicate custom labels are rejected                                        |
 | `Environments:`        | With `wire` and an env-branched wire | Checkbox, at least one: `test`, `development`, `production`, each with its current implementation: `development (now: s3)` |
 | `Dependencies for <Impl>:` | With `wire`                   | As in [Dependency selection](#dependency-selection), for the new implementation only                    |
 
@@ -977,7 +977,7 @@ Listed with `handlers-rest`.
 
 | Item     | Value                                                                                                                         |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` when `next` is declared, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `frontend.react`, `Add a Swagger UI page?` (default: Yes) |
+| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` with Next.js selected in `frontend.react.framework`, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `frontend.react`, `Add a Swagger UI page?` (default: Yes) |
 | Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`; with the Swagger UI page, `<rootFolder>/presentation/react/pages/swagger-page.tsx` |
 | Scripts  | `openapi`: `tsx --env-file-if-exists=.env scripts/generate-openapi.ts`                                                        |
 | Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev) |
@@ -1016,7 +1016,7 @@ Listed with `handlers-rest`. Generates a typed API client and, with `frontend.re
 
 | File                  | Content                                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With `next`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
+| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With Next.js selected in `frontend.react.framework`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
 | `api-client/mutator.ts` | `customInstance`, used by every request. Throws `ApiError` with the status and the parsed body on non-2xx responses |
 | `query-provider.tsx`  | `QueryProvider` with one `QueryClient` per browser session                                                    |
 
