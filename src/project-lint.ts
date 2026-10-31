@@ -472,9 +472,10 @@ const wiringViolations = (
                 );
                 for (const dependency of dependencies) {
                     const target = imported.get(dependency);
-                    const candidate = target
-                        ? allModules.get(target)
-                        : visible.get(dependency);
+                    // Barrels and unresolved files fall back to the wire name.
+                    const candidate =
+                        (target ? allModules.get(target) : undefined) ??
+                        visible.get(dependency);
                     if (
                         !candidate ||
                         canDependOn(consumer, candidate, rules, implementation)

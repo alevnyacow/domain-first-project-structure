@@ -74,7 +74,13 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
         ...owner,
         contract: id.describe('Exact contract ID from --describe.'),
         implementation,
-        environments: z.array(name).min(1).optional(),
+        environments: z
+            .array(name)
+            .min(1)
+            .optional()
+            .describe(
+                'Required when the contract wire is envBranchedWire; omit it otherwise.'
+            ),
         ...wired
     }),
     operation('endpoint', {
@@ -85,7 +91,11 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
         path: z
             .string()
             .regex(/^(?:\/?(?:[a-zA-Z0-9_-]+|:[a-zA-Z][a-zA-Z0-9_]*))*\/?$/),
-        handler: id.optional()
+        handler: id
+            .optional()
+            .describe(
+                'Exact handler module ID from --describe. Required when the context has wired queries, commands or use cases; omit it otherwise.'
+            )
     }),
     operation('wire-dependency', {
         ...common,

@@ -313,6 +313,48 @@ export const wireSummaryQuery = envBranchedWire({ test: wireInMemoryImplementati
         ]);
     });
 
+    for (const [title, specifier, extra] of [
+        ['an ESM .js specifier', '../commands/wire-pay-command.js', {}],
+        [
+            'a barrel',
+            '../commands',
+            {
+                [`${sales}/wiring/commands/index.ts`]:
+                    "export * from './wire-pay-command'"
+            }
+        ]
+    ] as const) {
+        test(`reports forbidden wired dependencies imported through ${title}`, () => {
+            expect(
+                lint({
+                    ...extra,
+                    [`${sales}/wiring/commands/wire-pay-command.ts`]: `import { InMemoryPayCommand } from '../../infrastructure/commands/in-memory/in-memory-pay-command'
+const wireInMemoryImplementation = wireClass(InMemoryPayCommand, [])
+export const wirePayCommand = envBranchedWire({ test: wireInMemoryImplementation })`,
+                    [`${sales}/wiring/queries/wire-summary-query.ts`]: `import { InMemorySummaryQuery } from '../../infrastructure/queries/in-memory/in-memory-summary-query'
+import { wirePayCommand } from '${specifier}'
+const wireInMemoryImplementation = wireClass(InMemorySummaryQuery, [wirePayCommand])
+export const wireSummaryQuery = envBranchedWire({ test: wireInMemoryImplementation })`
+                }).filter((x) => x.rule.includes('wiring'))
+            ).toHaveLength(1);
+        });
+    }
+
+    test('allows cross-context port adapters to use ESM .js specifiers', () => {
+        expect(
+            lint({
+                [`${sales}/infrastructure/application-adapters/cross-context/cross-context-invoice.ts`]:
+                    "import type { InvoiceQuery } from '../../../../billing/application/queries/invoice-query.js'",
+                [`${billing}/wiring/queries/wire-invoice-query.ts`]: `import { InvoiceQuery } from '../../application/queries/invoice-query.js'
+export const wireInvoiceQuery = wireClass(InvoiceQuery, [])`,
+                [`${sales}/wiring/application-ports/wire-invoice.ts`]: `import { wireInvoiceQuery as wireBillingInvoiceQuery } from '../../../billing/wiring/queries/wire-invoice-query.js'
+import { CrossContextInvoice } from '../../infrastructure/application-adapters/cross-context/cross-context-invoice.js'
+const wireImplementation = wireClass(CrossContextInvoice, [wireBillingInvoiceQuery])
+export const wireInvoice = envBranchedWire({ development: wireImplementation })`
+            })
+        ).toEqual([]);
+    });
+
     test('reports reading the current time in domain and application', () => {
         expect(
             lint({

@@ -67,10 +67,6 @@ const orderRepositoryWire = [
 beforeEach(() => {
     fs.rmSync(path.join(root, 'src'), { recursive: true, force: true });
     write(root, 'package.json', '{}');
-    fs.rmSync(
-        path.join(root, 'domain-first.project-structure.implementations.json'),
-        { force: true }
-    );
     write(
         sales,
         'domain/aggregates/order/order.aggregate-root.ts',

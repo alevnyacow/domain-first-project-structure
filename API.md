@@ -314,7 +314,7 @@ type Config = {
 
 Settings affect future runs; generated source is not rewritten when a setting changes. Revisit sections with `df-init` to add missing backend support files, or use integrations for individual tools. Backend integrations are hidden until backend setup is complete; frontend tooling remains available independently.
 
-Legacy flat configs, the previous root-level `rules`/`implementations` sections and the separate `domain-first.project-structure.implementations.json` are read without side effects. The next saved CLI operation stages the nested config and removal of the legacy implementations file together. Existing nested choices come first, legacy choices are appended per category and role, and duplicates are removed. Invalid legacy choices stop migration without overwriting them. Cancelled operations discard migration. `df-lint` reads legacy data without writing anything.
+Legacy flat configs are read without side effects. The next saved CLI operation stages the nested config. Cancelled operations discard migration. `df-lint` reads legacy data without writing anything.
 
 ### Saved implementation choices
 

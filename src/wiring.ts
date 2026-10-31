@@ -100,6 +100,10 @@ const layerOf = (file: string, contextPath: string) => {
     return layers.find((layer) => layer === firstSegment);
 };
 
+/** ESM specifiers name the emitted `.js`; the module source is `.ts`. */
+const withoutScriptExtension = (file: string) =>
+    file.replace(/\.(?:c|m)?[jt]s$/, '');
+
 export const namedImportFiles = (
     source: string,
     fromFile: string,
@@ -121,7 +125,7 @@ export const namedImportFiles = (
                 .split(/\s+as\s+/)
                 .at(-1);
             if (cleanName) {
-                result.set(cleanName, `${target.replace(/\.ts$/, '')}.ts`);
+                result.set(cleanName, `${withoutScriptExtension(target)}.ts`);
             }
         }
     }

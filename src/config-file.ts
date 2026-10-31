@@ -6,10 +6,7 @@ import {
     resolveDependencyRules
 } from './dependency-rules';
 import { File } from './file-system';
-import {
-    implementationKinds,
-    implementationOptionsSchema
-} from './implementation-options-schema';
+import { implementationOptionsSchema } from './implementation-options-schema';
 import { ProjectRoot } from './project-root';
 
 /**
@@ -27,8 +24,6 @@ export const lintChecks = [
 export type LintCheck = (typeof lintChecks)[number];
 
 export const configFileName = 'domain-first.project-structure.config.json';
-export const legacyImplementationChoicesFileName =
-    'domain-first.project-structure.implementations.json';
 
 export const projectConfigSchema = z
     .object({ rootFolder: z.string().min(1) })
@@ -101,75 +96,9 @@ const legacyConfigSchema = backendConfigSchema.extend({
 });
 type LegacyConfig = z.infer<typeof legacyConfigSchema>;
 
-type ImplementationOptions = z.infer<typeof implementationOptionsSchema>;
-const mergeImplementationOptions = (
-    current: ImplementationOptions | undefined,
-    incoming: ImplementationOptions | undefined
-): ImplementationOptions | undefined => {
-    if (!incoming) return current;
-    const merged = { ...current };
-    for (const kind of implementationKinds) {
-        const group = incoming[kind];
-        if (!group) continue;
-        merged[kind] = {
-            primary: [
-                ...new Set([
-                    ...(current?.[kind]?.primary ?? []),
-                    ...group.primary
-                ])
-            ],
-            test: [
-                ...new Set([...(current?.[kind]?.test ?? []), ...group.test])
-            ]
-        };
-    }
-    return merged;
-};
-
-// Accept the previous sectioned format, but keep backend settings only in backend.
-const previousConfigSchema = configSchema.extend({
-    implementations: implementationOptionsSchema.optional(),
-    rules: rulesSchema.optional()
-});
 const normalizeConfig = (value: unknown): ProjectConfig => {
-    if (typeof value === 'object' && value !== null && 'project' in value) {
-        const { implementations, rules, ...config } =
-            previousConfigSchema.parse(value);
-        if (!implementations && !rules) return config;
-        const backend = config.backend ?? { domainFirstPackages: [] };
-        return configSchema.parse({
-            ...config,
-            backend: {
-                ...backend,
-                implementations: mergeImplementationOptions(
-                    backend.implementations,
-                    implementations
-                ),
-                rules: rules
-                    ? {
-                          ...rules,
-                          ...backend.rules,
-                          ...(rules.dependencies || backend.rules?.dependencies
-                              ? {
-                                    dependencies: {
-                                        ...rules.dependencies,
-                                        ...backend.rules?.dependencies
-                                    }
-                                }
-                              : {}),
-                          ...(rules.lint || backend.rules?.lint
-                              ? {
-                                    lint: {
-                                        ...rules.lint,
-                                        ...backend.rules?.lint
-                                    }
-                                }
-                              : {})
-                      }
-                    : backend.rules
-            }
-        });
-    }
+    if (typeof value === 'object' && value !== null && 'project' in value)
+        return configSchema.parse(value);
     const legacy = legacyConfigSchema.parse(value);
     return configSchema.parse({
         project: { rootFolder: legacy.rootFolder },
@@ -190,41 +119,11 @@ const normalizeConfig = (value: unknown): ProjectConfig => {
     });
 };
 
-const legacyChoicesFile = () =>
-    new File(
-        path.join(new ProjectRoot().path, legacyImplementationChoicesFileName)
-    );
-const mergeLegacyChoices = (config: ProjectConfig): ProjectConfig => {
-    const legacy = legacyChoicesFile();
-    if (!legacy.exists) return config;
-    let choices: z.infer<typeof implementationOptionsSchema>;
-    try {
-        choices = implementationOptionsSchema.parse(JSON.parse(legacy.data));
-    } catch (error) {
-        throw new Error(
-            `Invalid ${legacyImplementationChoicesFileName}: ${error instanceof Error ? error.message : String(error)}`,
-            { cause: error }
-        );
-    }
-    return {
-        ...config,
-        backend: {
-            ...(config.backend ?? { domainFirstPackages: [] }),
-            implementations: mergeImplementationOptions(
-                config.backend?.implementations,
-                choices
-            )
-        }
-    };
-};
-
 export class ConfigFile {
     public readonly data: ProjectConfig;
 
     private constructor() {
-        this.data = mergeLegacyChoices(
-            normalizeConfig(JSON.parse(new File(ConfigFile.path).data))
-        );
+        this.data = normalizeConfig(JSON.parse(new File(ConfigFile.path).data));
     }
 
     public static get Instance() {
@@ -250,7 +149,7 @@ export class ConfigFile {
     }
 
     static write = (config: ProjectConfig | LegacyConfig) => {
-        ConfigFile.stage(mergeLegacyChoices(normalizeConfig(config)));
+        ConfigFile.stage(normalizeConfig(config));
     };
 
     /** Update only the supplied sections, preserving the latest staged changes. */
@@ -264,23 +163,13 @@ export class ConfigFile {
         new File(ConfigFile.path).update(
             `${JSON.stringify(config, null, 4)}\n`
         );
-        const legacy = legacyChoicesFile();
-        if (legacy.exists) legacy.delete(new ProjectRoot().path);
     }
 
     /** Read compatibility is side-effect free; migrations join the next saved run. */
     static migrate = () => {
         if (!ConfigFile.exists) return;
-        const file = new File(ConfigFile.path);
-        const raw = JSON.parse(file.data);
-        if (
-            !raw.project ||
-            'rules' in raw ||
-            'implementations' in raw ||
-            legacyChoicesFile().exists
-        ) {
-            ConfigFile.stage(ConfigFile.Instance.data);
-        }
+        const raw = JSON.parse(new File(ConfigFile.path).data);
+        if (!raw.project) ConfigFile.stage(ConfigFile.Instance.data);
     };
 }
 

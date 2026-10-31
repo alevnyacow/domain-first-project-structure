@@ -62,7 +62,7 @@ export const crossContextImportAllowed = (from: string, to: string) => {
         commands: '-command',
         'use-cases': '-use-case'
     }[targetKind];
-    if (!suffix || !new RegExp(`${suffix}(\\.(?:c|m)?tsx?)?$`).test(to))
+    if (!suffix || !new RegExp(`${suffix}(\\.(?:c|m)?[jt]sx?)?$`).test(to))
         return false;
 
     return (
