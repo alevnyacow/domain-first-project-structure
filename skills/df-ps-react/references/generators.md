@@ -8,7 +8,7 @@ Notation: `…/react/` = `<rootFolder>/presentation/react/`. `n` = the entered k
 
 ## New page
 
-`"pick:New page" text:checkout` → `…/react/pages/n-page.tsx`
+`"pick:New page" text:checkout` → `…/react/pages/n-page.tsx`; with Next.js (`frontend.react.framework: next`) also `app/n/page.tsx` (`src/app/…` when that folder exists) rendering `NPage`, unless that route already exists. A nested name nests the route too: `admin/users` → `app/admin/users/page.tsx`.
 
 ## New widget
 

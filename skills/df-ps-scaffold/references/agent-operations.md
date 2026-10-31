@@ -112,11 +112,11 @@ The owner configures frontend first. React and Next.js use the same operations. 
 
 | Operation | Required fields | Optional fields and conditions |
 | --- | --- | --- |
-| `page` | `name` | Names may contain folders, e.g. `admin/orders`. |
+| `page` | `name` | Names may contain folders, e.g. `admin/orders`. With Next.js, also creates the App Router route `app/admin/orders/page.tsx` unless it exists. |
 | `widget` | `name` | Nested names allowed. `widgetType`: `separated` (default), `headless`, `monolithic`; use the JSON value `separated`, not the menu label `with separated ui`. |
 | `ui-kit-component` | `name` | Single kebab-case name; stories follow config. |
 | `shared-hook` | `name` | Single kebab-case name, preferably without `use-`; a leading `use-` is stripped. |
-| `move-page` | `module`, `name` | `module` is the existing nested page name from discovery; `name` is the target nested name. |
+| `move-page` | `module`, `name` | `module` is the existing nested page name from discovery; `name` is the target nested name. With Next.js, the route's import follows, but the route folder stays: plan its move separately if the URL changes. |
 | `move-widget` | `module`, `name` | Same for widgets. Files, imports, code names and generated story titles follow the move. |
 
 All support `dryRun` and `overwrite`. Use CLI moves even for a rename or folder regrouping; an existing target or a move into itself is rejected.

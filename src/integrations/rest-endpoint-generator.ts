@@ -2,25 +2,14 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File, Folder, withoutOverwrites } from '../file-system';
 import { confirm } from '../interaction';
+import { nextAppFolder, usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import {
     findRestEndpointGenerator,
     scaffoldRestEndpointGenerator
 } from '../use-cases/rest-endpoint-generator';
 import { relativeImport } from '../wiring';
-import {
-    hasDependency,
-    missingPackages
-} from './missing-domain-first-packages';
-
-/**
- * The App Router folder: `app` or `src/app`, whichever exists, `app` by
- * default.
- */
-const nextAppFolder = (root: string) =>
-    ['app', 'src/app'].find(
-        (folder) => new Folder(path.join(root, folder)).exists
-    ) ?? 'app';
+import { missingPackages } from './missing-domain-first-packages';
 
 /**
  * The catch-all route serving every endpoint, relative to the project root.
@@ -88,10 +77,8 @@ export const askNextAdapter = async ({
 }: {
     nextSelected?: boolean;
 } = {}) => {
-    const framework = ConfigFile.Instance.data.frontend?.react?.framework;
     return (
-        (nextSelected ??
-            (framework ? framework === 'next' : hasDependency('next'))) &&
+        (nextSelected ?? usesNext()) &&
         (await confirm({
             key: 'nextAdapter',
             message: 'Use @domain-first/handlers-next for REST endpoints'

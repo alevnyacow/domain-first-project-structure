@@ -787,6 +787,8 @@ Repository, command, query and port tests reference wiring factories with `wire`
 
 **Output**: `react/pages/<folders>/<file>-page.tsx` with `type <Name>PageProps = {}` and `const <Name>Page: FC<<Name>PageProps>`.
 
+With Next.js (`frontend.react.framework: next`, or `next` installed when no framework is set), the page also gets its App Router route at the same path: `app/<folders>/<name>/page.tsx` (`src/app/…` when that folder exists), a default export that renders `<Name>Page`. An existing route file is kept and the CLI says to render the page there. Moving or renaming a page updates the route's import but leaves the route where it is: move it yourself when the URL changes.
+
 ### New widget
 
 **Prompts**: `Name (folders split by "/"):` (a [nested name](#naming)), then `Type:`.

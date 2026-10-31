@@ -319,6 +319,61 @@ test('React requests support nested names and moving generated modules', async (
     ).toBe(true);
 });
 
+test('Next.js pages get an App Router route that renders the page component', async () => {
+    const result = await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'admin/users'
+    });
+    expect(result.files.created).toEqual([
+        'app/admin/users/page.tsx',
+        'src/presentation/react/pages/admin/admin-users-page.tsx'
+    ]);
+    expect(read('app/admin/users/page.tsx')).toBe(`import { AdminUsersPage } from '../../../src/presentation/react/pages/admin/admin-users-page'
+
+export default function Page() {
+    return <AdminUsersPage />
+}`);
+    await executeAgentRequest('df-react', {
+        operation: 'move-page',
+        module: 'admin/users',
+        name: 'backoffice/users'
+    });
+    expect(read('app/admin/users/page.tsx')).toContain(
+        "import { BackofficeUsersPage } from '../../../src/presentation/react/pages/backoffice/backoffice-users-page'"
+    );
+    expect(read('app/admin/users/page.tsx')).toContain(
+        'return <BackofficeUsersPage />'
+    );
+});
+
+test('Next.js pages use src/app when it exists and keep an existing route', async () => {
+    write('src/app/layout.tsx', 'export default function Layout() {}');
+    write('src/app/orders/page.tsx', 'custom route');
+    const result = await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'orders'
+    });
+    expect(result.files.created).toEqual([
+        'src/presentation/react/pages/orders-page.tsx'
+    ]);
+    expect(read('src/app/orders/page.tsx')).toBe('custom route');
+    expect(result.messages).toEqual([
+        'src/app/orders/page.tsx already exists: render OrdersPage there yourself.'
+    ]);
+});
+
+test('plain React pages get no Next.js route', async () => {
+    ConfigFile.update({ frontend: { react: { framework: 'react' } } });
+    writePendingChanges();
+    const result = await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'orders'
+    });
+    expect(result.files.created).toEqual([
+        'src/presentation/react/pages/orders-page.tsx'
+    ]);
+});
+
 test('integration requests use stable IDs and the real Storybook integration', async () => {
     const result = await executeAgentRequest('df-integration', {
         operation: 'add',

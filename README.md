@@ -261,6 +261,8 @@ With `frontend.react` configured, run `npx df-react`: pages, widgets (monolithic
 admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPanelUsersPage)
 ```
 
+With Next.js, a new page also gets its App Router route, `app/admin/panel/users/page.tsx`, which renders `AdminPanelUsersPage`. An existing route is never overwritten.
+
 **Move or rename page** and **Move or rename widget** move the files and update every import in the project.
 
 ### How to add tooling
