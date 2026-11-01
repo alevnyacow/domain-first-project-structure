@@ -45,12 +45,12 @@ type Import = {
     statement: string;
 };
 
-type Alias = { prefix: string; wildcard: boolean; target: string };
+export type Alias = { prefix: string; wildcard: boolean; target: string };
 
 /**
  * Wildcard and exact `paths` of the root tsconfig, longest first.
  */
-const readAliases = (projectRoot: string): Alias[] => {
+export const readAliases = (projectRoot: string): Alias[] => {
     const tsconfig = path.join(projectRoot, 'tsconfig.json');
     const paths = compilerOption(tsconfig, 'paths');
     if (!paths || typeof paths !== 'object') {
@@ -77,7 +77,7 @@ const readAliases = (projectRoot: string): Alias[] => {
         .sort((a, b) => b.prefix.length - a.prefix.length);
 };
 
-const resolveSpecifier = (
+export const resolveSpecifier = (
     specifier: string,
     fromFile: string,
     aliases: Alias[]

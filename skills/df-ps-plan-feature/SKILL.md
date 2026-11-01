@@ -15,6 +15,8 @@ Read the config, then build an overview of the contexts and `shared-kernel/` fro
 rg --files <rootFolder>/bounded-contexts <rootFolder>/shared-kernel
 ```
 
+With `@domain-first/wire`, `npx df-graph --json` lists the wired modules of every owner and what each implementation injects, including cross-context ports and the neighbor handlers they reach; `--context <name>` narrows it to one context. Use it to see existing dependencies before reading code.
+
 Use the overview to identify likely owners and related contexts. Search for the feature's domain terms and synonyms; don't infer ownership from folder names alone.
 
 Read the relevant code in the affected contexts: aggregates and their rules, use cases, commands/queries, ports, and behavior tests. Follow their dependencies into adapters, wiring, relevant `shared-kernel/` components, and the REST endpoints of any providing context. Note how contexts can reach each other: which database each one uses, and any message queue, RPC, or event setup. Expand the search when ownership or a dependency remains unclear; unrelated implementations do not need a full read.

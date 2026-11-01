@@ -3,11 +3,18 @@ import {
     checkbox as interactiveCheckbox,
     confirm as interactiveConfirm,
     input as interactiveInput,
+    search as interactiveSearch,
     select as interactiveSelect,
     Separator
 } from '@inquirer/prompts';
 
 export { Separator };
+
+const isSeparator = (choice: unknown): choice is Separator =>
+    (typeof Separator === 'function' && choice instanceof Separator) ||
+    (typeof choice === 'object' &&
+        choice !== null &&
+        (choice as { type?: unknown }).type === 'separator');
 
 export class RequestError extends Error {
     constructor(
@@ -137,7 +144,7 @@ type SelectConfig<T> = {
 };
 const choicesOf = <T>(config: SelectConfig<T>): Choice<T>[] =>
     config.choices
-        .filter((choice) => !(choice instanceof Separator))
+        .filter((choice) => !isSeparator(choice))
         .map((choice) =>
             typeof choice === 'object' && choice !== null && 'value' in choice
                 ? (choice as Choice<T>)
@@ -169,9 +176,76 @@ const resolveChoice = <T>(
         );
     return matches[0].value;
 };
+/** Longer menus get a search field: typing filters the choices. */
+export const searchThreshold = 10;
+
+const choiceLabel = <T>(choice: Choice<T>) =>
+    choice.name ?? String(choice.value);
+
+/**
+ * The choices whose label contains every typed word, in any case. Labels
+ * that start with the typed text come first, and so do their groups, so
+ * the highlighted choice is the one a prefix names. A group separator
+ * stays only when a choice of its group is left.
+ */
+export const filterChoices = <T>(
+    choices: SelectConfig<T>['choices'],
+    term: string | undefined
+) => {
+    const text = (term ?? '').trim().toLowerCase();
+    const words = text.split(/\s+/).filter(Boolean);
+    if (!words.length) return [...choices];
+    type Match = { choice: Choice<T>; prefix: boolean };
+    const groups: { separator?: Separator; matches: Match[] }[] = [
+        { matches: [] }
+    ];
+    for (const choice of choices) {
+        if (isSeparator(choice)) {
+            groups.push({ separator: choice, matches: [] });
+            continue;
+        }
+        const normalized =
+            typeof choice === 'object' && choice !== null && 'value' in choice
+                ? (choice as Choice<T>)
+                : { value: choice as T };
+        const label = choiceLabel(normalized).toLowerCase();
+        if (!words.every((word) => label.includes(word))) continue;
+        groups.at(-1)?.matches.push({
+            choice: normalized,
+            prefix: label.startsWith(text)
+        });
+    }
+    const byPrefix = <X>(items: X[], prefix: (item: X) => boolean) => [
+        ...items.filter(prefix),
+        ...items.filter((item) => !prefix(item))
+    ];
+    // Choices before the first separator have no header, so they stay on
+    // top: below another group they would look like part of it.
+    const [ungrouped, ...grouped] = groups;
+    return [
+        ungrouped,
+        ...byPrefix(
+            grouped.filter(({ matches }) => matches.length),
+            ({ matches }) => matches.some(({ prefix }) => prefix)
+        )
+    ].flatMap(({ separator, matches }) => [
+        ...(separator ? [separator] : []),
+        ...byPrefix(matches, ({ prefix }) => prefix).map(({ choice }) => choice)
+    ]);
+};
+
 export const select = async <T>(config: SelectConfig<T>): Promise<T> => {
     const { key, id, ...interactive } = config;
-    if (!isNonInteractive()) return interactiveSelect(interactive);
+    if (!isNonInteractive()) {
+        if (choicesOf(config).length <= searchThreshold)
+            return interactiveSelect(interactive);
+        return interactiveSearch({
+            message: `${config.message.trimEnd()} (type to filter)`,
+            source: (term) => filterChoices(config.choices, term),
+            pageSize: config.pageSize,
+            default: config.default
+        }) as Promise<T>;
+    }
     const field = requireKey(key);
     const value = answerFor(field, config.default);
     if (value === undefined) throw missing(field);

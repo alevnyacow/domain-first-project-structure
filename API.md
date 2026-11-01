@@ -53,6 +53,7 @@ Technical specification of the command-line interface of `@domain-first/project-
 - [`df-skills`](#df-skills)
 - [`df-lint`](#df-lint)
 - [`df-upgrade`](#df-upgrade)
+- [`df-graph`](#df-graph)
 - [Runtime semantics](#runtime-semantics)
 
 Notation used below:
@@ -69,7 +70,7 @@ Notation used below:
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint`, `df-upgrade` |
+| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint`, `df-upgrade`, `df-graph` |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
@@ -87,6 +88,7 @@ Notation used below:
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
 | `df-upgrade`     | Brings the project up to date after a major version upgrade           | [`df-upgrade`](#df-upgrade)   |
+| `df-graph`       | Prints the contexts and their dependencies as a Mermaid chart         | [`df-graph`](#df-graph)       |
 
 ```bash
 npx df-init
@@ -96,11 +98,12 @@ npx df-integration
 npx df-skills [--claude] [--codex] [--global]
 npx df-lint [rootFolder]
 npx df-upgrade [--dry-run] [--yes]
+npx df-graph [--context <name>] [--json | --markdown | --html] [--out <file>]
 ```
 
 ## Non-interactive JSON mode
 
-`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` and `df-upgrade` remain human commands; `df-lint` and `df-skills` already run without interactive generation menus.
+`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` and `df-upgrade` remain human commands; `df-lint`, `df-skills` and `df-graph` already run without interactive generation menus.
 
 ```bash
 npx df-scaffold --describe
@@ -1137,10 +1140,44 @@ npx df-upgrade [--dry-run] [--yes]
 | Record the frontend framework | required | `frontend.react.framework`: `next` when `next` is declared in `package.json`, otherwise `react`. Applies to any React section without a framework |
 | Move the default persistence implementation | required | `defaultPersistenceLayerImplementation` becomes the first primary type of `backend.implementations.repositories`, `commands` and `queries`; a value that is not a kebab-case label is dropped |
 
+## `df-graph`
+
+Shows the project's structure as a [Mermaid](https://mermaid.js.org) flowchart, read from the wiring: what each wired module's implementations inject. Needs a configured backend with `@domain-first/wire`. It prints to stdout, writes a file with `--out`, or opens a rendered page with `--html`; it changes nothing in the project.
+
+```bash
+npx df-graph [--context <name>] [--json | --markdown | --html] [--out <file>]
+```
+
+| Option             | Effect                                                                 |
+| ------------------ | ---------------------------------------------------------------------- |
+| (none)             | Context map: every bounded context and the Shared Kernel               |
+| `--context <name>` | The wired modules of one bounded context (or `shared-kernel`), by layer |
+| `--markdown`       | Wraps the chart in a ` ```mermaid ` block for READMEs and pull requests |
+| `--json`           | `{ owners, modules, edges }` instead of a chart; with `--context`, that owner's modules and their dependencies |
+| `--html`           | A page with the rendered charts: the context map and every context with wired modules, or one with `--context`. Without `--out`, it is written to the system temp folder and opened in the default browser. The page loads Mermaid 11.4.1 from jsDelivr, so rendering needs a network connection |
+| `--out <file>`     | Writes to the file instead of stdout, creating its folder; an existing file is replaced. The extension picks the format: `.md` (as `--markdown`), `.mmd` or `.mermaid` (the plain chart), `.json`, `.html`. Another extension, or a format flag that contradicts it, exits with 1 |
+| `-h`, `--help`     | Print help and exit                                                    |
+
+**Context map.** A solid arrow from one context to another is a cross-context port reaching the other's handlers, labelled `Port → Handler` for each pair. A dashed arrow to the Shared Kernel lists the Shared Kernel modules the context uses. Contexts without dependencies are still listed.
+
+```mermaid
+flowchart LR
+    shared_kernel[("shared-kernel")]
+    billing["billing"]
+    sales["sales"]
+    billing -->|"OrderRefunds → InvoiceQuery"| sales
+    sales -.->|"PrismaInfrastructureService"| shared_kernel
+```
+
+**Context graph.** The owner's modules are grouped in subgraphs by layer, and the modules of other owners it depends on in a subgraph per owner. An arrow is a dependency; when only some implementations of an env-branched module take it, the arrow names them, e.g. `CrossContextOrderRefunds` but not the test `StubOrderRefunds`.
+
+In JSON, modules have `id` (`<owner>:<Type>`, as in the [non-interactive mode](#non-interactive-json-mode)), `owner`, `typeName`, `layer` and `implementations`; edges have `from`, `to` and `implementation`. Without a config, with a config of an earlier major version, without backend or `wire`, or with an unknown `--context`, it prints the reason and exits with 1. REST endpoints are not wired modules and are not shown.
+
 ## Runtime semantics
 
 | Topic             | Behavior                                                                                                                         |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Long menus        | A select with more than 10 choices gets a search field (`<message> (type to filter)`): typing keeps the choices whose label contains every typed word, in any case, with the headers of their groups. Checkbox lists (dependencies, integrations) are not filtered. |
 | One operation     | Each `df-scaffold` and `df-react` run performs one operation. Run it again for the next one.                                           |
 | Staging           | Files, folders, moves and deletions are staged in memory and written after the operation's last prompt.                          |
 | Overwrites        | If staged files would replace existing ones, the CLI lists them and asks `Overwrite them?` (default: No). No discards everything and prints `Cancelled: nothing was written.` |

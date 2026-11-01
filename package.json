@@ -22,7 +22,8 @@
         "df-integration": "./dist/integration.js",
         "df-skills": "./bin/df-skills.mjs",
         "df-lint": "./dist/lint.js",
-        "df-upgrade": "./dist/upgrade.js"
+        "df-upgrade": "./dist/upgrade.js",
+        "df-graph": "./dist/graph.js"
     },
     "main": "./dist/index.cjs",
     "homepage": "https://domain-first-landing.vercel.app/scaffolder/",

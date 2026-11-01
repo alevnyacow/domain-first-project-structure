@@ -194,7 +194,7 @@ export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [
 ]);
 ```
 
-Only the dependencies that respect the layers are offered: a use case can't take another use case, the domain can't take the application. To add a dependency later, choose **Wire dependency** in the context menu.
+Only the dependencies that respect the layers are offered: a use case can't take another use case, the domain can't take the application. To add a dependency later, choose **Wire dependency** in the context menu. Menus with more than ten choices, such as the module list, take a search: type part of a name to filter.
 
 ### How to add an implementation
 
@@ -307,6 +307,17 @@ Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](A
     }
 }
 ```
+
+### How to see the structure
+
+```bash
+npx df-graph                    # bounded contexts and the Shared Kernel
+npx df-graph --context sales    # the modules of one context by layer
+npx df-graph --html                 # open the rendered charts in the browser
+npx df-graph --out docs/ARCHITECTURE.md
+```
+
+`df-graph` reads the wiring and draws Mermaid charts: which contexts reach each other through cross-context ports, which use the Shared Kernel, and inside a context, what each module depends on. It prints the chart, opens a rendered page with `--html` (Mermaid comes from a CDN), or writes `--out` in the format of the extension: `.md` for GitHub, which renders the chart, `.mmd`, `.json` or `.html`. `--json` gives the same graph to tools and agents.
 
 ### How to upgrade to a new major version
 

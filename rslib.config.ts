@@ -9,6 +9,7 @@ export default defineConfig({
       init: './src/init.ts',
       react: './src/react.ts',
       upgrade: './src/upgrade.ts',
+      graph: './src/graph.ts',
     },
   },
   lib: [
