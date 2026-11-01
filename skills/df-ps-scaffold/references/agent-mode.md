@@ -67,6 +67,7 @@ Compare the reported changes with the approved plan, then implement the generate
 | `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `REST_NOT_CONFIGURED` | Create the required context, aggregate, namespace, contract, handler or integration first if that work is authorized; otherwise report the missing prerequisite. A dry run of a prerequisite does not create it. |
 | `OVERWRITE_REQUIRED` | Preview and inspect the listed paths. Use `overwrite: true` only for replacements already within the approved plan; obtain any required plan change first. |
 | `MOVE_NOT_ALLOWED` | Review the boundary violations and change the design or move prerequisites first. Do not perform the move by hand. |
+| `DELETE_NOT_ALLOWED` | `details.usedBy` lists `[file, import]` pairs still using the module. Remove those uses first if the plan covers it, or report them; never delete the files by hand. |
 | `CANCELLED`, `OPERATION_FAILED`, `UNSUPPORTED_PROMPT` | Inspect the message and report the failed operation or unsupported CLI path. Do not treat this as permission to switch to interactive execution or write output by hand. |
 
 Failures discard the operation's staged changes. Success can still have follow-up notes: inspect `messages`/`nextSteps` for manual adapter connection, integration installation, custom wiring or an implementation no longer selected by any environment. Check the actual generated files before implementing business logic.

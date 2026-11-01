@@ -7,6 +7,7 @@ import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
 import {
+    deleteBackendUnitUseCase,
     moveBackendUnitUseCase,
     scaffoldNewAggregateUseCase,
     scaffoldNewApplicationPort,
@@ -109,7 +110,8 @@ const main = async () => {
                     )
                         ? 'Wire dependency'
                         : undefined,
-                    'Move or rename'
+                    'Move or rename',
+                    'Delete'
                 ].filter((x) => !!x)
             });
 
@@ -120,6 +122,11 @@ const main = async () => {
 
             if (layer === 'Move or rename') {
                 await moveBackendUnitUseCase(boundedContextFolder);
+                return;
+            }
+
+            if (layer === 'Delete') {
+                await deleteBackendUnitUseCase(boundedContextFolder);
                 return;
             }
 

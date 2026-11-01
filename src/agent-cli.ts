@@ -29,6 +29,8 @@ import { savePendingChanges } from './save-pending-changes';
 import { systemImplementationChoices } from './system-implementations';
 import {
     addIntegration,
+    deleteBackendUnitUseCase,
+    deleteReactModuleUseCase,
     moveBackendUnitUseCase,
     moveReactModuleUseCase,
     scaffoldNewAggregateUseCase,
@@ -367,7 +369,10 @@ const executeScaffold = async (request: AgentRequest, owner: Folder) => {
             'TARGET_NOT_FOUND',
             'No contracts in this context.'
         );
-    if (request.operation === 'move' && !findBackendUnits(owner.path).length)
+    if (
+        (request.operation === 'move' || request.operation === 'delete') &&
+        !findBackendUnits(owner.path).length
+    )
         throw new RequestError(
             'TARGET_NOT_FOUND',
             'No modules in this context.'
@@ -429,7 +434,8 @@ const executeScaffold = async (request: AgentRequest, owner: Folder) => {
         implementation: () => scaffoldNewImplementation(owner),
         endpoint: () => scaffoldNewHandlersRestEndpoint(owner),
         'wire-dependency': () => wireDependency(owner),
-        move: () => moveBackendUnitUseCase(owner)
+        move: () => moveBackendUnitUseCase(owner),
+        delete: () => deleteBackendUnitUseCase(owner)
     };
     return actions[request.operation]();
 };
@@ -439,20 +445,25 @@ const executeReact = async (request: AgentRequest) => {
         'presentation/react'
     ]);
     if (
-        request.operation.startsWith('move-') &&
+        /^(move|delete)-/.test(request.operation) &&
         !findReactModules(
             folder.path,
-            request.operation === 'move-page' ? 'page' : 'widget'
+            request.operation.endsWith('-page') ? 'page' : 'widget'
         ).length
     )
-        throw new RequestError('TARGET_NOT_FOUND', 'No React modules to move.');
+        throw new RequestError(
+            'TARGET_NOT_FOUND',
+            `No React ${request.operation.endsWith('-page') ? 'pages' : 'widgets'} here.`
+        );
     const actions: Record<string, () => Promise<unknown>> = {
         page: () => scaffoldReactPage(folder),
         widget: () => scaffoldReactWidget(folder),
         'ui-kit-component': () => scaffoldReactUIKitComponent(folder),
         'shared-hook': () => scaffoldReactSharedHook(folder),
         'move-page': () => moveReactModuleUseCase(folder, 'page'),
-        'move-widget': () => moveReactModuleUseCase(folder, 'widget')
+        'move-widget': () => moveReactModuleUseCase(folder, 'widget'),
+        'delete-page': () => deleteReactModuleUseCase(folder, 'page'),
+        'delete-widget': () => deleteReactModuleUseCase(folder, 'widget')
     };
     return actions[request.operation]();
 };

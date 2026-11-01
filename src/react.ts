@@ -8,6 +8,7 @@ import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
 import {
+    deleteReactModuleUseCase,
     moveReactModuleUseCase,
     scaffoldReactPage,
     scaffoldReactSharedHook,
@@ -69,7 +70,9 @@ Options:
                 'New UI-kit component',
                 'New shared hook',
                 'Move or rename widget',
-                'Move or rename page'
+                'Move or rename page',
+                'Delete widget',
+                'Delete page'
             ]
         });
         switch (action) {
@@ -95,6 +98,14 @@ Options:
             }
             case 'Move or rename page': {
                 await moveReactModuleUseCase(reactFolder, 'page');
+                return;
+            }
+            case 'Delete widget': {
+                await deleteReactModuleUseCase(reactFolder, 'widget');
+                return;
+            }
+            case 'Delete page': {
+                await deleteReactModuleUseCase(reactFolder, 'page');
                 return;
             }
             default: {

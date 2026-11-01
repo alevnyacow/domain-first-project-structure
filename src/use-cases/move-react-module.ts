@@ -7,6 +7,7 @@ import { ProjectRoot } from '../project-root';
 import {
     findReactModules,
     moveReactModule,
+    pageRouteFolder,
     type ReactModule,
     type ReactModuleKind,
     type RouteMove,
@@ -25,20 +26,12 @@ const promptRouteMove = async (
 ): Promise<RouteMove | undefined> => {
     if (!usesNext()) return undefined;
     const appFolder = path.join(root, nextAppFolder(root));
-    const from = routeFolder(appFolder, page.name);
+    const from = pageRouteFolder(appFolder, page);
     const to = routeFolder(appFolder, newName);
     const relative = (file: string) =>
         path.relative(root, file).split(path.sep).join('/');
-    const routePage = path.join(from, 'page.tsx');
     // Only a route that renders this page belongs to it.
-    if (
-        from === to ||
-        !fs.existsSync(routePage) ||
-        !new RegExp(`\\b${page.ClassName}Page\\b`).test(
-            fs.readFileSync(routePage, 'utf8')
-        )
-    )
-        return undefined;
+    if (!from || from === to) return undefined;
     if (fs.existsSync(path.join(to, 'page.tsx'))) {
         report(
             `${relative(to)}/page.tsx already exists: the route ${relative(from)} stays.`

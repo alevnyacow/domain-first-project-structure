@@ -41,7 +41,7 @@ A business element goes to UI-kit only when several widgets contain the same ele
 
 ## Running df-react
 
-Prefer `npx df-react --describe` and `npx df-react --request` JSON. The installed schema lists operations (`page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`), fields and current React modules. For example:
+Prefer `npx df-react --describe` and `npx df-react --request` JSON. The installed schema lists operations (`page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`, `delete-page`, `delete-widget`), fields and current React modules. For example:
 
 ```bash
 npx df-react --request '{"operation":"widget","name":"cart","widgetType":"separated"}'
@@ -54,13 +54,15 @@ node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react [--cwd <dir>] [
 node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react "pick:New widget" text:cart "pick:with separated ui"
 ```
 
-Steps and checks are the same as for `df-scaffold` ("Legacy interactive driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`. Prompts and output of each: `references/generators.md`.
+Steps and checks are the same as for `df-scaffold` ("Legacy interactive driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`, `Delete widget`, `Delete page`. Prompts and output of each: `references/generators.md`.
 
 If the CLI cannot run, report the failure and give the user the prepared JSON command (a menu path only for a legacy CLI). Never hand-write its output.
 
 ### Moving and renaming
 
-Moving or renaming a page or widget is a df-react run (`Move or rename page` / `Move or rename widget`): it creates the files at the new paths, so it needs an approved plan. With Next.js, moving a page can also move its App Router route and so change its URL: state in the plan whether the route moves (`moveRoute`), and ask the user when the request doesn't say. Don't move, rename, or copy their files by hand, and don't rename their `<Name>Page…`, `<Name>Widget…`, or `use<Name>UIModel` by hand: df-react keeps file names, code names, story titles, and imports in sync. List each move as a run: old → new name, the files to move (`→`), and the files whose imports change (`~`).
+Moving or renaming a page or widget is a df-react run (`Move or rename page` / `Move or rename widget`): it creates the files at the new paths, so it needs an approved plan. With Next.js, moving a page can also move its App Router route and so change its URL: state in the plan whether the route moves (`moveRoute`), and ask the user when the request doesn't say. Don't move, rename, or copy their files by hand, and don't rename their `<Name>Page…`, `<Name>Widget…`, or `use<Name>UIModel` by hand: df-react keeps file names, code names, story titles, and imports in sync. List each move as a plan row (Type `page move` / `widget move`, Name `old → new`).
+
+Deleting a page or widget is a df-react run too (`Delete page` / `Delete widget`, JSON `delete-page` / `delete-widget`) and needs an approved plan (Type `page delete` / `widget delete`). It is refused while other files import the module (`DELETE_NOT_ALLOWED` with `details.usedBy`): remove those uses first, or delete the importing module first. With Next.js, deleting a page can also delete its own route and so its URL: state it in the plan (`deleteRoute`), and ask the user when the request doesn't say. Never delete their files by hand.
 
 ### Files you may create by hand
 

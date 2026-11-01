@@ -204,6 +204,10 @@ Choose **Infrastructure → New Implementation** to give an existing repository,
 
 Choose **Move or rename** in the context menu: rename an aggregate, entity, value object, service, port, query, command or use case, move it to another bounded context or to the Shared Kernel, or move an entity in or out of an aggregate. Its files, implementations, wire, specs and every import and derived name in the project follow it: `OrderRepository`, `PrismaOrderRepository`, `wireOrderRepository`, the `orderRepository` parameter of a use case, the in-memory DB section. A move that would introduce a forbidden import between contexts is refused, with the list of imports that would cross the boundary.
 
+### How to delete a module
+
+Choose **Delete** in the context menu and pick the module. All its files go: the contract, implementations, wire and specs, an aggregate with its whole folder, plus the lines generators added for it elsewhere (an entity's re-export in its aggregate, an aggregate's in-memory DB section). While another file still imports it, nothing is deleted and the CLI lists those imports, so nothing is left broken.
+
 ### How to add errors
 
 Choose **Domain → Errors** to add an error to the context namespace, create a nested namespace, or add an error to it. The context namespace (`SalesErrors = errorNamespace('sales')` in `domain/errors/index.ts`) is created with the first error added without a namespace.
@@ -265,7 +269,7 @@ admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPane
 
 With Next.js, a new page also gets its App Router route, `app/admin/panel/users/page.tsx`, which renders `AdminPanelUsersPage`. An existing route is never overwritten.
 
-**Move or rename page** and **Move or rename widget** move the files and update every import in the project. With Next.js, moving a page also offers to move its route, `app/admin/users/` → `app/backoffice/users/`, since its URL changes with it.
+**Move or rename page** and **Move or rename widget** move the files and update every import in the project. **Delete page** and **Delete widget** remove them once nothing imports them, a Next.js page's own route included if you say so. With Next.js, moving a page also offers to move its route, `app/admin/users/` → `app/backoffice/users/`, since its URL changes with it.
 
 ### How to add tooling
 

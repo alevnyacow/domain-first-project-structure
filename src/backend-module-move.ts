@@ -689,3 +689,123 @@ const projectRelative = (fromFile: string, toFile: string) => {
     );
     return relative.startsWith('.') ? relative : `./${relative}`;
 };
+
+export type BackendDeleteResult =
+    | {
+          /** Files outside the unit that still import it: [file, import]. */
+          usedBy: [string, string][];
+      }
+    | { deleted: string[]; updated: string[]; usedBy?: undefined };
+
+const importSpecifier =
+    /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(['"])([^'"\n]+)\1/g;
+const importLine =
+    /^\s*(?:import|export)\b[^'"\n]*\bfrom\s*(['"])([^'"\n]+)\1;?\s*$/;
+
+/**
+ * Stages the deletion of a unit: every file of it (an aggregate with its
+ * whole folder). What the generators added for it elsewhere goes too: an
+ * entity's re-export in its aggregate's barrel, an aggregate's in-memory
+ * DB section. Nothing is staged while other files still import the unit;
+ * those imports are returned instead.
+ */
+export const deleteBackendUnit = (
+    projectRoot: string,
+    rootFolderPath: string,
+    unit: BackendUnit
+): BackendDeleteResult => {
+    const files = [...unitMoves(unit, unit).keys()];
+    const fileSet = new Set(files);
+    const stems = new Set(files.map((file) => file.replace(codeExtension, '')));
+    const aggregateFolder =
+        unit.kind === 'aggregate'
+            ? path.join(unit.ownerPath, 'domain/aggregates', unit.name)
+            : undefined;
+    const parentAggregate = unit.aggregate
+        ? path.join(unit.ownerPath, 'domain/aggregates', unit.aggregate)
+        : undefined;
+    const isUnit = (resolved: string) =>
+        stems.has(resolved) ||
+        (!!aggregateFolder &&
+            (resolved === aggregateFolder ||
+                resolved.startsWith(`${aggregateFolder}${path.sep}`)));
+    const isParentBarrel = (resolved: string) =>
+        !!parentAggregate &&
+        (resolved === parentAggregate ||
+            resolved === path.join(parentAggregate, 'index'));
+
+    const { codeFiles, resolve } = projectImports(projectRoot);
+    const resolved = (specifier: string, file: string) =>
+        resolve(specifier, file)?.resolved;
+    /** Lines importing or re-exporting the unit itself, dropped. */
+    const withoutUnitImports = (content: string, file: string) =>
+        content
+            .split('\n')
+            .filter((line) => {
+                const specifier = line.match(importLine)?.[2];
+                const target = specifier && resolved(specifier, file);
+                return !(target && isUnit(target));
+            })
+            .join('\n');
+
+    // Generated references elsewhere: cleaned up rather than reported.
+    const cleaned = new Map<string, string>();
+    const inMemoryDb = inMemoryDbFile(rootFolderPath);
+    if (unit.kind === 'aggregate' && codeFiles.has(inMemoryDb)) {
+        const section = new UnknownFormatNaming(plural(unit.name));
+        const original = codeFiles.get(inMemoryDb) as string;
+        const content = withoutUnitImports(
+            original.replace(
+                new RegExp(
+                    `^[ \\t]*${escapeRegExp(section.variableName)}\\s*=\\s*this\\.section<[^\\n]*\\n?`,
+                    'm'
+                ),
+                ''
+            ),
+            inMemoryDb
+        );
+        if (content !== original) cleaned.set(inMemoryDb, content);
+    }
+    if (parentAggregate) {
+        const index = path.join(parentAggregate, 'index.ts');
+        const original = codeFiles.get(index);
+        if (original !== undefined) {
+            const content = withoutUnitImports(original, index);
+            if (content !== original) cleaned.set(index, content);
+        }
+    }
+
+    const ClassName = new UnknownFormatNaming(unit.name).ClassName;
+    const namedImports =
+        /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*(['"])([^'"\n]+)\2/g;
+    const usedBy: [string, string][] = [];
+    const relative = (file: string) =>
+        toPosix(path.relative(projectRoot, file));
+    for (const [file, original] of codeFiles) {
+        if (fileSet.has(file)) continue;
+        const content = cleaned.get(file) ?? original;
+        for (const [, , specifier] of content.matchAll(importSpecifier)) {
+            const target = resolved(specifier, file);
+            if (target && isUnit(target))
+                usedBy.push([relative(file), relative(target)]);
+        }
+        // An entity or value object can also come through its aggregate.
+        for (const [, names, , specifier] of content.matchAll(namedImports)) {
+            const target = resolved(specifier, file);
+            if (
+                target &&
+                isParentBarrel(target) &&
+                new RegExp(`(?<![\\w$])${ClassName}(?![\\w$])`).test(names)
+            )
+                usedBy.push([
+                    relative(file),
+                    `${relative(target)} (${ClassName})`
+                ]);
+        }
+    }
+    if (usedBy.length) return { usedBy };
+
+    for (const file of files) new File(file).delete(rootFolderPath);
+    for (const [file, content] of cleaned) new File(file).update(content);
+    return { deleted: files, updated: [...cleaned.keys()] };
+};

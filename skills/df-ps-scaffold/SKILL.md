@@ -88,7 +88,7 @@ Reply "ok" to start.
 - **Scaffolding** has one block per owner, in run order: new contexts first, marked `(new)` (and `(provisional)` with the reason when ownership is a reversible default), then existing contexts, `shared-kernel`, React last.
 - **Why here**: one short sentence on why this owner, not another: the data or rule the context owns; for `shared-kernel`, why several contexts share it; for React, why the UI changes.
 - **What will be scaffolded**: one table per owner, one row per `df-scaffold`/`df-react` run. Layers in order domain → application → infrastructure → presentation, the layer in bold only on its first row. Repositories go with their aggregate in domain; commands, queries and ports in application (their implementations are Details); endpoints and React modules in presentation.
-  - **Type**: the unit: aggregate, entity, value object, error, error namespace, service, port, command, query, use case, implementation, endpoint, wire dependency, move; for React: page, widget, ui-kit component, hook, page move, widget move.
+  - **Type**: the unit: aggregate, entity, value object, error, error namespace, service, port, command, query, use case, implementation, endpoint, wire dependency, move, delete; for React: page, widget, ui-kit component, hook, page move, widget move, page delete, widget delete.
   - **Name**: the entered name; for a move `old → new`; for an implementation the contract; for wire dependency the module.
   - **Details**: only what changes behavior: implementation types (`(saved)` when saved for future runs), the test implementation, dependencies (`deps: OrderRepository`), environments, widget type, the endpoint's handler, whether a Next.js route moves (`route moves: /a → /b`). No file paths, no CLI menu paths.
   - **Why**: at most six words: why this kind of module (`choosing-components.md`).
@@ -117,11 +117,11 @@ Anything else (helpers, types, constants, mappers, wiring, barrels): put it in a
 
 If the CLI cannot run, report the failure and give the user the prepared JSON command to run themselves (the menu path and answers only for a legacy CLI). Never hand-write its output. Missing generated files are only recreated by re-running the generator, as an approved overwrite.
 
-Moving or renaming a module (aggregate, entity, value object, service, port, query, command, use case) is a df-scaffold run, `Move or rename` (`references/units/move-or-rename.md`); a page or widget, a df-react run (`df-ps-react`). Never by hand: it creates files at the new paths, so it needs an approved plan.
+Moving or renaming a module (aggregate, entity, value object, service, port, query, command, use case) is a df-scaffold run, `Move or rename` (`references/units/move-or-rename.md`); a page or widget, a df-react run (`df-ps-react`). Never by hand: it creates files at the new paths, so it needs an approved plan. Deleting a module is a df-scaffold run too, `Delete` (`references/units/delete.md`): it removes files, so it needs an approved plan as well.
 
 ### 3. New dependencies only through df-scaffold
 
-With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-scaffold`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-scaffold` added.
+With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-scaffold`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-scaffold` added. The one exception: an approved plan removes a dependency (from the wire and the constructor together), e.g. before deleting the module it points to.
 
 - List each module's dependencies in its plan row's Details (`deps: OrderRepository`); for an existing module, add a `wire dependency` row.
 - A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `backend.rules.dependencies` in the config) or by context isolation: change the design (a port, a query or command, an infrastructure service) instead of adding it by hand.
@@ -150,6 +150,7 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 | REST endpoint | `endpoint.md` | Presentation → New Handlers-REST Endpoint |
 | Dependency of an existing module | `wire-dependency.md` | Wire dependency |
 | Moving or renaming a module | `move-or-rename.md` | Move or rename |
+| Deleting a module | `delete.md` | Delete |
 | React modules | `df-ps-react` skill | `df-react` |
 
 ## Preparing runs
@@ -198,7 +199,7 @@ Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the files its 
 | Infrastructure | New Service, New Implementation                                  | New Service, New Implementation                   |
 | Presentation   | New Handlers-REST Endpoint (needs handlers-rest), New Service    | New Service                                       |
 
-With `@domain-first/wire`, the layer menu of a context and of the Shared Kernel also has `Wire dependency`: it adds dependencies to an existing wired module. Every layer menu has `Move or rename`.
+With `@domain-first/wire`, the layer menu of a context and of the Shared Kernel also has `Wire dependency`: it adds dependencies to an existing wired module. Every layer menu has `Move or rename` and `Delete`.
 
 The main menu also has `Scaffold new bounded context`. React modules come from a separate CLI, `df-react`: see `df-ps-react`.
 

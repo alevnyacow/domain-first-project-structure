@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { File } from './file-system';
 import {
     codeExtension,
     escapeRegExp,
     type MovePlan,
+    projectImports,
     stageModuleMove,
     toPosix,
     walk
@@ -252,4 +254,83 @@ export const moveReactModule = (
                 : renamed;
         }
     });
+};
+
+/**
+ * The route folder of a page with Next.js: `<app>/<name>/` when its
+ * `page.tsx` renders the page. Undefined for other routes or none.
+ */
+export const pageRouteFolder = (appFolder: string, page: ReactModule) => {
+    const folder = routeFolder(appFolder, page.name);
+    const routePage = path.join(folder, 'page.tsx');
+    return fs.existsSync(routePage) &&
+        new RegExp(`(?<![\\w$])${page.ClassName}Page(?![\\w$])`).test(
+            fs.readFileSync(routePage, 'utf8')
+        )
+        ? folder
+        : undefined;
+};
+
+/** The files of a page (it and its same-named companions) or a widget. */
+const reactModuleFiles = (module: ReactModule) => {
+    if (module.kind === 'widget') return walk(module.path);
+    const folder = path.dirname(module.path);
+    const own = new RegExp(`^${escapeRegExp(module.fileBase)}-page(?:\\.|$)`);
+    return fs
+        .readdirSync(folder, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && own.test(entry.name))
+        .map((entry) => path.join(folder, entry.name));
+};
+
+export type ReactDeleteResult =
+    | {
+          /** Files outside the module that still import it: [file, import]. */
+          usedBy: [string, string][];
+      }
+    | { deleted: string[]; usedBy?: undefined };
+
+const importSpecifier =
+    /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(['"])([^'"\n]+)\1/g;
+
+/**
+ * Stages the deletion of a page or widget with its files, and with `route`
+ * the files of that Next.js route folder too. Nothing is staged while other
+ * files still import the module; those imports are returned instead.
+ */
+export const deleteReactModule = (
+    projectRoot: string,
+    reactFolder: string,
+    module: ReactModule,
+    route?: { appFolder: string; folder: string }
+): ReactDeleteResult => {
+    const moduleFiles = reactModuleFiles(module);
+    const routeFileList = route ? routeFiles(route.folder) : [];
+    const own = new Set([...moduleFiles, ...routeFileList]);
+    const stems = new Set(
+        moduleFiles.map((file) => file.replace(codeExtension, ''))
+    );
+    const isModule = (resolved: string) =>
+        stems.has(resolved) ||
+        (module.kind === 'widget' &&
+            (resolved === module.path ||
+                resolved.startsWith(`${module.path}${path.sep}`)));
+
+    const { codeFiles, resolve } = projectImports(projectRoot);
+    const relative = (file: string) =>
+        toPosix(path.relative(projectRoot, file));
+    const usedBy: [string, string][] = [];
+    for (const [file, content] of codeFiles) {
+        if (own.has(file)) continue;
+        for (const [, , specifier] of content.matchAll(importSpecifier)) {
+            const target = resolve(specifier, file)?.resolved;
+            if (target && isModule(target))
+                usedBy.push([relative(file), relative(target)]);
+        }
+    }
+    if (usedBy.length) return { usedBy };
+
+    for (const file of moduleFiles) new File(file).delete(reactFolder);
+    for (const file of routeFileList)
+        new File(file).delete((route as { appFolder: string }).appFolder);
+    return { deleted: [...moduleFiles, ...routeFileList] };
 };

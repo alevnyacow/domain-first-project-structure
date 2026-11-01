@@ -105,6 +105,13 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
         ),
         dependencies
     }),
+    operation('delete', {
+        ...common,
+        ...owner,
+        module: id.describe(
+            'Exact unit ID from --describe. Refused while other files use it.'
+        )
+    }),
     operation('move', {
         ...common,
         ...owner,
@@ -134,6 +141,17 @@ export const reactRequestSchema = z.discriminatedUnion('operation', [
                 'With Next.js and a route at the page path: move it too (default true). Omit it without such a route.'
             )
     }),
+    operation('delete-page', {
+        ...common,
+        module: nestedName,
+        deleteRoute: z
+            .boolean()
+            .optional()
+            .describe(
+                "With Next.js and the page's own route: delete it too (default true). Omit it without such a route."
+            )
+    }),
+    operation('delete-widget', { ...common, module: nestedName }),
     operation('move-widget', {
         ...common,
         module: nestedName,

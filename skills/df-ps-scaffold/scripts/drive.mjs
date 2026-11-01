@@ -222,6 +222,7 @@ const created = [...after.keys()].filter((p) => !before.has(p)).map(rel);
 const changed = [...after.keys()]
     .filter((p) => before.has(p) && before.get(p) !== after.get(p))
     .map(rel);
+const deleted = [...before.keys()].filter((p) => !after.has(p)).map(rel);
 
 const plain = stripAnsi(output);
 const answered = [...plain.matchAll(/✔\s*([^\n]*)/g)].map((m) => m[1].trim());
@@ -240,6 +241,10 @@ console.log('\ncreated:');
 for (const file of created) console.log(`  + ${file}`);
 console.log('\nchanged:');
 for (const file of changed) console.log(`  ~ ${file}`);
+if (deleted.length) {
+    console.log('\ndeleted:');
+    for (const file of deleted) console.log(`  - ${file}`);
+}
 if (code !== 0 || unansweredPrompt || aborted) {
     console.log('\nraw output (tail):');
     console.log(plain.split('\n').slice(-15).join('\n'));

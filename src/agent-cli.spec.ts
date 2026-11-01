@@ -680,3 +680,211 @@ test('without a test branch, every branch gets the primary implementation and no
     prod: wirePrismaImplementation
 })`);
 });
+
+test('deleting an unused query removes its contract, implementations, wire and emptied folders', async () => {
+    await executeAgentRequest('df-scaffold', {
+        ...query,
+        dependencies: { PrismaOrdersQuery: [] }
+    });
+    const result = await executeAgentRequest('df-scaffold', {
+        operation: 'delete',
+        context: 'sales',
+        module: 'query:orders'
+    });
+    expect(result.files.deleted).toEqual(
+        expect.arrayContaining([
+            queryFile,
+            adapterFile,
+            'src/bounded-contexts/sales/wiring/queries/wire-orders-query.ts'
+        ])
+    );
+    expect(exists(queryFile)).toBe(false);
+    expect(exists('src/bounded-contexts/sales/infrastructure/queries')).toBe(
+        false
+    );
+    expect(exists('src/bounded-contexts/sales/wiring/queries')).toBe(false);
+});
+
+test('a module still in use is not deleted, and the uses are listed', async () => {
+    await executeAgentRequest('df-scaffold', {
+        ...query,
+        dependencies: { PrismaOrdersQuery: [] }
+    });
+    await executeAgentRequest('df-scaffold', {
+        operation: 'use-case',
+        context: 'sales',
+        name: 'place-order',
+        dependencies: { PlaceOrderUseCase: ['sales:OrdersQuery'] }
+    });
+    const error = await executeAgentRequest('df-scaffold', {
+        operation: 'delete',
+        context: 'sales',
+        module: 'query:orders'
+    }).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
+    expect(error.details.usedBy.map(([file]: string[]) => file)).toEqual(
+        expect.arrayContaining([
+            'src/bounded-contexts/sales/application/use-cases/place-order-use-case.ts',
+            'src/bounded-contexts/sales/wiring/use-cases/wire-place-order-use-case.ts'
+        ])
+    );
+    expect(exists(queryFile)).toBe(true);
+});
+
+test('deleting an aggregate removes its folder and its in-memory DB section', async () => {
+    await executeAgentRequest('df-scaffold', {
+        operation: 'aggregate',
+        context: 'sales',
+        name: 'order',
+        withRepository: true,
+        implementation: { type: 'in-memory' },
+        dependencies: {
+            InMemoryOrderRepository: [
+                'shared-kernel:InMemoryDbInfrastructureService'
+            ]
+        }
+    });
+    const dbFile =
+        'src/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts';
+    expect(read(dbFile)).toContain("orders = this.section<Order>('ORDERS')");
+    await executeAgentRequest('df-scaffold', {
+        operation: 'entity',
+        context: 'sales',
+        aggregate: 'order',
+        name: 'line'
+    });
+    const result = await executeAgentRequest('df-scaffold', {
+        operation: 'delete',
+        context: 'sales',
+        module: 'aggregate:order'
+    });
+    expect(result.files.updated).toEqual([dbFile]);
+    expect(read(dbFile)).not.toContain('orders = this.section');
+    expect(read(dbFile)).not.toContain('aggregates/order');
+    expect(exists('src/bounded-contexts/sales/domain/aggregates/order')).toBe(
+        false
+    );
+    expect(
+        exists(
+            'src/bounded-contexts/sales/wiring/repositories/wire-order-repository.ts'
+        )
+    ).toBe(false);
+});
+
+test('deleting an entity drops its re-export, unless the aggregate barrel still brings it to others', async () => {
+    await executeAgentRequest('df-scaffold', {
+        operation: 'aggregate',
+        context: 'sales',
+        name: 'order'
+    });
+    for (const name of ['line', 'note'])
+        await executeAgentRequest('df-scaffold', {
+            operation: 'entity',
+            context: 'sales',
+            aggregate: 'order',
+            name
+        });
+    const index = 'src/bounded-contexts/sales/domain/aggregates/order/index.ts';
+    write(
+        'src/bounded-contexts/sales/domain/services/totals.ts',
+        "import { Line } from '../aggregates/order'\nexport const total = (lines: Line[]) => lines.length"
+    );
+    await expect(
+        executeAgentRequest('df-scaffold', {
+            operation: 'delete',
+            context: 'sales',
+            module: 'entity:order/line'
+        })
+    ).rejects.toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
+    const result = await executeAgentRequest('df-scaffold', {
+        operation: 'delete',
+        context: 'sales',
+        module: 'entity:order/note'
+    });
+    expect(result.files.updated).toEqual([index]);
+    expect(read(index)).not.toContain('note.entity');
+    expect(read(index)).toContain('line.entity');
+});
+
+test('deleting an unused widget removes its folder; a widget in use stays', async () => {
+    for (const name of ['orders/list', 'orders/filters'])
+        await executeAgentRequest('df-react', { operation: 'widget', name });
+    await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'orders'
+    });
+    const page = 'src/presentation/react/pages/orders-page.tsx';
+    write(
+        page,
+        `${read(page)}\nimport { OrdersListWidget } from '../widgets/orders/list'`
+    );
+    const error = await executeAgentRequest('df-react', {
+        operation: 'delete-widget',
+        module: 'orders/list'
+    }).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
+    expect(error.details.usedBy).toEqual([
+        [page, 'src/presentation/react/widgets/orders/list']
+    ]);
+    const result = await executeAgentRequest('df-react', {
+        operation: 'delete-widget',
+        module: 'orders/filters'
+    });
+    expect(result.files.deleted).toContain(
+        'src/presentation/react/widgets/orders/filters/orders-filters-widget.tsx'
+    );
+    expect(exists('src/presentation/react/widgets/orders/filters')).toBe(false);
+    expect(exists('src/presentation/react/widgets/orders/list')).toBe(true);
+});
+
+test('deleting a Next.js page deletes its route by default; a kept route blocks it', async () => {
+    await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'admin/users'
+    });
+    write('app/admin/users/layout.tsx', 'export default function Layout() {}');
+    write('app/admin/users/[id]/page.tsx', 'export default function User() {}');
+    const blocked = await executeAgentRequest('df-react', {
+        operation: 'delete-page',
+        module: 'admin/users',
+        deleteRoute: false
+    }).catch((caught) => caught);
+    expect(blocked).toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
+    expect(blocked.details.usedBy[0][0]).toBe('app/admin/users/page.tsx');
+
+    const result = await executeAgentRequest('df-react', {
+        operation: 'delete-page',
+        module: 'admin/users'
+    });
+    expect(result.files.deleted).toEqual(
+        expect.arrayContaining([
+            'src/presentation/react/pages/admin/admin-users-page.tsx',
+            'app/admin/users/page.tsx',
+            'app/admin/users/layout.tsx'
+        ])
+    );
+    expect(exists('app/admin/users/page.tsx')).toBe(false);
+    expect(exists('app/admin/users/[id]/page.tsx')).toBe(true);
+    expect(exists('src/presentation/react/pages/admin')).toBe(false);
+});
+
+test('a page without its own route takes no deleteRoute', async () => {
+    write('app/orders/page.tsx', 'custom route');
+    await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'orders'
+    });
+    await expect(
+        executeAgentRequest('df-react', {
+            operation: 'delete-page',
+            module: 'orders',
+            deleteRoute: true
+        })
+    ).rejects.toMatchObject({ code: 'UNUSED_PARAMETERS' });
+    await executeAgentRequest('df-react', {
+        operation: 'delete-page',
+        module: 'orders'
+    });
+    expect(read('app/orders/page.tsx')).toBe('custom route');
+    expect(exists('src/presentation/react/pages/orders-page.tsx')).toBe(false);
+});

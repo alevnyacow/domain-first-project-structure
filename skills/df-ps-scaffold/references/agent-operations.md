@@ -28,6 +28,7 @@ All operations support `dryRun` and `overwrite`. Except `bounded-context`, they 
 | `endpoint` | `controller`, `method`, `path` | REST package and generator must exist. With wiring and selectable handlers, provide `handler`. Without selectable handlers, omit it; the generated handler remains `never` and needs a later approved generator rerun. |
 | `wire-dependency` | `module`, `dependencies` | `module` is a wiring target ID, not a contract/unit ID. Adds only eligible dependencies not already wired to that implementation. |
 | `move` | `module` | `module` is a unit ID. Optional `name`, `targetContext`, `aggregate`; omitted name/context keep the existing ones. A same-owner entity/value-object keeps its aggregate by default. The target aggregate must exist; the target context must be a discovered, allowed destination for that unit kind. Illegal cross-context imports reject the move. |
+| `delete` | `module` | `module` is a unit ID. Deletes every file of the unit and its generated references (aggregate barrel re-export, in-memory DB section). Refused with `DELETE_NOT_ALLOWED` and `details.usedBy` while other files import it; nothing changes. |
 
 `implementation` and `testImplementation` contain `type` and optional `save` (default false). Explicit types can be new ordinary names; they need not already be saved. Saving is independent for primary and test roles. The test type must differ from the primary type. Adding a new implementation remembers a saved type according to the selected environments: `test` or primary for other environments. Branches are `backend.envBranches.names` from the config (`test`, `development`, `production` when absent), with `backend.envBranches.test` as the test one; additional names must be offered by the existing branched wire. Custom branches without `test` take no test implementations: omit `testImplementation`. Without usable branching, omit `environments` and follow the returned wiring note.
 
@@ -118,6 +119,8 @@ The owner configures frontend first. React and Next.js use the same operations. 
 | `shared-hook` | `name` | Single kebab-case name, preferably without `use-`; a leading `use-` is stripped. |
 | `move-page` | `module`, `name` | `module` is the existing nested page name from discovery; `name` is the target nested name. With Next.js and a route at the page path that renders the page, `moveRoute` (default true) moves that route folder's own files to the new path, changing the URL; `false` keeps the route with its import updated. Omit `moveRoute` when there is no such route. |
 | `move-widget` | `module`, `name` | Same for widgets. Files, imports, code names and generated story titles follow the move. |
+| `delete-page` | `module` | Deletes the page and its `<name>-page.*` files. With Next.js and the page's own route, `deleteRoute` (default true) deletes that route folder's own files too; `false` keeps the route, which still imports the page, so the delete is refused. Omit `deleteRoute` without such a route. |
+| `delete-widget` | `module` | Deletes the widget folder. Refused with `DELETE_NOT_ALLOWED` and `details.usedBy` while other files import it. |
 
 All support `dryRun` and `overwrite`. Use CLI moves even for a rename or folder regrouping; an existing target or a move into itself is rejected.
 

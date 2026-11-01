@@ -39,6 +39,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [New UI-kit component](#new-ui-kit-component)
     - [New shared hook](#new-shared-hook)
     - [Move or rename page / widget](#move-or-rename-page--widget)
+    - [Delete page / widget](#delete-page--widget)
 - [Integrations](#integrations)
     - [REST endpoint generator](#rest-endpoint-generator)
     - [In-memory DB](#in-memory-db-1)
@@ -132,7 +133,7 @@ Dependency availability follows the same context, layer and per-kind rules as th
 
 ### Operations and options
 
-The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`. Integrations use `operation: "add"` and an `integrations` list.
+The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`, `delete`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`, `delete-page`, `delete-widget`. Integrations use `operation: "add"` and an `integrations` list.
 
 - `name` and `context` use lowercase kebab-case. React page/widget names allow nested paths. Shared Kernel restrictions match the menus.
 - `implementation` and optional `testImplementation` are `{ "type": "prisma", "save": false }`. The primary type is required for queries, commands, ports and new implementations. `save` defaults to false; true records an ordinary type by category and environment role. System labels are plain `cross-context` / `in-memory`, without the UI prefix. Their existing behavior and boundaries remain in force.
@@ -165,7 +166,7 @@ type Result = {
 
 `nextSteps` contains install commands and follow-up notes; nothing is installed or executed. `overwriteRequired` is useful when reviewing a dry run. Generator diagnostics are captured in `messages`, keeping stdout to a single JSON document.
 
-Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, `CONFIG_OUTDATED`, and configuration/precondition errors. Validation failures discard staged source, config and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
+Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, `DELETE_NOT_ALLOWED`, `CONFIG_OUTDATED`, and configuration/precondition errors. Validation failures discard staged source, config and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
 
 ## `df-init`
 
@@ -250,6 +251,7 @@ After choosing a bounded context or the Shared Kernel, the CLI asks for a layer 
 | `Presentation`    | `New Handlers-REST Endpoint` (with `handlers-rest`), `New Service`           | `New Service`                                        |
 | `Wire dependency` | With `wire`: [Wire dependency](#wire-dependency)                             | With `wire`: [Wire dependency](#wire-dependency)     |
 | `Move or rename`  | [Move or rename](#move-or-rename)                                            | [Move or rename](#move-or-rename)                    |
+| `Delete`          | [Delete](#delete)                                                            | [Delete](#delete)                                    |
 
 ### In-memory DB
 
@@ -740,6 +742,18 @@ Every import of the module in the project follows it, relative paths and tsconfi
 
 Before anything changes, the CLI checks bounded context isolation after the move, allowing cross-context port adapters and matching wiring dependencies described below. Other imports between contexts are forbidden; the Shared Kernel may import only a context's `domain/errors` (and the in-memory DB its domain models). When the move breaks it, the CLI prints `Nothing was moved: these imports would cross a bounded context boundary.`, every such import with paths after the move, and nothing is changed. Otherwise it lists the files to move and to update and asks `Apply?`.
 
+### Delete
+
+`Layer: Delete` deletes a module of the selected context or the Shared Kernel. Modules are found by their file layout, as for [Move or rename](#move-or-rename).
+
+1. `Module to delete:` lists the same modules as Move or rename, grouped by kind.
+2. When other files still import the module, the CLI prints `Nothing was deleted: these files still use it.` with every `file → import`, and nothing changes. Uses through an aggregate's barrel count when the import names the entity or value object.
+3. Otherwise it lists the files to delete and to update, and asks `Delete?` (default: No).
+
+Deleted are the files that Move or rename would move: an aggregate with its whole folder (entities and value objects inside included), the repository implementations and wire; a query, command or port with its contract, spec, implementations and wire; a service or use case with its spec and wire. Folders left empty are removed. The generated references elsewhere are cleaned up instead of blocking: an entity's or value object's `export *` line in its aggregate's `index.ts`, and an aggregate's [in-memory DB](#in-memory-db) section with its import.
+
+In JSON mode, `{ "operation": "delete", "context": "sales", "module": "query:orders" }`; a module still in use returns `DELETE_NOT_ALLOWED` with `details.usedBy`.
+
 ### Dependency rules
 
 What a module may depend on is decided by its kind: the folder of its wire under `wiring/`. Repositories, commands, queries and ports are their implementations here, so they follow infrastructure. Dependency selection, `Wire dependency` and [`df-lint`](#df-lint) use the same rules.
@@ -809,7 +823,7 @@ Repository, command, query and port tests reference wiring factories with `wire`
 
 ## React modules (`df-react`)
 
-`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget` or `Move or rename page`. It needs the configuration file and `frontend.react`; otherwise it prints `React is not configured: run df-init --section frontend or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
+`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`, `Delete widget` or `Delete page`. It needs the configuration file and `frontend.react`; otherwise it prints `React is not configured: run df-init --section frontend or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
 
 ### New page
 
@@ -866,6 +880,23 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 - With Next.js (`frontend.react.framework: next`), a page's route at the same path, `app/<folders>/<name>/` (`src/app/…` when that folder exists), is offered to move along when its `page.tsx` renders `<Name>Page`. Yes moves the files of that route folder (`page.tsx`, `layout.tsx` and others) to the new path; subfolders are other routes and stay. Their imports are adjusted, and an emptied route folder is removed. No keeps the route where it is with its import updated. When the target route already has a `page.tsx`, nothing is asked and the CLI prints `<to>/page.tsx already exists: the route <from> stays.`
 - Entering the current name renames files created before file names used the whole path: `pages/admin/users-page.tsx` becomes `pages/admin/admin-users-page.tsx`.
 - Prints `Nothing to change.` when nothing would change. Answering No prints `Cancelled: nothing was written.`
+
+### Delete page / widget
+
+**Prompts**
+
+| Prompt                              | Default |
+| ----------------------------------- | ------- |
+| `Page to delete:` / `Widget to delete:` |     |
+| `Delete its Next.js route too: <route>? Its URL stops working.` | Yes. Pages with Next.js and their own route only |
+| `Delete?`                           | No      |
+
+**Behavior**
+
+- Deletes the files that Move or rename would move: a widget's whole folder, a page with the files next to it that share its name. Folders left empty are removed.
+- With Next.js, a page's own route (`app/<folders>/<name>/`, whose `page.tsx` renders `<Name>Page`) is offered to go too: Yes deletes the files of that route folder, while subfolders, which are other routes, stay. No keeps the route, which then still imports the page, so the deletion is refused.
+- While other files import the module, the CLI prints `Nothing was deleted: these files still use it.` with every `file → import`, and nothing changes.
+- In JSON mode, `delete-page` (`module`, optional `deleteRoute`, default true) and `delete-widget` (`module`); a module still in use returns `DELETE_NOT_ALLOWED` with `details.usedBy`.
 
 ## Integrations
 

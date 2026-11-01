@@ -1,4 +1,6 @@
 export * from './add-integration';
+export * from './delete-backend-unit';
+export * from './delete-react-module';
 export * from './initialize';
 export * from './move-backend-unit';
 export * from './move-react-module';
