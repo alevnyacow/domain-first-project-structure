@@ -8,6 +8,7 @@ export default defineConfig({
       integration: './src/integration.ts',
       init: './src/init.ts',
       react: './src/react.ts',
+      upgrade: './src/upgrade.ts',
     },
   },
   lib: [

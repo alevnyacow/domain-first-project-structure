@@ -1,7 +1,8 @@
 import path from 'node:path';
-import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
+import { confirm, input } from '../interaction';
+import { usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import { compilerOption } from '../tsconfig';
 import { reactPageContent } from '../use-cases/scaffold-react-page';
@@ -110,7 +111,7 @@ generateOpenAPI(${withExtractor ? 'handlers' : 'restHandlers'}, {
 };
 
 export const addOpenapi = async (): Promise<string[]> => {
-    const { rootFolder } = ConfigFile.Instance.data;
+    const { rootFolder } = ConfigFile.Instance.data.project;
     const root = new ProjectRoot().path;
     const manifestFile = new File(path.join(root, 'package.json'));
     const manifest = JSON.parse(manifestFile.data);
@@ -120,25 +121,29 @@ export const addOpenapi = async (): Promise<string[]> => {
     };
 
     const routePrefix = await input({
+        key: 'routePrefix',
         message: 'Route prefix the REST handlers are served under:',
         default: '/api'
     });
     const outputPath = await input({
+        key: 'openapiPath',
         message: 'OpenAPI document path:',
-        default: defaultOpenapiPath(Boolean(dependencies.next)),
+        default: defaultOpenapiPath(usesNext()),
         validate: (value) =>
             splitPath(value).length ? true : 'Path is required'
     });
 
     const withExtractor = await confirm({
+        key: 'withExtractor',
         message:
             'Fill operationId, summary and description from the endpoint logic TSDoc?',
         default: true
     });
 
     const withSwaggerPage =
-        ConfigFile.Instance.data.useReact &&
+        Boolean(ConfigFile.Instance.data.frontend?.react) &&
         (await confirm({
+            key: 'swaggerPage',
             message: 'Add a Swagger UI page?',
             default: true
         }));

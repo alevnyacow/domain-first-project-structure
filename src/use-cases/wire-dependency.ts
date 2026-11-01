@@ -1,6 +1,7 @@
-import { checkbox, Separator, select } from '@inquirer/prompts';
+import { moduleId } from '../agent-identifiers';
 import { ConfigFile } from '../config-file';
 import { type File, Folder } from '../file-system';
+import { checkbox, report, Separator, select } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import {
     availableDependencies,
@@ -82,14 +83,18 @@ export type CustomWiring = (
 ) => boolean;
 
 /**
- * Wired modules of the context, then of the Shared Kernel (labelled).
+ * Local, Shared Kernel and neighboring modules, labelled by owner.
  */
-const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
+const dependencyOptions = (boundedContextFolder: Folder): Option[] => {
     const sharedFolder = new Folder(new ProjectRoot().path).subitem([
-        ConfigFile.Instance.data.rootFolder,
+        ConfigFile.Instance.data.project.rootFolder,
         'shared-kernel'
     ]);
     const isShared = sharedFolder.path === boundedContextFolder.path;
+    const contextsFolder = new Folder(new ProjectRoot().path).subitem([
+        ConfigFile.Instance.data.project.rootFolder,
+        'bounded-contexts'
+    ]);
 
     return [
         ...findWiredModules(boundedContextFolder.path).map((x) => ({
@@ -101,13 +106,26 @@ const contextAndSharedModules = (boundedContextFolder: Folder): Option[] => {
             : findWiredModules(sharedFolder.path).map((x) => ({
                   module: x,
                   label: `${x.typeName} (shared-kernel)`
-              })))
+              }))),
+        ...(isShared
+            ? []
+            : contextsFolder.content.subfolderNames
+                  .filter((name) => name !== boundedContextFolder.name)
+                  .sort()
+                  .flatMap((name) =>
+                      findWiredModules(contextsFolder.subitem([name]).path).map(
+                          (module) => ({
+                              module,
+                              label: `${module.typeName} (${name})`
+                          })
+                      )
+                  ))
     ];
 };
 
 /**
- * Asks which modules of the current context and the Shared Kernel to
- * inject into the module. Returns false if there is nothing to choose.
+ * Asks which permitted modules to inject. Returns false if there is
+ * nothing to choose.
  */
 const promptDependencies = async (
     boundedContextFolder: Folder,
@@ -115,7 +133,7 @@ const promptDependencies = async (
     implementations: WiredClass[] = consumer.implementations,
     customWiring?: CustomWiring
 ) => {
-    const options = contextAndSharedModules(boundedContextFolder);
+    const options = dependencyOptions(boundedContextFolder);
     let asked = false;
 
     /**
@@ -141,6 +159,8 @@ const promptDependencies = async (
             : [];
 
         const dependencies = await checkbox({
+            key: `dependencies.${implementation.className}`,
+            id: (value) => moduleId(value.module),
             message: consumer.branched
                 ? `Dependencies for ${implementation.className}:`
                 : 'Dependencies:',
@@ -208,7 +228,7 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
     const modules = findWiredModules(boundedContextFolder.path);
 
     if (!modules.length) {
-        console.log('No wired modules here yet.');
+        report('No wired modules here yet.');
         return;
     }
 
@@ -217,6 +237,9 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
      * wired alone.
      */
     const { module: consumer, implementation } = await select({
+        key: 'module',
+        id: (value) =>
+            `${moduleId(value.module)}:${value.implementation.className}`,
         message: 'Module:',
         choices: groupedChoices(
             modules.flatMap((x) =>
@@ -239,7 +262,7 @@ export const wireDependency = async (boundedContextFolder: Folder) => {
             implementation
         ]))
     ) {
-        console.log('No dependencies available for this module.');
+        report('No dependencies available for this module.');
     }
 };
 
@@ -255,6 +278,8 @@ export const promptEndpointHandler = async (boundedContextFolder: Folder) => {
     return handlers.length
         ? (
               await select({
+                  key: 'handler',
+                  id: (value) => moduleId(value.module),
                   message: 'Handler:',
                   choices: groupedChoices(handlers),
                   pageSize: groupedPageSize,

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
+import { envBranches } from '../wire-branches';
 import { addPackageScripts, describeScripts } from './package-scripts';
 import { prismaScripts } from './prisma';
 
@@ -175,14 +176,14 @@ export const addTestcontainers = async (): Promise<string[]> => {
     const withPrisma = new File(
         path.resolve(
             root,
-            config.rootFolder,
+            config.project.rootFolder,
             'shared-kernel/infrastructure/prisma/prisma.config.ts'
         )
     ).exists;
     // Without --advance-ref: the db ref in migrations/app/refs/db.json tracks
     // the development database and must not move to the container's state.
     const migrationCommand = withPrisma
-        ? `npx ${prismaScripts(config.rootFolder)['prisma:migration:apply'].replace(' --advance-ref db', '')}`
+        ? `npx ${prismaScripts(config.project.rootFolder)['prisma:migration:apply'].replace(' --advance-ref db', '')}`
         : undefined;
 
     const folder = path.join(root, integrationFolder);
@@ -230,6 +231,11 @@ export const addTestcontainers = async (): Promise<string[]> => {
             : [
                   `Add '${integrationFolder}/**' to test.exclude in vitest.config.ts, so unit tests skip integration specs.`
               ]),
+        ...(envBranches().custom
+            ? [
+                  `${integrationFolder} runs with NODE_ENV=development and ${integrationFolder}/setup-env.ts requires it, but your envBranchedWire branches are custom: make currentBranch in shared-kernel/wiring/env-branched-wire.ts return the branch for integration specs, and adjust setup-env.ts.`
+              ]
+            : []),
         'Docker must be running for integration specs.',
         ...describeScripts(selected, {
             'test:integration': `run integration specs from ${integrationFolder} against PostgreSQL in a container`

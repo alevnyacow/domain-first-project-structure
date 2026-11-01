@@ -27,7 +27,8 @@ const setup = (
     rootFolder: string,
     manifest: Record<string, unknown>,
     answers: string[],
-    useReact = false
+    useReact = false,
+    framework?: 'react' | 'next'
 ) => {
     const project = path.join(root, String(sequence++));
     fs.mkdirSync(project);
@@ -37,12 +38,19 @@ const setup = (
     );
     fs.writeFileSync(
         path.join(project, 'domain-first.project-structure.config.json'),
-        JSON.stringify({
-            rootFolder,
-            domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'api',
-            useReact
-        })
+        JSON.stringify(
+            framework
+                ? {
+                      project: { rootFolder },
+                      backend: { domainFirstPackages: [] },
+                      frontend: { react: { framework } }
+                  }
+                : {
+                      project: { rootFolder },
+                      backend: { domainFirstPackages: [] },
+                      ...(useReact ? { frontend: { react: {} } } : {})
+                  }
+        )
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
     for (const answer of answers) {
@@ -67,7 +75,9 @@ test('adds the generator script and the package script with deferred writes', as
             name: 'demo',
             dependencies: { next: '*' }
         },
-        ['/api', 'public/openapi.json']
+        ['/api', 'public/openapi.json'],
+        true,
+        'next'
     );
     const steps = await addOpenapi();
     expect(fs.existsSync(scriptPath)).toBe(false);

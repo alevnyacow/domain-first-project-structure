@@ -31,10 +31,8 @@ const setup = (manifest: object) => {
     fs.writeFileSync(
         path.join(project, 'domain-first.project-structure.config.json'),
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'api',
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: [] }
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);

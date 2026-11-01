@@ -1,6 +1,6 @@
-import { input, select } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { type File, Folder } from '../file-system';
+import { input, select } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 
@@ -12,7 +12,7 @@ const errorNames = (boundedContextFolder: Folder) => {
     const isShared =
         boundedContextFolder.path ===
         new Folder(new ProjectRoot().path).subitem([
-            ConfigFile.Instance.data.rootFolder,
+            ConfigFile.Instance.data.project.rootFolder,
             'shared-kernel'
         ]).path;
 
@@ -76,11 +76,12 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
 
     const selectedVariant = await select({
         choices: variants,
+        key: 'errorAction',
         message: 'Action:'
     });
 
     if (selectedVariant === 'New error without namespace') {
-        const errorName = await input({ message: 'Error name:' });
+        const errorName = await input({ key: 'name', message: 'Error name:' });
         const naming = new UnknownFormatNaming(errorName);
         const indexFile = currentErrorFolder.file('index.ts');
         indexFile.addLineIfMissing(
@@ -100,6 +101,7 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
 
     if (selectedVariant === 'New namespace') {
         const namespaceName = await input({
+            key: 'name',
             message: 'Namespace name:'
         });
         const { ClassName, fileName } = new UnknownFormatNaming(namespaceName);
@@ -131,9 +133,7 @@ export const ${names.namespace(ClassName)} = errorNamespace('${boundedContextFol
 
     const namespaceNaming = new UnknownFormatNaming(namespace);
 
-    const errorName = await input({
-        message: 'Error name:'
-    });
+    const errorName = await input({ key: 'name', message: 'Error name:' });
 
     const { ClassName, fileName } = new UnknownFormatNaming(errorName);
     const namespaceFile = currentErrorFolder.file(`${namespace}.ts`);

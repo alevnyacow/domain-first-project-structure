@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { select } from '@inquirer/prompts';
-import { ConfigFile } from './config-file';
+import { runCLI } from './agent-cli';
+import { ConfigFile, outdatedConfigMessage } from './config-file';
 import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
@@ -32,10 +33,25 @@ const main = async () => {
         process.exit(1);
     }
 
+    if (ConfigFile.outdated) {
+        console.log(outdatedConfigMessage);
+        process.exit(1);
+    }
+
+    if (!ConfigFile.Instance.data.backend) {
+        console.log(
+            'Backend is not configured: run df-init --section backend.'
+        );
+        process.exit(1);
+    }
+
     const rootPath = new ProjectRoot().path;
 
     const currentBoundedContextOptions = new Folder(rootPath)
-        .subitem([ConfigFile.Instance.data.rootFolder, 'bounded-contexts'])
+        .subitem([
+            ConfigFile.Instance.data.project.rootFolder,
+            'bounded-contexts'
+        ])
         .content.subfolderNames.map((name) => ({
             name: `Bounded Context: ${name}`,
             action: 'Scaffold in bounded context' as const
@@ -71,11 +87,14 @@ const main = async () => {
             ).subitem(
                 specificContext
                     ? [
-                          ConfigFile.Instance.data.rootFolder,
+                          ConfigFile.Instance.data.project.rootFolder,
                           'bounded-contexts',
                           name.substring('Bounded Context: '.length)
                       ]
-                    : [ConfigFile.Instance.data.rootFolder, 'shared-kernel']
+                    : [
+                          ConfigFile.Instance.data.project.rootFolder,
+                          'shared-kernel'
+                      ]
             );
 
             const layer = await select({
@@ -85,7 +104,7 @@ const main = async () => {
                     'Application',
                     'Infrastructure',
                     'Presentation',
-                    ConfigFile.Instance.data.domainFirstPackages.includes(
+                    ConfigFile.backend.domainFirstPackages.includes(
                         '@domain-first/wire'
                     )
                         ? 'Wire dependency'
@@ -215,7 +234,7 @@ const main = async () => {
                     message: 'Presentation layer operation:',
                     choices: specificContext
                         ? [
-                              ConfigFile.Instance.data.domainFirstPackages.includes(
+                              ConfigFile.backend.domainFirstPackages.includes(
                                   '@domain-first/handlers-rest'
                               )
                                   ? 'New Handlers-REST Endpoint'
@@ -249,9 +268,19 @@ const main = async () => {
 };
 
 const run = async () => {
+    if (process.argv.includes('--help') || process.argv.includes('-h')) {
+        console.log(
+            'Usage: df-scaffold [--describe | --request <json|->]\nWithout arguments, opens the interactive menu.'
+        );
+        return;
+    }
+
     await main();
 
     await savePendingChanges();
 };
 
-run();
+void runCLI('df-scaffold', run).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

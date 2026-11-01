@@ -3,7 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { checkbox, input, select } from '@inquirer/prompts';
 import { afterAll, beforeEach, expect, rstest, test } from '@rstest/core';
+import { ConfigFile } from '../config-file';
 import { Folder, writePendingChanges } from '../file-system';
+import { savedImplementations } from '../implementation-choices';
+import { enterImplementationTypeOnce } from './prompt-implementation-type';
 import { scaffoldNewImplementation } from './scaffold-new-implementation';
 
 rstest.mock('@inquirer/prompts', () => ({
@@ -34,11 +37,8 @@ const configure = (packages: string[], withInMemoryDb = false) =>
         root,
         'domain-first.project-structure.config.json',
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: packages,
-            defaultPersistenceLayerImplementation: 'prisma',
-            withInMemoryDb,
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: packages, withInMemoryDb }
         })
     );
 
@@ -130,7 +130,8 @@ type Choice = { value?: { name: string }; checked?: boolean };
 const run = async (
     contract: string,
     label: string,
-    environments: string[] = []
+    environments: string[] = [],
+    save = true
 ) => {
     rstest
         .mocked(select)
@@ -139,6 +140,9 @@ const run = async (
                 choices.find((x) => x.value?.name === contract)?.value) as never
         );
     rstest.mocked(input).mockResolvedValueOnce(label);
+    rstest
+        .mocked(select)
+        .mockResolvedValueOnce(save ? null : enterImplementationTypeOnce);
     rstest
         .mocked(checkbox)
         .mockImplementation((async ({
@@ -246,9 +250,46 @@ test('an existing implementation type is rejected', async () => {
     ];
 
     expect(validate('prisma')).toBe(
-        'order already has the prisma implementation.'
+        'The prisma implementation already exists.'
     );
     expect(validate('')).not.toBe(true);
     expect(validate('Dynamo')).not.toBe(true);
     expect(validate('dynamo')).toBe(true);
+});
+
+test('new implementations are remembered by their selected environments', async () => {
+    configure(['@domain-first/wire']);
+    await run('order', 'dynamo', ['test']);
+    expect(savedImplementations('repositories', 'test')).toEqual(['dynamo']);
+    expect(savedImplementations('repositories', 'primary')).toEqual([]);
+    await run('order', 'redis', ['development', 'production']);
+    expect(savedImplementations('repositories', 'primary')).toEqual(['redis']);
+    expect(savedImplementations('repositories', 'test')).toEqual(['dynamo']);
+    expect(savedImplementations('queries', 'primary')).toEqual([]);
+});
+
+for (const wire of [false, true]) {
+    test(`one-off new implementations are not remembered ${wire ? 'with' : 'without'} wiring`, async () => {
+        configure(wire ? ['@domain-first/wire'] : []);
+        await run('order', 'dynamo', wire ? ['test', 'production'] : [], false);
+        expect(
+            read(
+                sales,
+                'infrastructure/repositories/dynamo/dynamo-order-repository.ts'
+            )
+        ).toContain('DynamoOrderRepository');
+        expect(savedImplementations('repositories', 'primary')).toEqual([]);
+        expect(savedImplementations('repositories', 'test')).toEqual([]);
+        expect(
+            ConfigFile.Instance.data.backend?.implementations
+        ).toBeUndefined();
+    });
+}
+
+test('ordinary api and mock names are remembered like other custom types', async () => {
+    configure(['@domain-first/wire']);
+    await run('order', 'api', ['production']);
+    await run('order', 'mock', ['test']);
+    expect(savedImplementations('repositories', 'primary')).toEqual(['api']);
+    expect(savedImplementations('repositories', 'test')).toEqual(['mock']);
 });

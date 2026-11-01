@@ -1,6 +1,6 @@
-import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -16,12 +16,10 @@ export const createPresentationService = (
     const naming = new UnknownFormatNaming(name);
     const className = `${naming.ClassName}PresentationService`;
 
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const withWiring =
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        );
+        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
@@ -46,7 +44,7 @@ export class ${className} {
         presentationServicesFolder.createFile(
             `${naming.fileName}-presentation-service.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
     withWiring
         ? `import { type ${naming.ClassName}PresentationService } from './${naming.fileName}-presentation-service'
@@ -90,7 +88,7 @@ export const wire${naming.ClassName}PresentationService = wireClass(
 export const scaffoldNewPresentationService = async (
     boundedContextFolder: Folder
 ) => {
-    const name = await input({ message: 'Name: ' });
+    const name = await input({ key: 'name', message: 'Name: ' });
 
     const wireFile = createPresentationService(boundedContextFolder, name);
 

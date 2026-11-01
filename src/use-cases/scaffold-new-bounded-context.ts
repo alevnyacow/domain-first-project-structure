@@ -1,10 +1,11 @@
-import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { Folder } from '../file-system';
+import { input } from '../interaction';
 import { ProjectRoot } from '../project-root';
 
 export const scaffoldNewBoundedContextUseCase = async () => {
     const name = await input({
+        key: 'name',
         message: 'Name:',
         validate: (x) => !!x.length
     });
@@ -13,7 +14,7 @@ export const scaffoldNewBoundedContextUseCase = async () => {
 
     const rootFolder = new Folder(path);
     const folder = rootFolder.subitem([
-        ConfigFile.Instance.data.rootFolder,
+        ConfigFile.Instance.data.project.rootFolder,
         'bounded-contexts',
         name
     ]);

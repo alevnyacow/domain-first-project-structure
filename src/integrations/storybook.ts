@@ -1,22 +1,24 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File, Folder } from '../file-system';
+import { confirm } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { addGitignoreEntry } from './gitignore';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
+export const storybookFrameworkPackage = '@storybook/react-vite';
+
 export const storybookFiles = (relativeProjectRoot: string) => ({
     'main.ts': `import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import type { StorybookConfig } from '@storybook/react-vite';
+import type { StorybookConfig } from '${storybookFrameworkPackage}';
 
 const projectRoot = resolve(import.meta.dirname, ${JSON.stringify(relativeProjectRoot)});
 
 const config: StorybookConfig = {
     stories: ['../**/*.mdx', '../**/*.stories.@(ts|tsx)'],
     framework: {
-        name: '@storybook/react-vite',
+        name: '${storybookFrameworkPackage}',
         options: {}
     },
     core: {
@@ -38,7 +40,7 @@ const config: StorybookConfig = {
 
 export default config;
 `,
-    'preview.ts': `import type { Preview } from '@storybook/react-vite';
+    'preview.ts': `import type { Preview } from '${storybookFrameworkPackage}';
 
 const preview: Preview = {
     parameters: {
@@ -71,11 +73,14 @@ export const storybookScripts = (rootFolder: string) => {
 export const addStorybook = async (): Promise<string[]> => {
     const config = ConfigFile.Instance.data;
     if (
-        (!config.useReact ||
-            (config.storybookFramework &&
-                config.storybookFramework !== '@storybook/react-vite')) &&
+        (!config.frontend?.react ||
+            (config.frontend?.react?.storybookFramework &&
+                config.frontend?.react?.storybookFramework !==
+                    storybookFrameworkPackage)) &&
         !(await confirm({
-            message: 'Configure React scaffolding with @storybook/react-vite?',
+            key: 'configureReact',
+            requestRequired: true,
+            message: `Configure React scaffolding with ${storybookFrameworkPackage}?`,
             default: false
         }))
     ) {
@@ -86,10 +91,10 @@ export const addStorybook = async (): Promise<string[]> => {
     const manifest = JSON.parse(manifestFile.data);
     const selected = await addPackageScripts(
         manifestFile,
-        storybookScripts(config.rootFolder)
+        storybookScripts(config.project.rootFolder)
     );
     const folder = new Folder(root).subitem([
-        config.rootFolder,
+        config.project.rootFolder,
         'presentation',
         'react',
         '.storybook'
@@ -103,17 +108,21 @@ export const addStorybook = async (): Promise<string[]> => {
         if (!file.exists || file.data !== content) file.data = content;
     }
     if (
-        !config.useReact ||
-        config.storybookFramework !== '@storybook/react-vite'
+        !config.frontend?.react ||
+        config.frontend?.react?.storybookFramework !== storybookFrameworkPackage
     ) {
-        ConfigFile.write({
-            ...config,
-            useReact: true,
-            storybookFramework: '@storybook/react-vite'
+        ConfigFile.update({
+            frontend: {
+                ...config.frontend,
+                react: {
+                    ...config.frontend?.react,
+                    storybookFramework: storybookFrameworkPackage
+                }
+            }
         });
     }
     const buildFolder = path.posix.join(
-        config.rootFolder.replaceAll('\\', '/'),
+        config.project.rootFolder.replaceAll('\\', '/'),
         'presentation/react/storybook-static'
     );
     addGitignoreEntry(root, `/${buildFolder}/`);
@@ -123,7 +132,7 @@ export const addStorybook = async (): Promise<string[]> => {
     };
     const missing = [
         'storybook',
-        '@storybook/react-vite',
+        storybookFrameworkPackage,
         'vite',
         '@vitejs/plugin-react'
     ].filter((name) => !dependencies[name]);

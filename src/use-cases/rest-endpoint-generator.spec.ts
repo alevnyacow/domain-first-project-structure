@@ -17,10 +17,8 @@ const generate = (withNextAdapter?: boolean) => {
     fs.writeFileSync(
         path.join(root, 'domain-first.project-structure.config.json'),
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: ['@domain-first/handlers-rest'],
-            defaultPersistenceLayerImplementation: 'prisma',
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: ['@domain-first/handlers-rest'] }
         })
     );
     const cwd = rstest.spyOn(process, 'cwd').mockReturnValue(root);

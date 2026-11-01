@@ -23,10 +23,8 @@ beforeEach(() => {
     fs.writeFileSync(
         path.join(root, 'domain-first.project-structure.config.json'),
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: ['@domain-first/errors'],
-            defaultPersistenceLayerImplementation: 'prisma',
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: ['@domain-first/errors'] }
         })
     );
     for (const [layer, namespace, code] of [

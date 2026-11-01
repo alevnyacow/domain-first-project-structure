@@ -1,26 +1,15 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File, Folder, withoutOverwrites } from '../file-system';
+import { confirm } from '../interaction';
+import { nextAppFolder, usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import {
     findRestEndpointGenerator,
     scaffoldRestEndpointGenerator
 } from '../use-cases/rest-endpoint-generator';
 import { relativeImport } from '../wiring';
-import {
-    hasDependency,
-    missingPackages
-} from './missing-domain-first-packages';
-
-/**
- * The App Router folder: `app` or `src/app`, whichever exists, `app` by
- * default.
- */
-const nextAppFolder = (root: string) =>
-    ['app', 'src/app'].find(
-        (folder) => new Folder(path.join(root, folder)).exists
-    ) ?? 'app';
+import { missingPackages } from './missing-domain-first-packages';
 
 /**
  * The catch-all route serving every endpoint, relative to the project root.
@@ -56,7 +45,8 @@ export const DELETE = handler
  * doesn't compile, and the returned note says so.
  */
 const scaffoldNextRoute = (root: string): string[] => {
-    const { rootFolder, domainFirstPackages } = ConfigFile.Instance.data;
+    const { rootFolder } = ConfigFile.Instance.data.project;
+    const { domainFirstPackages } = ConfigFile.backend;
     const routePath = nextRoutePath(root);
     const routeFile = path.join(root, routePath);
     if (new File(routeFile).exists) return [];
@@ -80,11 +70,21 @@ const scaffoldNextRoute = (root: string): string[] => {
 };
 
 /**
- * Asked only in projects with `next` among their dependencies.
+ * Offered only when the config selects Next.js (or the caller says so).
  */
-export const askNextAdapter = async () =>
-    hasDependency('next') &&
-    (await confirm({ message: 'Use Next adapter for REST endpoints' }));
+export const askNextAdapter = async ({
+    nextSelected
+}: {
+    nextSelected?: boolean;
+} = {}) => {
+    return (
+        (nextSelected ?? usesNext()) &&
+        (await confirm({
+            key: 'nextAdapter',
+            message: 'Use @domain-first/handlers-next for REST endpoints'
+        }))
+    );
+};
 
 /**
  * The Shared Kernel endpoint generator and, with the Next adapter, the
@@ -101,7 +101,7 @@ export const scaffoldRestEndpointGeneratorFiles = ({
     const routeNotes = withoutOverwrites(() => {
         scaffoldRestEndpointGenerator(
             new Folder(root).subitem([
-                ConfigFile.Instance.data.rootFolder,
+                ConfigFile.Instance.data.project.rootFolder,
                 'shared-kernel'
             ]),
             { withNextAdapter }
@@ -129,7 +129,7 @@ export const restEndpointGeneratorApplied = () =>
     Boolean(
         findRestEndpointGenerator(
             new Folder(new ProjectRoot().path).subitem([
-                ConfigFile.Instance.data.rootFolder,
+                ConfigFile.Instance.data.project.rootFolder,
                 'shared-kernel'
             ])
         )

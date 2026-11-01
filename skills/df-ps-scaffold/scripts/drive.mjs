@@ -6,15 +6,23 @@
  *
  * Usage:
  *   node drive.mjs [--bin <name>] [--cwd <dir>] [--delay <ms>] <step> [<step> ...]
+ *   node drive.mjs "pick:Bounded Context: sales" pick:Application "pick:New Port" text:billing-gateway "pick:System: cross-context" no toggle:1
+ *     (when the dependency list has the desired neighboring handler at item 1)
  *
  * Steps (one per prompt, in the order the CLI asks them):
  *   pick:<label>   select prompt: type the choice label (or a unique prefix) and press Enter
  *   text:<value>   input prompt: type the value and press Enter
- *   default        input prompt: accept the suggested default (press Enter)
+ *   default        input/select prompt: accept the suggested default (press Enter)
  *   yes | no       confirm prompt
  *   toggle:<n,..>  checkbox prompt: toggle 1-based items (headers not counted),
  *                  moving with the arrow keys, then press Enter
  *   none           checkbox prompt: submit as is (pre-checked items stay checked)
+ *
+ * Implementation menus use the same pick:<label> steps as any select:
+ * a saved implementation label or an available System: implementation,
+ * or either manual-entry action followed by a separate text:<type> step:
+ *   "pick:Enter implementation type and save for future use" text:redis
+ *   "pick:Enter implementation type for this run only" text:redis
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';

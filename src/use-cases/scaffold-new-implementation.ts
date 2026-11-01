@@ -1,7 +1,9 @@
-import { checkbox, input, Separator, select } from '@inquirer/prompts';
-import { type BackendUnit, kebabName } from '../backend-module-move';
+import { unitId } from '../agent-identifiers';
+import type { BackendUnit } from '../backend-module-move';
 import { ConfigFile } from '../config-file';
+import { hasNeighboringBoundedContext } from '../context-dependencies';
 import { File, type Folder } from '../file-system';
+import { rememberImplementation } from '../implementation-choices';
 import {
     contractClassName,
     contractKinds,
@@ -11,12 +13,16 @@ import {
     implementationWireName,
     inMemoryRepositoryWiring
 } from '../implementations';
+import { checkbox, report, Separator, select } from '../interaction';
+import { systemImplementationChoices } from '../system-implementations';
+import { envBranches } from '../wire-branches';
 import {
     addBranchedImplementation,
     readWiredModule,
     relativeImport,
     wireBranches
 } from '../wiring';
+import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewImplementationDependencies } from './wire-dependency';
 
 const kindTitles: Record<string, string> = {
@@ -25,8 +31,6 @@ const kindTitles: Record<string, string> = {
     query: 'Queries',
     port: 'Ports'
 };
-
-const environments = ['test', 'development', 'production'];
 
 /**
  * The branches of the module's wire, undefined if it isn't an
@@ -50,11 +54,13 @@ const branchesOf = (wireFile: File, wireName: string) => {
 export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
     const contracts = findContracts(ownerFolder.path);
     if (!contracts.length) {
-        console.log('No repositories, commands, queries or ports here yet.');
+        report('No repositories, commands, queries or ports here yet.');
         return;
     }
 
     const unit = await select<BackendUnit>({
+        key: 'contract',
+        id: unitId,
         message: 'Contract:',
         choices: contractKinds.flatMap((kind) => {
             const group = contracts.filter((x) => x.kind === kind);
@@ -73,28 +79,49 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         pageSize: 20
     });
 
-    const label = (
-        await input({
-            message: 'Implementation type:',
-            validate: (value) => {
-                const type = value.trim();
-                if (!kebabName.test(type)) {
-                    return 'Use lowercase kebab-case, e.g. api or in-memory.';
-                }
-                return unit.labels.includes(type)
-                    ? `${unit.name} already has the ${type} implementation.`
-                    : true;
-            }
-        })
-    ).trim();
+    const kind =
+        unit.kind === 'aggregate'
+            ? 'repositories'
+            : unit.kind === 'command'
+              ? 'commands'
+              : unit.kind === 'query'
+                ? 'queries'
+                : 'ports';
+    const { label, saveForFutureUse } = await promptImplementationType(
+        'Implementation type:',
+        kind,
+        {
+            existing: unit.labels,
+            purpose: 'all',
+            remember: false,
+            crossContext:
+                unit.kind === 'port' &&
+                hasNeighboringBoundedContext(ownerFolder.path)
+        }
+    );
 
     const { file, className } = createImplementation(ownerFolder, unit, label);
+    const branches = envBranches();
+    const rememberFor = (environments: string[]) => {
+        if (!saveForFutureUse) return;
+        if (
+            systemImplementationChoices(
+                kind,
+                unit.kind === 'port' &&
+                    hasNeighboringBoundedContext(ownerFolder.path)
+            ).some((choice) => choice.value === label)
+        )
+            return;
+        if (branches.test && environments.includes(branches.test))
+            rememberImplementation(kind, 'test', label);
+        if (environments.some((environment) => environment !== branches.test))
+            rememberImplementation(kind, 'primary', label);
+    };
 
     if (
-        !ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
+        !ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
     ) {
+        rememberFor(branches.primary);
         return;
     }
 
@@ -102,9 +129,10 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         contractWireFile(unit).split('/')
     );
     const wireName = `wire${contractClassName(unit)}`;
-    const branches = branchesOf(wireFile, wireName);
-    if (!branches) {
-        console.log(
+    const wired = branchesOf(wireFile, wireName);
+    if (!wired) {
+        rememberFor(branches.primary);
+        report(
             `${wireFile.path} has no ${wireName} = envBranchedWire({...}): wire ${className} there yourself.`
         );
         return;
@@ -114,20 +142,26 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         unit.labels.map((x) => [implementationWireName(x), x])
     );
     const chosenEnvironments = await checkbox({
+        key: 'environments',
         message: 'Environments:',
-        choices: [...new Set([...environments, ...branches.keys()])].map(
-            (environment) => {
-                const current = branches.get(environment);
-                return {
-                    name: current
-                        ? `${environment} (now: ${labelOfWire.get(current) ?? current})`
-                        : environment,
-                    value: environment
-                };
-            }
-        ),
+        choices: [
+            ...new Set([
+                ...(branches.test ? [branches.test] : []),
+                ...branches.primary,
+                ...wired.keys()
+            ])
+        ].map((environment) => {
+            const current = wired.get(environment);
+            return {
+                name: current
+                    ? `${environment} (now: ${labelOfWire.get(current) ?? current})`
+                    : environment,
+                value: environment
+            };
+        }),
         required: true
     });
+    rememberFor(chosenEnvironments);
 
     const before = readWiredModule(wireFile.path, ownerFolder.path);
     wireFile.update(
@@ -143,7 +177,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         (x) => !after?.implementations.some((y) => y.className === x.className)
     );
     for (const implementation of unused) {
-        console.log(
+        report(
             `${implementation.className} is no longer used in any environment.`
         );
     }

@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { configuredDependencyRules } from './config-file';
 import {
+    boundedContextLocation,
+    crossContextImportAllowed
+} from './context-dependencies';
+import {
     type DependencyRules,
     defaultDependencyRules,
     wiredModuleKind
@@ -96,18 +100,32 @@ const layerOf = (file: string, contextPath: string) => {
     return layers.find((layer) => layer === firstSegment);
 };
 
-const namedImports = (source: string, fromFile: string) => {
+/** ESM specifiers name the emitted `.js`; the module source is `.ts`. */
+const withoutScriptExtension = (file: string) =>
+    file.replace(/\.(?:c|m)?[jt]s$/, '');
+
+export const namedImportFiles = (
+    source: string,
+    fromFile: string,
+    resolve = (specifier: string, file: string): string | undefined =>
+        specifier.startsWith('.')
+            ? path.resolve(path.dirname(file), specifier)
+            : undefined
+) => {
     const result = new Map<string, string>();
     for (const [, names, importPath] of source.matchAll(
         /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g
     )) {
+        const target = resolve(importPath, fromFile);
+        if (!target) continue;
         for (const name of names.split(',')) {
-            const cleanName = name.replace(/^\s*type\s+/, '').trim();
+            const cleanName = name
+                .replace(/^\s*type\s+/, '')
+                .trim()
+                .split(/\s+as\s+/)
+                .at(-1);
             if (cleanName) {
-                result.set(
-                    cleanName,
-                    `${path.resolve(path.dirname(fromFile), importPath)}.ts`
-                );
+                result.set(cleanName, `${withoutScriptExtension(target)}.ts`);
             }
         }
     }
@@ -191,7 +209,7 @@ export const readWiredModule = (
         .slice(exportMatch.index + exportMatch[0].length)
         .startsWith('envBranchedWire(');
 
-    const imports = namedImports(source, wireFile);
+    const imports = namedImportFiles(source, wireFile);
     const implementations = wiredClassNames(
         source,
         wireName,
@@ -302,8 +320,25 @@ export const isSuggestedFor = (
 export const canDependOn = (
     consumer: WiredModule,
     candidate: WiredModule,
-    rules: DependencyRules = defaultDependencyRules
+    rules: DependencyRules = defaultDependencyRules,
+    implementation = consumer.implementations[0]
 ) => {
+    const crossContext = crossContextImportAllowed(
+        consumer.wireFile,
+        candidate.wireFile
+    );
+    if (crossContext !== undefined) {
+        return (
+            crossContext &&
+            consumer.implementationsLayer === 'infrastructure' &&
+            candidate.layer === 'application' &&
+            !!implementation &&
+            crossContextImportAllowed(
+                implementation.file,
+                candidate.typeFile
+            ) === true
+        );
+    }
     const consumerKind = moduleKindOf(consumer);
     const candidateKind = moduleKindOf(candidate);
     return consumerKind && candidateKind
@@ -322,16 +357,22 @@ export const availableDependencies = (
     candidates: WiredModule[],
     rules: DependencyRules = configuredDependencyRules()
 ) => {
-    const wired = wiredDependencyNames(
-        new File(consumer.wireFile).data,
-        implementation.className
+    const source = new File(consumer.wireFile).data;
+    const imported = namedImportFiles(source, consumer.wireFile);
+    const wired = wiredDependencyNames(source, implementation.className);
+    const wiredFiles = new Set(
+        wired.map((name) => imported.get(name)).filter(Boolean)
     );
 
     return candidates.filter(
         (candidate) =>
             candidate.wireFile !== consumer.wireFile &&
-            canDependOn(consumer, candidate, rules) &&
-            !wired.includes(candidate.wireName)
+            canDependOn(consumer, candidate, rules, implementation) &&
+            !wiredFiles.has(candidate.wireFile) &&
+            !(
+                wired.includes(candidate.wireName) &&
+                !imported.has(candidate.wireName)
+            )
     );
 };
 
@@ -633,6 +674,29 @@ export const addWireDependencies = (
 const parameterName = (typeName: string) =>
     typeName.substring(0, 1).toLowerCase() + typeName.substring(1);
 
+/** Reuse an existing import; otherwise qualify foreign names by context. */
+const dependencyBinding = (
+    source: string,
+    fromFile: string,
+    targetFile: string,
+    originalName: string,
+    preferredName: string
+) => {
+    const existing = [...namedImportFiles(source, fromFile)].find(
+        ([, file]) => file === targetFile
+    );
+    if (existing) return existing[0];
+    let name = preferredName;
+    let suffix = 2;
+    while (new RegExp(`\\b${name}\\b`).test(codeOnly(source))) {
+        name = `${preferredName}${suffix++}`;
+    }
+    return preferredName === originalName ? originalName : name;
+};
+
+const importedAs = (name: string, local: string) =>
+    name === local ? name : `${name} as ${local}`;
+
 /**
  * Adds the dependencies to the implementation's wire and constructor, in
  * the same order.
@@ -644,33 +708,58 @@ export const wireDependencies = (
 ) => {
     const wireFile = new File(consumer.wireFile);
     let wireSource = wireFile.data;
-    for (const dependency of dependencies) {
+    const classFile = new File(implementation.file);
+    let classSource = classFile.data;
+    const bindings = dependencies.map((dependency) => {
+        const crossContext = crossContextImportAllowed(
+            consumer.wireFile,
+            dependency.wireFile
+        );
+        const context = crossContext
+            ? boundedContextLocation(dependency.wireFile)
+            : undefined;
+        const prefix = context
+            ? new UnknownFormatNaming(context.name).ClassName
+            : '';
+        const wireName = dependencyBinding(
+            wireSource,
+            consumer.wireFile,
+            dependency.wireFile,
+            dependency.wireName,
+            context
+                ? `wire${prefix}${dependency.typeName}`
+                : dependency.wireName
+        );
+        const typeName = dependencyBinding(
+            classSource,
+            implementation.file,
+            dependency.typeFile,
+            dependency.typeName,
+            `${prefix}${dependency.typeName}`
+        );
         wireSource = addImport(
             wireSource,
-            `import { ${dependency.wireName} } from '${relativeImport(consumer.wireFile, dependency.wireFile)}'`
+            `import { ${importedAs(dependency.wireName, wireName)} } from '${relativeImport(consumer.wireFile, dependency.wireFile)}'`
         );
-    }
+        classSource = addImport(
+            classSource,
+            `import type { ${importedAs(dependency.typeName, typeName)} } from '${relativeImport(implementation.file, dependency.typeFile)}'`
+        );
+        return { wireName, typeName };
+    });
     wireFile.update(
         addWireDependencies(
             wireSource,
             implementation.className,
-            dependencies.map((x) => x.wireName)
+            bindings.map((x) => x.wireName)
         )
     );
 
-    const classFile = new File(implementation.file);
-    let classSource = classFile.data;
-    for (const dependency of dependencies) {
-        classSource = addImport(
-            classSource,
-            `import type { ${dependency.typeName} } from '${relativeImport(implementation.file, dependency.typeFile)}'`
-        );
-    }
     classFile.update(
         addConstructorParameters(
             classSource,
             implementation.className,
-            dependencies.map(
+            bindings.map(
                 (x) =>
                     `private readonly ${parameterName(x.typeName)}: ${x.typeName}`
             )

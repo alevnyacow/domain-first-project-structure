@@ -1,6 +1,6 @@
 ---
 name: df-ps-react
-description: Build the React part of a Domain-First project with the `df-react` CLI (@domain-first/project-structure) — choose between pages, widgets (separated UI, headless, monolithic), UI-kit components and shared hooks, generate them with Storybook stories, move or rename pages and widgets, and implement them against the backend without importing bounded contexts. Use when the project has domain-first.project-structure.config.json with "useReact": true and the user asks for screens, UI blocks, components, hooks or stories, or to move, rename or regroup a page or widget.
+description: Build the React part of a Domain-First project with the `df-react` CLI (@domain-first/project-structure) — choose between pages, widgets (separated UI, headless, monolithic), UI-kit components and shared hooks, generate them with Storybook stories, move or rename pages and widgets, and implement them against the backend without importing bounded contexts. Use when the project has domain-first.project-structure.config.json with frontend.react configured and the user asks for screens, UI blocks, components, hooks or stories, or to move, rename or regroup a page or widget.
 ---
 
 # React modules with df-react
@@ -9,11 +9,11 @@ React modules live in `<rootFolder>/presentation/react/` (`…/react/` below) an
 
 ## Workflow
 
-1. Read `domain-first.project-structure.config.json`. Without it, tell the user to run `npx df-init`. With `"useReact": false`, `df-react` refuses to run: tell the user to turn React on (or add Storybook with `! npx df-integration`); don't edit the config yourself.
+1. Read `domain-first.project-structure.config.json`: source root is `project.rootFolder`; React is enabled by `frontend.react`; `frontend.react.framework` is `react` or `next`, and both use `df-react`. Stories use `frontend.react.storybookFramework` (initialization uses `@storybook/react-vite` for both React and Next.js via the shared Storybook integration). A config of an earlier major version (`CONFIG_OUTDATED`): ask the user to run `npx df-upgrade`; never run it yourself. Without the config, tell the user to run `npx df-init`; without React configured, tell them to run `npx df-init --section frontend`. Initialization and configuration belong to the human: do not run `df-init` or edit these settings yourself.
 2. A feature that also needs backend work → plan it with `df-ps-plan-feature`; React runs come last in the plan.
 3. Choose a module for each piece of UI ("Choosing the module").
 4. Show the work plan in the `df-ps-scaffold` rule 1 format and **stop until it's approved**. CLI paths are `df-react → New widget` etc.; list every answer and the files from `references/generators.md`.
-5. Run the generators with the driver in plan order (shared hooks → UI-kit → widgets → pages); check each output.
+5. Run the generators with `df-react --request` JSON in plan order (shared hooks → UI-kit → widgets → pages); check each output.
 6. Implement ("Implementing"), after the backend and the regenerated API client.
 7. Run `npx df-lint` and the project's tsc/lint/tests. Report against the plan.
 
@@ -41,16 +41,22 @@ A business element goes to UI-kit only when several widgets contain the same ele
 
 ## Running df-react
 
-`df-react` is interactive. Drive it with the driver of `df-ps-scaffold` and `--bin df-react`; it answers the prompts, then lists created (`+`) and changed (`~`) files:
+Prefer `npx df-react --describe` and `npx df-react --request` JSON. The installed schema lists operations (`page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`), fields and current React modules. For example:
+
+```bash
+npx df-react --request '{"operation":"widget","name":"cart","widgetType":"separated"}'
+```
+
+Read `df-ps-scaffold` [agent-mode.md](../df-ps-scaffold/references/agent-mode.md) for previews, overwrite control and JSON result checks; [agent-operations.md](../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) covers all React operations and naming conditions. Initialization remains a human task. For older CLI versions without JSON support, use the interactive driver with `--bin df-react`:
 
 ```bash
 node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react [--cwd <dir>] [--delay <ms>] <step>...
 node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react "pick:New widget" text:cart "pick:with separated ui"
 ```
 
-Steps and checks are the same as for `df-scaffold` ("Running the driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`. Prompts and output of each: `references/generators.md`.
+Steps and checks are the same as for `df-scaffold` ("Legacy interactive driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`. Prompts and output of each: `references/generators.md`.
 
-If the CLI can't run, give the user the menu path and answers to run `! npx df-react` themselves. Never hand-write its output.
+If the CLI cannot run, report the failure and give the user the prepared JSON command (a menu path only for a legacy CLI). Never hand-write its output.
 
 ### Moving and renaming
 
@@ -70,7 +76,7 @@ Only these (`df-ps-scaffold`, rule 2, exceptions 3–4), for modules generated b
 - Widgets never import other widgets (their component, `ui/`, `hooks/` or `types.ts`). Shared markup → UI-kit, shared logic → a shared hook, combining widgets → the page.
 - UI-kit components: presentational, driven only by props; no API client, no data loading, no imports from widgets, pages, or contexts. Other UI-kit components and shared hooks (`hooks/`) are fine. Business terms only in a domain UI-kit component; its props describe what it shows, not domain types.
 - Shared hooks (`…/react/hooks/use-<name>.ts`): generic app-wide logic, driven only by arguments; no business terms, no API client, no imports from UI-kit, widgets, pages, or contexts.
-- Stories (`storybookFramework`): fill `args` of `Default` with valid props and add one story per meaningful state (`Disabled`, `Loading`, `WithError`). Keep `meta`, the file name, and the title (`UI-kit/N` or `Widgets/N`). For widget UI, the stories cover the UI states that its UI model produces.
+- Stories (`frontend.react.storybookFramework`): fill `args` of `Default` with valid props and add one story per meaningful state (`Disabled`, `Loading`, `WithError`). Keep `meta`, the file name, and the title (`UI-kit/N` or `Widgets/N`). For widget UI, the stories cover the UI states that its UI model produces.
 
 ### Talking to the backend
 

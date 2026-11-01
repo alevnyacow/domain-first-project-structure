@@ -24,10 +24,8 @@ test('integration tests selected with Prisma and Vitest see their changes', asyn
     fs.writeFileSync(
         path.join(root, 'domain-first.project-structure.config.json'),
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'prisma',
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: [] }
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(root);

@@ -10,10 +10,8 @@ afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 const check = (packages: string[], manifest: object) => {
     const manifestText = JSON.stringify(manifest);
     const configText = JSON.stringify({
-        rootFolder: 'src',
-        domainFirstPackages: packages,
-        defaultPersistenceLayerImplementation: 'prisma',
-        useReact: false
+        project: { rootFolder: 'src' },
+        backend: { domainFirstPackages: packages }
     });
     const manifestPath = path.join(root, 'package.json');
     const configPath = path.join(

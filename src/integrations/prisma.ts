@@ -1,7 +1,8 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
+import { rememberImplementation } from '../implementation-choices';
+import { confirm } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
@@ -86,7 +87,11 @@ export const addPrisma = async (): Promise<string[]> => {
         ...manifest.dependencies,
         ...manifest.devDependencies
     };
-    const shared = path.resolve(root, config.rootFolder, 'shared-kernel');
+    const shared = path.resolve(
+        root,
+        config.project.rootFolder,
+        'shared-kernel'
+    );
     const prismaFolder = path.join(shared, 'infrastructure/prisma');
 
     // Adding an integration must not silently become a major-version migration.
@@ -106,19 +111,14 @@ export const addPrisma = async (): Promise<string[]> => {
     }
 
     const withService = await confirm({
+        key: 'withService',
         message:
             'Create the Prisma infrastructure service in the Shared Kernel?',
         default: true
     });
-    const useByDefault =
-        config.defaultPersistenceLayerImplementation !== 'prisma' &&
-        (await confirm({
-            message: 'Use prisma as the default persistence implementation?',
-            default: false
-        }));
     const selected = await addPackageScripts(
         manifestFile,
-        prismaScripts(config.rootFolder)
+        prismaScripts(config.project.rootFolder)
     );
 
     stageFile(path.join(prismaFolder, 'prisma.config.ts'), prismaConfig);
@@ -135,7 +135,11 @@ export const addPrisma = async (): Promise<string[]> => {
             ),
             prismaService
         );
-        if (config.domainFirstPackages.includes('@domain-first/wire')) {
+        if (
+            ConfigFile.backend.domainFirstPackages.includes(
+                '@domain-first/wire'
+            )
+        ) {
             stageFile(
                 path.join(
                     shared,
@@ -145,12 +149,8 @@ export const addPrisma = async (): Promise<string[]> => {
             );
         }
     }
-    if (useByDefault) {
-        ConfigFile.write({
-            ...config,
-            defaultPersistenceLayerImplementation: 'prisma'
-        });
-    }
+    for (const kind of ['repositories', 'commands', 'queries'] as const)
+        rememberImplementation(kind, 'primary', 'prisma');
 
     const install = (packages: string[], dev: boolean) => {
         const missing = packages.filter((name) => !dependencies[name]);

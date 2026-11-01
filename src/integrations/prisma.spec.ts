@@ -36,10 +36,10 @@ const setup = (rootFolder = '.', wire = false, dependencies = {}) => {
     fs.writeFileSync(
         configPath,
         JSON.stringify({
-            rootFolder,
-            domainFirstPackages: wire ? ['@domain-first/wire'] : [],
-            defaultPersistenceLayerImplementation: 'api',
-            useReact: false
+            project: { rootFolder },
+            backend: {
+                domainFirstPackages: wire ? ['@domain-first/wire'] : []
+            }
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
@@ -52,10 +52,7 @@ const setup = (rootFolder = '.', wire = false, dependencies = {}) => {
 
 test('adds config, optional service and wiring with deferred writes', async () => {
     const { project, configPath, shared } = setup('src/server', true);
-    rstest
-        .mocked(confirm)
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(true);
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
     const steps = await addPrisma();
     expect(fs.existsSync(shared)).toBe(false);
     writePendingChanges();
@@ -82,10 +79,21 @@ test('adds config, optional service and wiring with deferred writes', async () =
             )
         )
     ).toBe(true);
-    expect(
-        JSON.parse(fs.readFileSync(configPath, 'utf8'))
-            .defaultPersistenceLayerImplementation
-    ).toBe('prisma');
+    expect(JSON.parse(fs.readFileSync(configPath, 'utf8'))).not.toHaveProperty(
+        'defaultPersistenceLayerImplementation'
+    );
+    const choices = JSON.parse(
+        fs.readFileSync(
+            path.join(project, 'domain-first.project-structure.config.json'),
+            'utf8'
+        )
+    );
+    expect(choices.backend.implementations).toEqual({
+        repositories: { primary: ['prisma'], test: [] },
+        commands: { primary: ['prisma'], test: [] },
+        queries: { primary: ['prisma'], test: [] }
+    });
+    expect(confirm).toHaveBeenCalledTimes(1);
     const manifest = JSON.parse(
         fs.readFileSync(path.join(project, 'package.json'), 'utf8')
     );
@@ -101,12 +109,25 @@ test('adds config, optional service and wiring with deferred writes', async () =
     ]);
 });
 
-test('supports config only and preserves existing dependencies and persistence default', async () => {
-    const { shared, configPath } = setup('.', false, { dotenv: '^18.0.5' });
-    rstest
-        .mocked(confirm)
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(false);
+test('supports config only and preserves existing dependencies and implementation choices', async () => {
+    const { project, shared, configPath } = setup('.', false, {
+        dotenv: '^18.0.5'
+    });
+    const originalConfig = fs.readFileSync(configPath, 'utf8');
+    fs.writeFileSync(
+        path.join(project, 'domain-first.project-structure.config.json'),
+        JSON.stringify({
+            ...JSON.parse(originalConfig),
+            backend: {
+                ...JSON.parse(originalConfig).backend,
+                implementations: {
+                    repositories: { primary: ['mongo'], test: ['stub'] },
+                    ports: { primary: ['s3'], test: [] }
+                }
+            }
+        })
+    );
+    rstest.mocked(confirm).mockResolvedValueOnce(false);
     const steps = await addPrisma();
     writePendingChanges();
     expect(
@@ -121,9 +142,24 @@ test('supports config only and preserves existing dependencies and persistence d
         'npm install @prisma/orm-postgres temporal-polyfill'
     );
     expect(
-        JSON.parse(fs.readFileSync(configPath, 'utf8'))
-            .defaultPersistenceLayerImplementation
-    ).toBe('api');
+        JSON.parse(fs.readFileSync(configPath, 'utf8')).backend
+    ).toMatchObject({
+        domainFirstPackages: []
+    });
+    const choices = JSON.parse(
+        fs.readFileSync(
+            path.join(project, 'domain-first.project-structure.config.json'),
+            'utf8'
+        )
+    );
+    expect(choices.backend.implementations.repositories).toEqual({
+        primary: ['mongo', 'prisma'],
+        test: ['stub']
+    });
+    expect(choices.backend.implementations.ports).toEqual({
+        primary: ['s3'],
+        test: []
+    });
 });
 
 test('repeat setup preserves models and flags edited config, without wiring when disabled', async () => {

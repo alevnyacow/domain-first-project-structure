@@ -1,6 +1,6 @@
 # Use case
 
-When: one business action a user or system triggers that doesn't fit into a single query or command (`../choosing-components.md`, step 8). **No proxy use cases**: an action that is exactly one query or command gets none, because every query and command is a handler an endpoint can use directly. A use case whose logic lives in an application service is not a proxy.
+When: one business action a user or system triggers that doesn't fit into a single query or command (`../choosing-components.md`, step 8). **No proxy use cases**: an action that is exactly one query or command gets none, because every query and command is a handler an endpoint can use directly. A use case is also the handler for an action that calls a port: the port has capability methods, not `handle`. A use case whose logic lives in an application service is not a proxy.
 
 ## Generate (context only)
 

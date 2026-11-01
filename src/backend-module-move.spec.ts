@@ -140,6 +140,45 @@ test('finds units by their file layout, with implementation labels', () => {
     expect(unit('aggregate', 'order').ownerPath).toBe(sales);
 });
 
+test('renames a handler used by a neighboring port adapter and its wire', () => {
+    const { rootFolder, unit, read, move } = setup();
+    const add = (file: string, source: string) => {
+        fs.mkdirSync(path.dirname(path.join(rootFolder, file)), {
+            recursive: true
+        });
+        fs.writeFileSync(path.join(rootFolder, file), source);
+    };
+    const adapter =
+        'bounded-contexts/billing/infrastructure/application-adapters/cross-context/cross-context-order.ts';
+    const wire =
+        'bounded-contexts/billing/wiring/application-ports/wire-order.ts';
+    add(
+        adapter,
+        `import type { OrderSummaryQuery as SalesOrderSummaryQuery } from '../../../../sales/application/queries/order-summary-query'
+export class CrossContextOrder { constructor(private readonly summary: SalesOrderSummaryQuery) {} }`
+    );
+    add(
+        wire,
+        `import { wireOrderSummaryQuery as wireSalesSummary } from '../../../sales/wiring/queries/wire-order-summary-query'
+import { CrossContextOrder } from '../../infrastructure/application-adapters/cross-context/cross-context-order'
+const wireImplementation = wireClass(CrossContextOrder, [wireSalesSummary])
+export const wireOrder = envBranchedWire({ development: wireImplementation })`
+    );
+
+    expect(
+        move(unit('query', 'order-summary'), { name: 'invoice-summary' })
+            .violations
+    ).toBeUndefined();
+    expect(read(adapter)).toContain(
+        'InvoiceSummaryQuery as SalesOrderSummaryQuery'
+    );
+    expect(read(adapter)).toContain(
+        '/application/queries/invoice-summary-query'
+    );
+    expect(read(wire)).toContain('wireInvoiceSummaryQuery as wireSalesSummary');
+    expect(read(wire)).toContain('/wiring/queries/wire-invoice-summary-query');
+});
+
 test('renaming an aggregate renames its files, classes, wires, dependents and in-memory section', () => {
     const { unit, read, exists, move } = setup();
     const result = move(unit('aggregate', 'order'), { name: 'purchase' });

@@ -1,10 +1,14 @@
-# df-react generators: prompts and output
+# df-react generators: operations and output
+
+Prefer JSON requests; [agent operations](../../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) maps all six React operations and fields. The scripted prompt sequences below are the legacy interactive fallback. Generated files and story templates apply to both modes.
+
+Settings: `project.rootFolder` and `frontend.react.storybookFramework`. The frontend section must be configured by the user before these runs.
 
 Notation: `…/react/` = `<rootFolder>/presentation/react/`. `n` = the entered kebab-case name, `N` = PascalCase. Every step list goes after `--bin df-react`; the first prompt is the module menu. If the run would replace existing files, the last prompt is the confirm `Overwrite them?` (the files are listed above it).
 
 ## New page
 
-`"pick:New page" text:checkout` → `…/react/pages/n-page.tsx`
+`"pick:New page" text:checkout` → `…/react/pages/n-page.tsx`; with Next.js (`frontend.react.framework: next`) also `app/n/page.tsx` (`src/app/…` when that folder exists) rendering `NPage`, unless that route already exists. A nested name nests the route too: `admin/users` → `app/admin/users/page.tsx`.
 
 ## New widget
 

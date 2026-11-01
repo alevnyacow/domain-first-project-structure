@@ -4,6 +4,7 @@ Technical specification of the command-line interface of `@domain-first/project-
 
 - [Package](#package)
 - [Commands overview](#commands-overview)
+- [Non-interactive JSON mode](#non-interactive-json-mode)
 - [`df-init`](#df-init)
 - [`df-scaffold`](#df-scaffold)
     - [Run lifecycle](#run-lifecycle)
@@ -51,28 +52,29 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Package scripts](#package-scripts)
 - [`df-skills`](#df-skills)
 - [`df-lint`](#df-lint)
+- [`df-upgrade`](#df-upgrade)
 - [Runtime semantics](#runtime-semantics)
 
 Notation used below:
 
-- `<rootFolder>` is the `rootFolder` value of the [configuration file](#configuration-file), relative to the project root.
+- `<rootFolder>` is the `project.rootFolder` value of the [configuration file](#configuration-file), relative to the project root.
 - `<context>` is the folder of the selected bounded context: `<rootFolder>/bounded-contexts/<name>`. In the Shared Kernel, it is `<rootFolder>/shared-kernel`.
 - `<name>` is the entered name as is, `<Name>` its class form and `<nameVar>` its variable form. See [Naming](#naming).
 - An **implementation label** is a name such as `prisma`, `in-memory`, `api` or `mock`. It names the folder and the class prefix of an implementation: `prisma` gives `infrastructure/repositories/prisma/prisma-order-repository.ts` with `PrismaOrderRepository`.
-- **With `wire`**, **with `handlers`** etc. mean that `domainFirstPackages` includes `@domain-first/wire`, `@domain-first/handlers` etc.
-- **With tests** means that `testingLibrary` is set.
+- **With `wire`**, **with `handlers`** etc. mean that `backend.domainFirstPackages` includes `@domain-first/wire`, `@domain-first/handlers` etc.
+- **With tests** means that `backend.testingLibrary` is set.
 
 ## Package
 
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint` |
+| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint`, `df-upgrade` |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
 | Runtime        | Node.js 22.13+ within the Node 22 release line, or 24+   |
-| Interaction    | Interactive prompts only; `df-scaffold` takes no arguments, `df-init`, `df-react` and `df-integration` only `--help` |
+| Interaction    | `df-scaffold`, `df-react`, `df-integration`: interactive by default, or `--describe` / `--request <json|->`; `df-init` stays interactive with `--section` and `--help` |
 
 ## Commands overview
 
@@ -84,6 +86,7 @@ Notation used below:
 | `df-integration` | Adds integrations: Storybook, Prisma, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
+| `df-upgrade`     | Brings the project up to date after a major version upgrade           | [`df-upgrade`](#df-upgrade)   |
 
 ```bash
 npx df-init
@@ -92,45 +95,131 @@ npx df-react
 npx df-integration
 npx df-skills [--claude] [--codex] [--global]
 npx df-lint [rootFolder]
+npx df-upgrade [--dry-run] [--yes]
 ```
+
+## Non-interactive JSON mode
+
+`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` and `df-upgrade` remain human commands; `df-lint` and `df-skills` already run without interactive generation menus.
+
+```bash
+npx df-scaffold --describe
+npx df-scaffold --request '{"operation":"query","context":"sales","name":"orders","implementation":{"type":"prisma","save":false},"dependencies":{"PrismaOrdersQuery":["shared-kernel:PrismaInfrastructureService"]}}'
+npx df-react --request '{"operation":"page","name":"admin/orders"}'
+npx df-integration --request '{"operation":"add","integrations":["storybook"]}'
+```
+
+`--request` accepts a JSON literal, or `-` for one JSON document on stdin. `--describe` and `--request` are mutually exclusive. There is no prompt fallback: malformed requests, missing parameters and invalid selections return a JSON error with exit code 1.
+
+### Discovery and request schemas
+
+`--describe` returns `schemaVersion: 1`, the command name, a JSON Schema in `requestSchema`, and the current project inventory. It works before initialization, but execution requires the appropriate configured section. `project.configStatus` is `missing`, `outdated` (a config of an earlier major version: execution returns `CONFIG_OUTDATED`) or `current`; only a current config is `configured`.
+
+The inventory includes contexts (`shared-kernel` is reserved for the Shared Kernel), units, contracts, modules, eligible dependencies per implementation, saved/system implementation types, integration IDs/availability and React modules. IDs are strings:
+
+| Kind | Example | Request use |
+| --- | --- | --- |
+| Context | `sales`, `shared-kernel` | `context`, `targetContext` |
+| Dependency / handler | `shared-kernel:PrismaInfrastructureService`, `billing:InvoiceQuery` | `dependencies`, `handler` |
+| Wiring target | `sales:OrdersQuery:PrismaOrdersQuery` | `module` for `wire-dependency` |
+| Unit / contract | `query:orders`, `aggregate:order`, `entity:order/line` | `module` for backend moves, `contract` for implementations |
+| React module | `admin/orders` | `module` for React moves |
+
+Dependency availability follows the same context, layer and per-kind rules as the interactive menus. Already-wired dependencies are excluded from the available lists. Refresh inventory after changes; never use display labels or list indexes as IDs.
+
+### Operations and options
+
+The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`. Integrations use `operation: "add"` and an `integrations` list.
+
+- `name` and `context` use lowercase kebab-case. React page/widget names allow nested paths. Shared Kernel restrictions match the menus.
+- `implementation` and optional `testImplementation` are `{ "type": "prisma", "save": false }`. The primary type is required for queries, commands, ports and new implementations. `save` defaults to false; true records an ordinary type by category and environment role. System labels are plain `cross-context` / `in-memory`, without the UI prefix. Their existing behavior and boundaries remain in force.
+- Aggregates use `withRepository: true` plus an implementation when a repository is wanted; absent means no repository. Entities/value objects may specify `aggregate`; errors may specify an existing `namespace`.
+- `dependencies` maps each implementation/class name to qualified dependency IDs. Omitted entries keep checked suggestions; an explicit `[]` disables suggestions. Every supplied group must apply to the operation, otherwise nothing is written.
+- New implementations select a `contract` and, with a branched wire, an explicit nonempty `environments` list. Their dependency groups refer to the new concrete class.
+- Backend moves select a unit ID in `module`, with optional `name`, `targetContext` and `aggregate`. React moves use `module` and a new nested `name`. Moves use the same validation/import rewriting as the menus.
+- Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created. REST tooling must already be configured.
+- Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
+- `dryRun: true` computes the full proposed operation without writing anything.
+- `overwrite: true` allows replacing changed existing generated files. Without it the command returns `OVERWRITE_REQUIRED` and the affected paths. Identical generated contents do not require this flag. Metadata edits such as implementation choices and normal wiring updates retain their existing behavior.
+
+### Results and failures
+
+Success uses exit code 0 and this shape (all paths are relative to the project root):
+
+```ts
+type Result = {
+    schemaVersion: 1;
+    ok: true;
+    operation: string;
+    dryRun: boolean;
+    files: { created: string[]; updated: string[]; deleted: string[] };
+    directories: string[];
+    overwriteRequired: string[];
+    nextSteps: string[];
+    messages: string[];
+};
+```
+
+`nextSteps` contains install commands and follow-up notes; nothing is installed or executed. `overwriteRequired` is useful when reviewing a dry run. Generator diagnostics are captured in `messages`, keeping stdout to a single JSON document.
+
+Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, `CONFIG_OUTDATED`, and configuration/precondition errors. Validation failures discard staged source, config and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
 
 ## `df-init`
 
-Initializes the project in the [project root](#project-root). When `domain-first.project-structure.config.json` already exists, it prints `domain-first.project-structure.config.json already exists: edit it or add Shared Kernel files with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`.
+Initializes or reconfigures the project in the [project root](#project-root):
 
-**Prompts**
+```bash
+npx df-init
+npx df-init --section project
+npx df-init --section backend
+npx df-init --section frontend
+```
 
-| Prompt                                       | Kind     | Default                 | Stored as                               |
-| -------------------------------------------- | -------- | ----------------------- | --------------------------------------- |
-| `Root folder (use "/" for inner folders):`   | input    | `src`                   | `rootFolder`                            |
-| `@domain-first packages`                     | checkbox | none selected           | `domainFirstPackages`                   |
-| `Use Next adapter for REST endpoints` (only with `handlers-rest` and `next` in `package.json`) | confirm |  |  |
-| `Default persistence layer implementation:`  | input    | empty                   | `defaultPersistenceLayerImplementation` |
-| `Scaffold in-memory DB for test implementations` | confirm |                      | `withInMemoryDb`                        |
-| `Use React`                                  | confirm  |                         | `useReact`                              |
-| `Use Storybook` (only with React)            | confirm  |                         |                                         |
-| `Storybook framework package:`               | input    | `@storybook/react-vite` | `storybookFramework`                    |
-| `Scaffold unit tests`                        | confirm  |                         |                                         |
-| `Unit testing library:`                      | input    | `vitest`                | `testingLibrary`                        |
+A new project visits Project → Backend → Frontend. Before each section, `Configure <section> now?` defaults to Yes. No defers that section and prints the command for later. Project defaults to `{ "rootFolder": "src" }`; Backend and Frontend are absent until configured. Deferred sections do not generate files or install instructions for their tools.
+
+With an existing config, `Configuration section:` offers `Project`, `Backend`, `Frontend` and `All sections`. Missing optional sections have `(not configured)` in their label. A single selection configures that section directly; All sections repeats the staged wizard. `--section` skips the section menu. With a new project, `--section backend` or `--section frontend` first asks for the project root. An invalid section exits with 1 before prompts or writes.
+
+Current settings prefill the prompts. Only the chosen sections change; opting into Next REST from frontend can also add the required `@domain-first/handlers-rest` backend package. `backend.implementations` and existing `backend.rules` entries are preserved. Backend setup scaffolds every standard dependency list and every lint check (`true`) into `backend.rules`. Reconfiguration fills missing kinds and checks without resetting existing arrays, `add`/`remove` patches or `false` values. Existing Shared Kernel support files are kept, and missing ones are restored. Changing the root folder affects future output only; no source is moved. Setup changes stay pending until the run completes. Initialization is a human workflow; bundled agent skills read settings and direct the user to configure missing sections.
+
+**Prompts inside each section**
+
+| Section | Prompt | Kind | Stored as |
+| --- | --- | --- | --- |
+| Project | `Root folder (use "/" for inner folders):` | input, default `src` | `project.rootFolder` |
+| Backend | `@domain-first packages` | checkbox | `backend.domainFirstPackages` |
+| Backend | `envBranchedWire branches:` (with `wire`) | select: `Default: test, development, production by NODE_ENV` / `Custom branches` | Default: nothing saved. Custom: `backend.envBranches` |
+| Backend | `Branches (comma-separated):` (custom branches) | input: lowercase letters and digits, unique | `backend.envBranches.names` |
+| Backend | `Test branch:` (custom branches) | select: one of the branches, `Create a "test" branch`, or `No test branch: every branch uses the primary implementation` | `backend.envBranches.test`; a created `test` is appended to the names; no test branch leaves `test` out |
+| Backend | `Scaffold in-memory DB for test implementations` | confirm | `backend.withInMemoryDb` |
+| Backend | `Scaffold unit tests` | confirm | Whether to ask for the testing library |
+| Backend | `Unit testing library:` | input, default `vitest` | `backend.testingLibrary` |
+| Frontend | `Frontend framework:` | select: `React` / `Next.js` | `frontend.react.framework`: `react` / `next` |
+| Frontend | `Use @domain-first/handlers-next for REST endpoints` (Next.js, with backend configured) | confirm | Next REST support files; enables `handlers-rest` if needed |
+| Frontend | `Use Storybook` (both frameworks) | confirm | Runs the Storybook (React + Vite) integration; sets `frontend.react.storybookFramework` to `@storybook/react-vite` |
+
+React and Next.js both enable `df-react` and use the same `@storybook/react-vite` integration. Enabling Storybook scaffolds its configs, scripts and `.gitignore` entry during initialization. The Storybook framework package is fixed; no package input is shown. Existing custom framework settings are aligned with the shared preset when Storybook is enabled. The framework select uses the saved value first, otherwise Next.js if `next` is declared, otherwise React. The Next adapter question follows the Next.js selection once, even if `next` has not been installed yet. Declining it keeps the frontend choice without adding REST support. Selecting React skips it even when `next` is installed.
+
+When backend is deferred, frontend does not create or configure backend settings. Later backend setup sees the saved Next.js choice and offers the adapter. REST support is generated after frontend selection, so a new full setup generates the chosen adapter directly. Existing generators/routes are kept as in the integration, with a manual connection note if necessary.
 
 **Output**
 
 | File                                                  | Condition    | Content                                                                         |
 | ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------- |
-| `domain-first.project-structure.config.json`          | Always       | The [configuration](#configuration-file), tab-indented                          |
+| `domain-first.project-structure.config.json`          | Always       | The [configuration](#configuration-file), four-space-indented                          |
 | `<rootFolder>/shared-kernel/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
 | `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its spec and wire as for [New Service](#new-service) |
 | `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
 | `app/api/[...path]/route.ts`                          | With the Next adapter | The [catch-all route](#rest-endpoint-generator); `src/app/…` when `src/app` exists and `app` doesn't |
+| `<rootFolder>/presentation/react/.storybook/{main,preview}.ts` | With Storybook | The [React + Vite integration](#storybook-react--vite), including package scripts and `.gitignore` |
 
-The endpoint generator and the route are written as by the [REST endpoint generator](#rest-endpoint-generator) integration. After writing the files, `df-init` prints one install command for the packages of `domainFirstPackages` missing from `package.json` (`dependencies`, `devDependencies` and `optionalDependencies`; `node_modules` is not checked), plus `@domain-first/handlers-next` with the Next adapter.
+The endpoint generator and the route are written as by the [REST endpoint generator](#rest-endpoint-generator) integration. After writing the files, `df-init` prints one install command for the packages of `domainFirstPackages` missing from `package.json` (`dependencies`, `devDependencies` and `optionalDependencies`; `node_modules` is not checked), plus `@domain-first/handlers-next` with the Next adapter. Frontend setup also reports missing `react`/`react-dom`, and `next` for Next.js; packages are never installed automatically.
 
 ## `df-scaffold`
 
 ### Run lifecycle
 
 1. The [project root](#project-root) is located.
-2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. `df-react` and `df-integration` do the same.
+2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. If it has the format of an earlier major version, it prints `domain-first.project-structure.config.json uses the format of an earlier major version: run npx df-upgrade.` and exits with 1; `df-init` and `df-lint` do the same. If the backend section is absent, it prints `Backend is not configured: run df-init --section backend.` and exits with 1. `df-react` and `df-integration` check the configuration file in the same way; `df-react` also needs `frontend.react` ([React modules](#react-modules-df-react)), and `df-integration` hides backend integrations until backend is configured.
 3. Otherwise the [main menu](#main-menu) is shown, and exactly one operation runs.
 4. Every file change of the operation is staged in memory. At the end, the staged changes are written in one step. See [Runtime semantics](#runtime-semantics).
 
@@ -171,23 +260,31 @@ A section has `all(predicate?)`, `first(predicate)`, `withId(id)`, `lastAddedIte
 
 ## Configuration file
 
-`domain-first.project-structure.config.json` in the project root. It is read on every run and validated with a strict schema: an invalid file makes the CLI throw.
+`domain-first.project-structure.config.json` in the project root contains all settings. Each section has its own schema. Backend and frontend are optional, allowing independent setup. Known settings and saved labels are validated; unrelated fields are preserved when sections are updated.
 
 ```ts
 type Config = {
-    rootFolder: string;
-    domainFirstPackages: Array<
-        | '@domain-first/types'
-        | '@domain-first/errors'
-        | '@domain-first/handlers'
-        | '@domain-first/wire'
-        | '@domain-first/handlers-rest'
-    >;
-    defaultPersistenceLayerImplementation: string;
-    withInMemoryDb?: boolean;
-    useReact: boolean;
-    storybookFramework?: string;
-    testingLibrary?: string;
+    project: { rootFolder: string };
+    backend?: {
+        domainFirstPackages: Array<
+            | '@domain-first/types'
+            | '@domain-first/errors'
+            | '@domain-first/handlers'
+            | '@domain-first/wire'
+            | '@domain-first/handlers-rest'
+        >;
+        envBranches?: { names: string[]; test: string };
+        withInMemoryDb?: boolean;
+        testingLibrary?: string;
+        implementations?: Partial<Record<
+            'repositories' | 'commands' | 'queries' | 'ports',
+            { primary?: string[]; test?: string[] }
+        >>;
+        rules?: { dependencies?: DependencyRules; lint?: Partial<Record<LintCheck, boolean>> };
+    };
+    frontend?: {
+        react?: { framework?: 'react' | 'next'; storybookFramework?: string };
+    };
 };
 ```
 
@@ -195,37 +292,70 @@ type Config = {
 
 ```json
 {
-    "rootFolder": "src",
-    "domainFirstPackages": [
-        "@domain-first/types",
-        "@domain-first/errors",
-        "@domain-first/handlers",
-        "@domain-first/wire",
-        "@domain-first/handlers-rest"
-    ],
-    "defaultPersistenceLayerImplementation": "prisma",
-    "withInMemoryDb": true,
-    "useReact": true,
-    "storybookFramework": "@storybook/react-vite",
-    "testingLibrary": "vitest"
+    "project": { "rootFolder": "src" },
+    "backend": {
+        "domainFirstPackages": ["@domain-first/wire", "@domain-first/handlers"],
+        "withInMemoryDb": true,
+        "testingLibrary": "vitest",
+        "implementations": { "repositories": { "primary": ["prisma"], "test": [] } },
+        "rules": { "lint": { "clock": false } }
+    },
+    "frontend": { "react": { "framework": "react", "storybookFramework": "@storybook/react-vite" } }
 }
 ```
 
 ### Fields
 
-| Field                                   | Effect                                                                                                                                       |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rootFolder`                            | Base path of generated source, relative to the project root. May contain inner folders: `src/server`.                                       |
-| `domainFirstPackages`                   | Integrations used by templates. See [Package integrations](#package-integrations). An empty array selects plain class templates.             |
-| `defaultPersistenceLayerImplementation` | Default implementation label for repositories, commands and queries.                                                                         |
-| `withInMemoryDb`                        | `in-memory` implementations of repositories, commands and queries get the shared [in-memory DB](#in-memory-db). Omitted: they are generated empty. |
-| `useReact`                              | Enables [`df-react`](#react-modules-df-react), the Swagger UI page of the OpenAPI integration and React Query hooks of the Orval integration. |
-| `storybookFramework`                    | Package that generated stories import `Meta` and `StoryObj` from. Omitted: no stories are generated.                                         |
-| `testingLibrary`                        | Module that generated tests import `describe`, `test`, `expect` and `beforeEach` from. Omitted: no tests are generated.                      |
-| `rules.dependencies`                    | Changes the [dependency rules](#dependency-rules) per kind of module. Omitted: the defaults.                                                 |
-| `rules.lint`                            | Turns [`df-lint`](#df-lint) checks off with `false`. Omitted: all checks run.                                                                |
+| Field | Effect |
+| --- | --- |
+| `project.rootFolder` | Source folder relative to the project root, e.g. `src/server`. |
+| `backend.domainFirstPackages` | Template integrations. An empty array selects plain classes. An absent backend means setup was deferred. |
+| `backend.envBranches` | Custom [`envBranchedWire`](#envbranchedwire) branches: unique `names` (lowercase letters and digits) and optionally the `test` one among them, with at least one other branch. Without `test`, every branch gets the primary implementation and generators don't ask for test implementations. Omitted: `test`, `development`, `production` by `NODE_ENV`. |
+| `backend.withInMemoryDb` | Enables the shared [in-memory DB](#in-memory-db) behavior for repository, command and query implementations. |
+| `backend.testingLibrary` | Test imports: `describe`, `test`, `expect`, `beforeEach`. Omitted: no generated specs. |
+| `frontend.react` | Its presence enables `df-react`, OpenAPI's Swagger UI page and Orval's React Query hooks. An empty object enables React without stories. |
+| `frontend.react.framework` | `react` or `next`, selected by frontend setup and recorded by `df-upgrade`; both use React generators. Omitted: treated as React. Installed packages never switch on Next.js behavior; select Next.js with `df-init --section frontend`. |
+| `frontend.react.storybookFramework` | Package used for story imports. Omitted: no generated stories. |
+| `backend.implementations` | Saved implementation labels, separated by contract kind and primary/test role. |
+| `backend.rules.dependencies` | Explicit dependency lists for every module kind, scaffolded by backend setup. Entries can be edited or replaced with `add`/`remove` patches. Missing kinds use defaults. |
+| `backend.rules.lint` | Backend setup writes every check as `true`; set one to `false` to disable it. Missing checks run. |
 
-Edits apply to future runs only. Existing files are not migrated: enabling `wire` later also requires the Shared Kernel files [`df-init`](#df-init) would create. The endpoint generator and the in-memory DB can be added later with [integrations](#integrations).
+Settings affect future runs; generated source is not rewritten when a setting changes. Revisit sections with `df-init` to add missing backend support files, or use integrations for individual tools. Backend integrations are hidden until backend setup is complete; frontend tooling remains available independently.
+
+Configs of an earlier major version (the flat 7.x config, without `project`) are not read and never rewritten by other commands; [`df-upgrade`](#df-upgrade) converts them.
+
+### Saved implementation choices
+
+`backend.implementations` is an optional section inside `backend` in the shared config. It is populated when a custom implementation type is entered with the save action or Prisma integration registers `prisma`. Its contents are:
+
+```json
+{
+    "repositories": { "primary": ["prisma", "mongo"], "test": ["stub"] },
+    "commands": { "primary": ["sql"], "test": [] },
+    "queries": { "primary": ["elastic"], "test": ["fake"] },
+    "ports": { "primary": ["s3"], "test": [] }
+}
+```
+
+- Categories are `repositories`, `commands`, `queries` and `ports`; absent categories or roles are empty. Values are arrays of lowercase kebab-case labels. Unknown categories or invalid labels make the configuration file invalid: the CLI stops without overwriting it.
+- **Enter implementation type and save for future use** remembers a new label only for that category and role (`primary` or `test`). Categories are project-wide, shared by all bounded contexts. Active system types need not be stored.
+- **Enter implementation type for this run only** uses the entered name for the current operation without adding a saved choice to this section. The generated source files are still saved normally. The same choice works for primary/test prompts and **New Implementation**, regardless of selected environments.
+- Menus merge available system implementations with the saved labels, deduplicate them, disable types already implemented by the contract, and keep `System: cross-context` limited to port adapters with a neighboring bounded context. Saved `cross-context` entries cannot bypass that restriction.
+- The first available saved label is the default, falling back to an available system implementation, then the save-entry action. Manual input has no suggested name without an available saved label. There are no ordinary presets or implicit `api`/`mock` defaults.
+- **New Implementation** shows both primary and test choices plus available system implementations. It adds no ordinary presets. A new custom label entered with the save action is saved as `test` when used in that environment and as `primary` for other environments; without usable wiring it is saved as primary.
+- Updates are staged with source files. Cancellation or declined overwrites discard both. Updating this section preserves the other sections and does not request a config overwrite confirmation. The config can be committed and edited by hand; reordering saved arrays changes defaults for later runs.
+- Prisma integration registers `prisma` in `repositories.primary`, `commands.primary` and `queries.primary`, preserving existing choices. `df-init` no longer asks for a global persistence default. [`df-upgrade`](#df-upgrade) moves the 7.x `defaultPersistenceLayerImplementation` to the first primary type of `repositories`, `commands` and `queries`.
+
+### System implementation types
+
+Only labels that activate generator or boundary behavior are automatically offered. Every active system choice has a `System:` prefix and a parenthesized explanation; saved entries matching that label get the same marker and are not duplicated.
+
+| Menu label | Available for | Condition / behavior |
+| --- | --- | --- |
+| `System: cross-context (calls handlers in another bounded context)` | Port adapters | At least one neighboring bounded context; never Shared Kernel ports. Allows direct neighboring queries, commands and use cases. |
+| `System: in-memory (uses the shared in-memory database)` | Repositories, commands, queries | `backend.withInMemoryDb` is enabled and the service exists, with its factory when wiring is enabled. Repositories receive their aggregate's section; commands/queries can receive the whole DB. With wiring, the DB remains a suggested dependency. |
+
+System choices are available in primary, test and **New Implementation** menus wherever these conditions hold. Types such as `api`, `mock`, `prisma`, or an inactive `in-memory` are ordinary saved/custom labels, displayed as their exact name. `in-memory` is not a system adapter for ports. The reserved `cross-context` label remains forbidden outside the supported port boundary.
 
 ### Package integrations
 
@@ -290,9 +420,9 @@ Bounded contexts only.
 | ------------------------------------------------------- | ---------------------------------------- | ------------------------- |
 | `Aggregate name:`                                       |                                          |                           |
 | `With Repository`                                       |                                          |                           |
-| `Repository infrastructure implementation type:`        | `defaultPersistenceLayerImplementation`  | With repository           |
+| `Repository infrastructure implementation type:` | Saved/system type or manual entry | With repository |
 | `Add a test implementation for Repository`              |                                          | With repository           |
-| `Test Repository infrastructure implementation type:`   | `in-memory`                              | With test implementation  |
+| `Test Repository infrastructure implementation type:`   | Saved/system type or manual entry                              | With test implementation  |
 
 **Output**
 
@@ -390,9 +520,11 @@ Bounded contexts only. Both generators are identical except for the folder (`com
 | Prompt                                              | Default                                 | Condition                |
 | --------------------------------------------------- | --------------------------------------- | ------------------------ |
 | `Name:`                                             |                                         |                          |
-| `<Suffix> infrastructure implementation type:`      | `defaultPersistenceLayerImplementation` |                          |
+| `<Suffix> infrastructure implementation type:`      | Saved/system type or manual entry |                          |
 | `Add a test implementation for <Suffix>`            |                                         |                          |
-| `Test <Suffix> infrastructure implementation type:` | `in-memory`                             | With test implementation |
+| `Test <Suffix> infrastructure implementation type:` | Saved/system type or manual entry                             | With test implementation |
+
+Both implementation prompts use the [saved implementation choices](#saved-implementation-choices), separately for `commands` and `queries` and their primary/test roles. Menus contain saved types, `System: in-memory (uses the shared in-memory database)` when its integration is ready, and both manual-entry actions. There are no automatic `api` or `mock` choices. Saving remembers a new ordinary label for that category/role; the run-only action leaves the catalog unchanged. `cross-context` is reserved for application port adapters and is rejected here. Queries and commands cannot directly import neighboring contexts.
 
 **Files**
 
@@ -412,9 +544,13 @@ With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the w
 | Prompt                              | Default | Condition                |
 | ----------------------------------- | ------- | ------------------------ |
 | `Name:`                             |         |                          |
-| `Adapter implementation type:`      | `api`   |                          |
+| `Adapter implementation type:`      | Saved/system type or manual entry   |                          |
 | `With test implementation`          |         |                          |
-| `Test adapter implementation type:` | `mock`  | With test implementation |
+| `Test adapter implementation type:` | Saved/system type or manual entry  | With test implementation |
+
+Primary and test adapter menus contain their saved port types and both manual-entry actions. `System: cross-context (calls handlers in another bounded context)` is additionally offered when a neighboring bounded context exists, even if it has no handlers yet. There are no automatic `api`, `mock` or `in-memory` port choices. The default is the first available saved type, then an available system type, otherwise manual entry with no suggested name. The save action registers ordinary names only under `ports`; the run-only action creates the adapter without updating the catalog. Existing labels are disabled and custom labels must be unique kebab-case names.
+
+A `cross-context` adapter can inject queries, commands and use cases from any neighboring bounded context. Its abstract port owns the capability's methods, input/output models and errors; the adapter maps calls to neighboring handlers. Only the adapter imports handler types; its wiring imports their factories. Neither methods nor delegation are generated automatically. Shared Kernel ports do not offer or accept `cross-context`.
 
 **Output**
 
@@ -434,8 +570,8 @@ With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the w
 | Prompt                 | Condition                         | Choices / value                                                                                          |
 | ---------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `Contract:`            |                                   | Repositories, commands, queries and ports of the context, with their implementations: `order (in-memory, prisma)` |
-| `Implementation type:` |                                   | Kebab-case label the contract doesn't have yet: `dynamo`, `local`                                        |
-| `Environments:`        | With `wire` and an env-branched wire | Checkbox, at least one: `test`, `development`, `production`, each with its current implementation: `development (now: s3)` |
+| `Implementation type:` |                                   | Saved primary and test types for the contract category, available system implementations and both manual-entry actions; ports offer `System: cross-context (calls handlers in another bounded context)` only when another bounded context exists (never in the Shared Kernel). Existing types are disabled; duplicate custom labels are rejected                                        |
+| `Environments:`        | With `wire` and an env-branched wire | Checkbox, at least one: the [branches](#envbranchedwire) (`test`, `development`, `production` by default) and any other of the wire, each with its current implementation: `development (now: s3)` |
 | `Dependencies for <Impl>:` | With `wire`                   | As in [Dependency selection](#dependency-selection), for the new implementation only                    |
 
 **Output**
@@ -535,11 +671,30 @@ Repositories, commands, queries and ports wire every implementation separately a
 
 Any other value makes the wire throw `NonExistingBranchError` from `@domain-first/wire`.
 
+**Custom branches.** With `backend.envBranches`, `df-init` writes the branches as a type and leaves choosing one to you. `currentBranch` has no body, so the project doesn't compile until you write it:
+
+```ts
+import { branchedWire } from '@domain-first/wire'
+
+export type EnvBranch = 'local' | 'staging' | 'production' | 'test'
+
+/**
+ * The branch this process runs in. Write how it is selected:
+ * until then, this function doesn't compile.
+ */
+const currentBranch = (): EnvBranch => {
+}
+
+export const envBranchedWire = branchedWire(currentBranch)
+```
+
+Generated wires list the test branch first with the test implementation (the primary one without it), then every other branch with the primary implementation, in the configured order. Without a test branch, every branch gets the primary implementation, and repositories, commands, queries and ports don't ask `Add a test implementation…` / `With test implementation` (in JSON mode, `testImplementation` is rejected as unused). `New Implementation` offers the configured branches. Changing the branches later doesn't rewrite `env-branched-wire.ts` or existing wires: `df-init` notes that they keep their branches.
+
 ### Dependency selection
 
 The last step of every generator that creates a factory, except REST endpoints, which take the [endpoint generator](#endpoint-generator) and select their handler [themselves](#new-handlers-rest-endpoint).
 
-- Candidates are the wired modules of the context and of the Shared Kernel, the latter labelled `(shared-kernel)`. A module is any `wire*` factory found under `wiring/`.
+- Candidates are the wired modules of the context and of the Shared Kernel, the latter labelled `(shared-kernel)`. Only `cross-context` port adapters also see the application handlers of neighboring bounded contexts, labelled `(<context>)`. A module is any `wire*` factory found under `wiring/`.
 - Candidates are filtered by the [dependency rules](#dependency-rules), excluding the module itself and modules it already depends on.
 - Choices are grouped by kind: Repositories, Domain services, Ports, Application services, Queries, Commands, Use cases, Infrastructure services, Presentation services.
 - An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). Infrastructure modules whose file name contains the implementation label as whole words are listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck one to leave it out.
@@ -549,6 +704,8 @@ Each selected module is added, in order:
 
 - to the dependency list of the factory, with its import;
 - to the constructor of the class, as `private readonly <typeVar>: <Type>`, with an `import type`.
+
+Foreign handlers get context-qualified import aliases, e.g. `InvoiceQuery as BillingInvoiceQuery` and `wireInvoiceQuery as wireBillingInvoiceQuery`; occupied names receive a numeric suffix. Already wired dependencies are identified by their imported file, so equal names in different contexts remain separate choices. Each implementation keeps its own dependency list.
 
 ### Wire dependency
 
@@ -578,7 +735,7 @@ Prints `No wired modules here yet.` when there are no modules, and `No dependenc
 
 Every import of the module in the project follows it, relative paths and tsconfig aliases. With a new name, the names derived from it change in the module and in every file that imports it, directly or through a barrel: the class (`OrderRepository`), its implementations (`PrismaOrderRepository`), its wire (`wireOrderRepository`) and constructor parameters of dependents (`orderRepository`). Inside the module, the variable form and the `describe` label of specs change too. Renaming an aggregate renames its [in-memory DB](#in-memory-db) section: `orders = this.section<Order>('ORDERS')` and accesses like `inMemoryDbInfrastructureService.orders`. An entity or value object leaving its aggregate is no longer re-exported by it, and files importing it from the aggregate's barrel import it from its new file; joining an aggregate adds the re-export.
 
-Before anything changes, the CLI checks bounded context isolation after the move: no file may import another context, and the Shared Kernel only a context's `domain/errors` (and the in-memory DB its domain models). When the move breaks it, the CLI prints `Nothing was moved: these imports would cross a bounded context boundary.`, every such import with paths after the move, and nothing is changed. Otherwise it lists the files to move and to update and asks `Apply?`.
+Before anything changes, the CLI checks bounded context isolation after the move, allowing cross-context port adapters and matching wiring dependencies described below. Other imports between contexts are forbidden; the Shared Kernel may import only a context's `domain/errors` (and the in-memory DB its domain models). When the move breaks it, the CLI prints `Nothing was moved: these imports would cross a bounded context boundary.`, every such import with paths after the move, and nothing is changed. Otherwise it lists the files to move and to update and asks `Apply?`.
 
 ### Dependency rules
 
@@ -596,17 +753,40 @@ What a module may depend on is decided by its kind: the folder of its wire under
 | `infrastructure-services` | `repositories`, `domain-services`, `application-ports`, `infrastructure-services`                                         |
 | `presentation-services`   | `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `presentation-services`               |
 
+These lists govern dependencies inside a context and on the Shared Kernel. Direct calls to neighboring contexts have a separate, fixed boundary rule:
+
+| Consumer in context A | Allowed target in context B |
+| --- | --- |
+| `infrastructure/application-adapters/cross-context/…` | `application/queries/*-query.ts`, `application/commands/*-command.ts`, `application/use-cases/*-use-case.ts` |
+| `wiring/application-ports/…` | `wiring/queries/wire-*-query.ts`, `wiring/commands/wire-*-command.ts`, `wiring/use-cases/wire-*-use-case.ts` |
+
+Only application port adapters labelled exactly `cross-context` can import neighboring handlers. Their matching wiring may import neighboring factories and inject them only into those adapters, including in mixed environment-branched wires. Query/command implementations cannot import neighboring contexts, even with a `cross-context` folder name. The consuming port owns its methods, models and errors; the adapter maps the interaction. Test adapters can remain independent. Foreign barrels, specs, domain models, errors, repositories, ports, services and concrete infrastructure stay private. Shared Kernel ports cannot use this adapter type. `backend.rules.dependencies` changes local/Shared Kernel dependencies; it does not widen this boundary rule.
+
 Modules of the context and the Shared Kernel follow the same rules. Kinds missing from the table (custom folders under `wiring/`) follow the layers: domain sees domain, application sees domain and application, infrastructure sees domain, application ports and infrastructure, presentation sees application and presentation.
 
-`rules.dependencies` in the configuration file changes a kind's list: a list replaces it, `add` and `remove` change it. Kinds it doesn't mention keep their defaults; without it (or without `rules`, or without a configuration file), the table above applies as is. Unknown kinds make the config invalid.
+`df-init` writes all lists from the table into `backend.rules.dependencies` and all lint checks as `true` into `backend.rules.lint` when configuring backend. Rerunning backend setup fills only missing entries; existing values remain unchanged. Deferred backend setup does not create these settings.
+
+`backend.rules.dependencies` in the configuration file changes a kind's list: a list replaces it, `add` and `remove` change it. Kinds it doesn't mention keep their defaults; without it (or without `backend.rules`, or without a configuration file), the table above applies as is. Unknown kinds make the config invalid.
 
 ```json
 {
-    "rules": {
-        "dependencies": {
-            "use-cases": { "add": ["use-cases"] },
-            "queries": { "remove": ["repositories"] },
-            "application-services": ["application-ports"]
+    "backend": {
+        "rules": {
+            "dependencies": {
+                "use-cases": {
+                    "add": [
+                        "use-cases"
+                    ]
+                },
+                "queries": {
+                    "remove": [
+                        "repositories"
+                    ]
+                },
+                "application-services": [
+                    "application-ports"
+                ]
+            }
         }
     }
 }
@@ -626,13 +806,15 @@ Repository, command, query and port tests reference wiring factories with `wire`
 
 ## React modules (`df-react`)
 
-`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget` or `Move or rename page`. It needs the configuration file and `useReact: true`; otherwise it prints `React is off: set "useReact": true in domain-first.project-structure.config.json or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
+`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget` or `Move or rename page`. It needs the configuration file and `frontend.react`; otherwise it prints `React is not configured: run df-init --section frontend or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
 
 ### New page
 
 **Prompts**: `Provide name (folders split by "/"):` (a [nested name](#naming)).
 
 **Output**: `react/pages/<folders>/<file>-page.tsx` with `type <Name>PageProps = {}` and `const <Name>Page: FC<<Name>PageProps>`.
+
+With Next.js (`frontend.react.framework: next`), the page also gets its App Router route at the same path: `app/<folders>/<name>/page.tsx` (`src/app/…` when that folder exists), a default export that renders `<Name>Page`. An existing route file is kept and the CLI says to render the page there. Moving or renaming a page updates the route's import but leaves the route where it is: move it yourself when the URL changes.
 
 ### New widget
 
@@ -684,7 +866,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 `npx df-integration` changes project files and prints next steps. It needs the configuration file: without it, it prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. The [project root](#project-root), staging and overwrite confirmation work as in `df-scaffold`. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints one install command under `Run this command to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
 
-Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma config and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook turns on `useReact`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them. The parts are joined with `&&` into one line to copy, which runs in bash, zsh, cmd.exe and PowerShell 7+, but not in Windows PowerShell 5.1. `df-init` prints its command the same way.
+Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma config and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook configures `frontend.react`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them. The parts are joined with `&&` into one line to copy, which runs in bash, zsh, cmd.exe and PowerShell 7+, but not in Windows PowerShell 5.1. `df-init` prints its command the same way.
 
 The list has two sections: `New integrations`, then `Already applied (select to reapply)`. Each item ends with its group, e.g. `Vitest · backend`; inside a section backend integrations come first. An integration counts as applied when the file in the table exists; selecting it again regenerates its files. The REST endpoint generator and the in-memory DB only add missing files and never overwrite existing ones.
 
@@ -692,17 +874,17 @@ The list has two sections: `New integrations`, then `Already applied (select to 
 | ------------------------------------------------ | -------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `Storybook (React + Vite)`                       | Frontend | Always               | `<rootFolder>/presentation/react/.storybook/main.ts`                                                                   |
 | `REST endpoint generator`                        | Backend  | With `handlers-rest` | `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts`                           |
-| `In-memory DB`                                   | Backend  | Always               | `withInMemoryDb` is `true`, `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` and, with `wire`, its wire |
-| `Prisma 8 (PostgreSQL, RC)`                      | Backend  | Always               | `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts`                                                           |
-| `Vitest`                                         | Backend  | Always               | `vitest.config.ts`                                                                                                     |
+| `In-memory DB`                                   | Backend  | Backend configured   | `backend.withInMemoryDb` is `true`, `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` and, with `wire`, its wire |
+| `Prisma 8 (PostgreSQL, RC)`                      | Backend  | Backend configured   | `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts`                                                           |
+| `Vitest`                                         | Backend  | Backend configured   | `vitest.config.ts`                                                                                                     |
 | `Playwright`                                     | Frontend | Always               | `playwright.config.ts`                                                                                                 |
-| `Integration tests (Testcontainers, PostgreSQL)` | Backend  | Always               | `specs/integration/vitest.config.ts`                                                                                   |
+| `Integration tests (Testcontainers, PostgreSQL)` | Backend  | Backend configured   | `specs/integration/vitest.config.ts`                                                                                   |
 | `OpenAPI`                                        | Backend  | With `handlers-rest` | `scripts/generate-openapi.ts`                                                                                          |
 | `Orval (API client)`                             | Frontend | With `handlers-rest` | `<rootFolder>/presentation/react/data-layer/orval.config.ts` or `<rootFolder>/presentation/data-layer/orval.config.ts` |
 
 ### REST endpoint generator
 
-With `next` in `package.json`, asks `Use Next adapter for REST endpoints`. Writes the [endpoint generator](#endpoint-generator) with its spec and wire as for [New Service](#new-service), and with the Next adapter the catch-all route `app/api/[...path]/route.ts` (`src/app/api/[...path]/route.ts` when `src/app` exists and `app` doesn't):
+With Next.js selected in `frontend.react.framework`, asks `Use @domain-first/handlers-next for REST endpoints`, even before Next.js is installed. Otherwise the question is skipped, even when `next` is in `package.json`. Writes the [endpoint generator](#endpoint-generator) with its spec and wire as for [New Service](#new-service), and with the Next adapter the catch-all route `app/api/[...path]/route.ts` (`src/app/api/[...path]/route.ts` when `src/app` exists and `app` doesn't):
 
 ```ts
 import { nextEndpoints } from '@domain-first/handlers-next'
@@ -725,15 +907,15 @@ Existing files are kept. With the Next adapter, it prints `npm i @domain-first/h
 
 ### In-memory DB
 
-Sets `withInMemoryDb` to `true` and writes the missing files of the shared [in-memory DB](#in-memory-db): the service, its spec with tests and its wire with `wire`, as during [`df-init`](#df-init). Existing files are kept, so it also restores the wire when `wire` was enabled after the DB was created. No install command.
+Sets `backend.withInMemoryDb` to `true` and writes the missing files of the shared [in-memory DB](#in-memory-db): the service, its spec with tests and its wire with `wire`, as during [`df-init`](#df-init). Existing files are kept, so it also restores the wire when `wire` was enabled after the DB was created. No install command.
 
 ### Storybook (React + Vite)
 
 | Item           | Value                                                                                                                                     |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Prompts        | `Configure React scaffolding with @storybook/react-vite?` (default: No), only when `useReact` is off or another `storybookFramework` is set |
+| Prompts        | `Configure React scaffolding with @storybook/react-vite?` (default: No), only when `frontend.react` is absent or another `frontend.react.storybookFramework` is set |
 | Files          | `<rootFolder>/presentation/react/.storybook/main.ts`, `preview.ts`                                                                       |
-| Configuration  | `useReact: true`, `storybookFramework: "@storybook/react-vite"`                                                                           |
+| Configuration  | `frontend.react: { "storybookFramework": "@storybook/react-vite" }`                                                                           |
 | Scripts        | `storybook`, `build-storybook`                                                                                                            |
 | `.gitignore`   | `<rootFolder>/presentation/react/storybook-static`                                                                                        |
 | Install        | `--save-dev storybook @storybook/react-vite vite @vitejs/plugin-react` and `react react-dom`, each when missing                           |
@@ -751,10 +933,10 @@ Sets `withInMemoryDb` to `true` and writes the missing files of the shared [in-m
 
 | Item           | Value                                                                                                     |
 | -------------- | --------------------------------------------------------------------------------------------------------- |
-| Prompts        | `Create the Prisma infrastructure service in the Shared Kernel?` (default: Yes); `Use prisma as the default persistence implementation?` (default: No) |
+| Prompts        | `Create the Prisma infrastructure service in the Shared Kernel?` (default: Yes) |
 | Files          | `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts`; `contract.prisma` if missing                |
 | Optional files | `<rootFolder>/shared-kernel/infrastructure/services/prisma-infrastructure-service.ts`; with `wire`, its factory  |
-| Configuration  | `defaultPersistenceLayerImplementation: "prisma"` when confirmed                                         |
+| Saved choices | Adds `prisma` to primary repository, command and query choices in the config’s `backend.implementations` section |
 | Scripts        | `prisma:emit`, `prisma:migration:plan`, `prisma:migration:apply`                                          |
 | Install        | `prisma`, `@prisma/cli-engine`, `@prisma/orm-postgres`, `temporal-polyfill`, `dotenv` when missing        |
 | Notes          | Add `!<rootFolder>/shared-kernel/infrastructure/prisma` to linter ignores                                        |
@@ -773,7 +955,7 @@ Sets `withInMemoryDb` to `true` and writes the missing files of the shared [in-m
 | -------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Prompts        | `Replace testing library "<current>" with vitest for generated tests?` (default: No), only when another library is set |
 | Files          | `vitest.config.ts` in the project root                                                                           |
-| Configuration  | `testingLibrary: "vitest"`                                                                                       |
+| Configuration  | `backend.testingLibrary: "vitest"`                                                                                       |
 | Scripts        | `test`, `test:coverage`                                                                                          |
 | `.gitignore`   | `/coverage/`                                                                                                     |
 | Install        | `vitest`, `@vitest/coverage-v8` when missing                                                                    |
@@ -812,7 +994,7 @@ The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, scr
 | ------------------ | ----------------------------------------------------------------------------------------------------------- |
 | `vitest.config.ts` | Runs `specs/integration/**/*.spec.ts` with `NODE_ENV=development`, so `envBranchedWire` picks development implementations. Paths are relative to the project root. When `@domain-first/handlers-next` is declared, it is inlined |
 | `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container, without `--advance-ref`, so the `db` ref of the development database stays as is |
-| `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container |
+| `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container. With custom [branches](#envbranchedwire), the CLI notes that `currentBranch` must return the branch for integration specs and `setup-env.ts` may need adjusting |
 
 Specs get the container's address in `DATABASE_URL`, so the Prisma infrastructure service connects to it. Change the image, credentials and connection string in `global-setup.ts`, and the variable name in `setup-env.ts`. All specs of a run share one database: give each spec its own data.
 
@@ -822,7 +1004,7 @@ Listed with `handlers-rest`.
 
 | Item     | Value                                                                                                                         |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` when `next` is declared, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `useReact`, `Add a Swagger UI page?` (default: Yes) |
+| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` with Next.js selected in `frontend.react.framework`, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `frontend.react`, `Add a Swagger UI page?` (default: Yes) |
 | Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`; with the Swagger UI page, `<rootFolder>/presentation/react/pages/swagger-page.tsx` |
 | Scripts  | `openapi`: `tsx --env-file-if-exists=.env scripts/generate-openapi.ts`                                                        |
 | Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev) |
@@ -844,7 +1026,7 @@ Metadata set explicitly on an endpoint takes precedence.
 
 ### Orval (API client)
 
-Listed with `handlers-rest`. Generates a typed API client and, with `useReact`, React Query hooks. Each target lives in its own data layer folder next to its config:
+Listed with `handlers-rest`. Generates a typed API client and, with `frontend.react`, React Query hooks. Each target lives in its own data layer folder next to its config:
 
 | Target              | Folder                                     |
 | ------------------- | ------------------------------------------ |
@@ -853,7 +1035,7 @@ Listed with `handlers-rest`. Generates a typed API client and, with `useReact`, 
 
 | Item         | Value                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `useReact`, `Generate:` with `React Query hooks` (checked) and `Typed API client`, at least one. Without `useReact`, only the typed API client is generated |
+| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `frontend.react`, `Generate:` with `React Query hooks` (checked) and `Typed API client`, at least one. Without `frontend.react`, only the typed API client is generated |
 | Files        | In each target folder: `orval.config.ts`; `api-client/mutator.ts` if missing. For hooks, `query-provider.tsx` if missing. With both targets, the hooks use the typed client's mutator and get no own |
 | Scripts      | `client:orval`: `orval --config "<folder>/orval.config.ts"` for each target, joined with `&&`                   |
 | `.gitignore` | `<folder>/orval/` for each target                                                                               |
@@ -861,7 +1043,7 @@ Listed with `handlers-rest`. Generates a typed API client and, with `useReact`, 
 
 | File                  | Content                                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With `next`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
+| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With Next.js selected in `frontend.react.framework`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
 | `api-client/mutator.ts` | `customInstance`, used by every request. Throws `ApiError` with the status and the parsed body on non-2xx responses |
 | `query-provider.tsx`  | `QueryProvider` with one `QueryClient` per browser session                                                    |
 
@@ -899,7 +1081,7 @@ npx df-skills [options]
 | Skill                   | Purpose                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------- |
 | `df-ps-plan-feature`    | Turns a feature request into a plan of bounded contexts and components                   |
-| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules and the CLI driver       |
+| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules, JSON workflow and legacy CLI driver       |
 | `df-ps-react`           | Chooses, generates (`df-react`), moves and implements pages, widgets, UI-kit and hooks    |
 | `df-ps-implement`       | Fills in the generated backend code                                                      |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |
@@ -912,16 +1094,46 @@ Reports code that breaks the Domain-First rules, grouped by rule, as `file:line:
 npx df-lint [rootFolder]
 ```
 
-`rootFolder` defaults to the one in the configuration file, or `src` without it. The dependency rules come from `rules.dependencies`; `rules.lint` turns checks off by the names in brackets: `{ "rules": { "lint": { "clock": false } } }`. Checks it doesn't mention run. Without `rules` or without a configuration file, every check runs with the default dependency rules. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
+`rootFolder` defaults to the one in the configuration file, or `src` without it. The dependency rules come from `backend.rules.dependencies`; `backend.rules.lint` turns checks off by the names in brackets: `{ "backend": { "rules": { "lint": { "clock": false } } } }`. Checks it doesn't mention run. Without `backend.rules` or without a configuration file, every check runs with the default dependency rules. A configuration file of an earlier major version stops it with exit code 1 and `run npx df-upgrade`, before anything is checked. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
 
 | Rule                       | Reported                                                                                                   |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Context isolation (`context-isolation`) | A bounded context importing another one                                                                    |
+| Context isolation (`context-isolation`) | A bounded context importing another one outside cross-context port adapters and their matching handler wiring                                                                    |
 | Shared Kernel (`shared-kernel`) | `shared-kernel/` importing a context outside its `domain/errors`; the in-memory DB may also import domain models  |
-| Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and command and query contracts, or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
+| Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and command/query contracts (and permitted neighboring handlers), or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
 | Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
+
+## `df-upgrade`
+
+Brings the project up to date after upgrading the package to a new major version.
+
+```bash
+npx df-upgrade [--dry-run] [--yes]
+```
+
+| Option         | Effect                                                     |
+| -------------- | ---------------------------------------------------------- |
+| `--dry-run`    | Print the plan and write nothing                          |
+| `-y`, `--yes`  | Apply without asking, optional steps included              |
+| `-h`, `--help` | Print help and exit                                        |
+
+**Behavior**
+
+- Runs in the [project root](#project-root) and needs the configuration file; invalid JSON exits with 1.
+- Each upgrade step detects from the project's shape whether it applies, so the command needs no recorded version and can run any number of times. With nothing to do it prints `Everything is up to date.`
+- Steps are `required` (other commands refuse to run without them), `optional` (changes to generated code the user may have edited; each asks `Apply this optional step?`) or `manual` (printed under `Do it yourself:`).
+- It prints the plan of every applicable step, asks `Apply?` (default: Yes) and writes all changes together. No discards everything and prints `Cancelled: nothing was written.`
+- After a change it reminds to update the agent skills with `npx df-skills`.
+
+**Steps from 7.x**
+
+| Step | Kind | Change |
+| --- | --- | --- |
+| Split the config into sections | required | `rootFolder` → `project.rootFolder`; `domainFirstPackages`, `withInMemoryDb`, `testingLibrary`, `rules` → `backend`; `useReact: true` and `storybookFramework` → `frontend.react`, `useReact: false` → no frontend section. Unknown fields are kept |
+| Record the frontend framework | required | `frontend.react.framework`: `next` when `next` is declared in `package.json`, otherwise `react`. Applies to any React section without a framework |
+| Move the default persistence implementation | required | `defaultPersistenceLayerImplementation` becomes the first primary type of `backend.implementations.repositories`, `commands` and `queries`; a value that is not a kebab-case label is dropped |
 
 ## Runtime semantics
 
@@ -934,5 +1146,5 @@ npx df-lint [rootFolder]
 | Edits             | Constructor and factory edits during dependency selection change existing files without an overwrite question.                  |
 | Interruption      | Interrupting at any prompt leaves the project unchanged.                                                                        |
 | Folders           | Missing folders are created.                                                                                                     |
-| State             | The configuration file is the only state. Bounded contexts, aggregates, error namespaces, controllers, wired modules and React modules are found by scanning the folders on each run. |
+| State             | Project settings and saved implementation types live in the configuration file (`backend.implementations` for choices). Bounded contexts, aggregates, error namespaces, controllers, wired modules and React modules are found by scanning the folders on each run. |
 | Installation      | No command installs packages or runs project scripts.                                                                            |

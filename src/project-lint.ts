@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { LintCheck } from './config-file';
 import {
+    crossContextImportAllowed,
+    isCrossContextImplementation
+} from './context-dependencies';
+import {
     type DependencyRules,
     defaultDependencyRules,
     fileModuleKind
@@ -11,6 +15,8 @@ import {
     canDependOn,
     findWiredModules,
     moduleKindOf,
+    namedImportFiles,
+    readWiredModule,
     type WiredModule,
     wiredDependencyNames
 } from './wiring';
@@ -269,6 +275,15 @@ const importViolations = (
         const source = fs.readFileSync(file, 'utf8');
         const from = locate(file);
         const ownContext = inside(contextsFolder, file)?.[0];
+        const directWiring =
+            ownContext &&
+            from?.segments[0] === 'wiring' &&
+            readWiredModule(
+                file,
+                path.join(contextsFolder, ownContext)
+            )?.implementations.some((implementation) =>
+                isCrossContextImplementation(implementation.file)
+            );
         const report = (check: LintCheck, rule: string, imported: Import) =>
             violations.push({
                 check,
@@ -285,9 +300,16 @@ const importViolations = (
             }
             const to = locate(target);
             const targetContext = inside(contextsFolder, target)?.[0];
+            const crossContextAllowed =
+                crossContextImportAllowed(file, target) === true &&
+                (from?.segments[0] !== 'wiring' || directWiring);
 
             if (ownContext) {
-                if (targetContext && targetContext !== ownContext) {
+                if (
+                    targetContext &&
+                    targetContext !== ownContext &&
+                    !crossContextAllowed
+                ) {
                     report(
                         'context-isolation',
                         `[${ownContext}] imports another context:`,
@@ -349,6 +371,9 @@ const importViolations = (
             }
 
             if (!from || !to) {
+                continue;
+            }
+            if (crossContextAllowed) {
                 continue;
             }
             if (isSpec(file)) {
@@ -414,12 +439,24 @@ const wiringViolations = (
     ];
     const violations: Violation[] = [];
 
+    const allModules = new Map(
+        owners
+            .flatMap(({ modules }) => modules)
+            .map((module) => [module.wireFile, module])
+    );
+    const aliases = readAliases(projectRoot);
+
     for (const { name, modules } of owners) {
         const visible = new Map<string, WiredModule>(
             [...sharedModules, ...modules].map((x) => [x.wireName, x])
         );
         for (const consumer of modules) {
             const source = fs.readFileSync(consumer.wireFile, 'utf8');
+            const imported = namedImportFiles(
+                source,
+                consumer.wireFile,
+                (specifier, file) => resolveSpecifier(specifier, file, aliases)
+            );
             for (const implementation of consumer.implementations) {
                 let dependencies: string[];
                 try {
@@ -434,8 +471,15 @@ const wiringViolations = (
                     new RegExp(`wireClass\\(\\s*${implementation.className}\\b`)
                 );
                 for (const dependency of dependencies) {
-                    const candidate = visible.get(dependency);
-                    if (!candidate || canDependOn(consumer, candidate, rules)) {
+                    const target = imported.get(dependency);
+                    // Barrels and unresolved files fall back to the wire name.
+                    const candidate =
+                        (target ? allModules.get(target) : undefined) ??
+                        visible.get(dependency);
+                    if (
+                        !candidate ||
+                        canDependOn(consumer, candidate, rules, implementation)
+                    ) {
                         continue;
                     }
                     const index = source.indexOf(dependency, listStart);

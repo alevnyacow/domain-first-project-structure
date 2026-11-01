@@ -1,12 +1,12 @@
-import { input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import { input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 
 export const scaffoldReactUIKitComponent = async (
     presentationReactFolder: Folder
 ) => {
-    const name = await input({ message: 'Name: ' });
+    const name = await input({ key: 'name', message: 'Name: ' });
     const { ClassName, fileName } = new UnknownFormatNaming(name);
 
     const componentFolder = presentationReactFolder.subitem([
@@ -29,7 +29,8 @@ export const ${ClassName}: FC<${ClassName}Props> = (props) => {
         `.trim()
     );
 
-    const { storybookFramework } = ConfigFile.Instance.data;
+    const { storybookFramework } =
+        ConfigFile.Instance.data.frontend?.react ?? {};
 
     if (storybookFramework) {
         componentFolder.createFile(

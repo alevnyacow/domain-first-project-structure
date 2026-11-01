@@ -34,12 +34,10 @@ export const contractKinds: ContractKind[] = [
 ];
 
 const withWiring = () =>
-    ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire');
+    ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
 const withHandlers = () =>
-    ConfigFile.Instance.data.domainFirstPackages.includes(
-        '@domain-first/handlers'
-    );
+    ConfigFile.backend.domainFirstPackages.includes('@domain-first/handlers');
 
 /**
  * The contract's own file: the repository of an aggregate, the abstract

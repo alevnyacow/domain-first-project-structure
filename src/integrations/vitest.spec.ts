@@ -40,11 +40,8 @@ const setup = (
     fs.writeFileSync(
         configPath,
         JSON.stringify({
-            rootFolder,
-            domainFirstPackages: [],
-            defaultPersistenceLayerImplementation: 'api',
-            useReact: false,
-            testingLibrary
+            project: { rootFolder },
+            backend: { domainFirstPackages: [], testingLibrary }
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
@@ -65,9 +62,9 @@ test('adds config, scripts, gitignore entry and testing library with deferred wr
     expect(content).toContain('"src/server/bounded-contexts/**/*.ts"');
     expect(content).toContain('"src/server/shared-kernel/wiring/**"');
     expect(content).not.toContain('@domain-first/handlers-next');
-    expect(JSON.parse(fs.readFileSync(configPath, 'utf8')).testingLibrary).toBe(
-        'vitest'
-    );
+    expect(
+        JSON.parse(fs.readFileSync(configPath, 'utf8')).backend.testingLibrary
+    ).toBe('vitest');
     const manifest = JSON.parse(
         fs.readFileSync(path.join(project, 'package.json'), 'utf8')
     );
@@ -114,7 +111,7 @@ test('keeps another testing library when replacement is declined', async () => {
     expect(await addVitest()).toEqual([]);
     writePendingChanges();
     expect(fs.existsSync(vitestConfigPath)).toBe(false);
-    expect(JSON.parse(fs.readFileSync(configPath, 'utf8')).testingLibrary).toBe(
-        'bun:test'
-    );
+    expect(
+        JSON.parse(fs.readFileSync(configPath, 'utf8')).backend.testingLibrary
+    ).toBe('bun:test');
 });

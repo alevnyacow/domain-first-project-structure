@@ -1,17 +1,23 @@
-import { confirm, input } from '@inquirer/prompts';
 import { ConfigFile } from '../config-file';
+import { hasNeighboringBoundedContext } from '../context-dependencies';
 import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
+import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import {
+    envBranchedWireArgument,
+    offersTestImplementation
+} from '../wire-branches';
+import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
 export const scaffoldNewApplicationPort = async (
     boundedContextFolder: Folder
 ) => {
-    const name = await input({ message: 'Name: ' });
+    const name = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.Instance.data.testingLibrary);
+    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
 
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
@@ -31,20 +37,36 @@ export abstract class ${naming.ClassName} {
             `.trim()
     );
 
-    const implementationType = await input({
-        message: 'Adapter implementation type:',
-        default: 'api'
-    });
+    const crossContext = hasNeighboringBoundedContext(
+        boundedContextFolder.path
+    );
+    const { label: implementationType } = await promptImplementationType(
+        'Adapter implementation type:',
+        'ports',
+        {
+            crossContext
+        }
+    );
 
-    const addTestImplementation = await confirm({
-        message: 'With test implementation'
-    });
+    const addTestImplementation =
+        offersTestImplementation() &&
+        (await confirm({
+            key: 'withTestImplementation',
+            message: 'With test implementation'
+        }));
     let testImplementationType = '';
     if (addTestImplementation) {
-        testImplementationType = await input({
-            message: 'Test adapter implementation type:',
-            default: 'mock'
-        });
+        testImplementationType = (
+            await promptImplementationType(
+                'Test adapter implementation type:',
+                'ports',
+                {
+                    existing: [implementationType],
+                    purpose: 'test',
+                    crossContext
+                }
+            )
+        ).label;
     }
 
     const implementationTypes = [implementationType, testImplementationType]
@@ -71,9 +93,9 @@ export abstract class ${naming.ClassName} {
         applicationPortsFolder.createFile(
             `${naming.fileName}.spec.ts`,
             `
-import { describe, test, expect, beforeEach } from '${ConfigFile.Instance.data.testingLibrary}'
+import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
 ${
-    ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire')
+    ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
         ? `import { type ${naming.ClassName} } from './${naming.fileName}'
 import { wire${naming.ClassName} } from '../../wiring/application-ports/wire-${naming.fileName}'`
         : `import { ${implementationNaming.ClassName}${naming.ClassName} } from '../../infrastructure/application-adapters/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}'
@@ -84,11 +106,11 @@ type ${naming.ClassName} = ${implementationNaming.ClassName}${naming.ClassName}`
 let ${naming.variableName}: ${naming.ClassName}
 
 beforeEach(() => {
-    ${naming.variableName} = ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? `wire${naming.ClassName}()` : `new ${implementationNaming.ClassName}${naming.ClassName}()`}
+    ${naming.variableName} = ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? `wire${naming.ClassName}()` : `new ${implementationNaming.ClassName}${naming.ClassName}()`}
 })
 
 describe('${naming.withSpaces}', () => {
-    test('can be ${ConfigFile.Instance.data.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
+    test('can be ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
         expect(${naming.variableName}).toBeDefined()
     })
 })
@@ -96,11 +118,7 @@ describe('${naming.withSpaces}', () => {
         );
     }
 
-    if (
-        ConfigFile.Instance.data.domainFirstPackages.includes(
-            '@domain-first/wire'
-        )
-    ) {
+    if (ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')) {
         const wireFile = wiringFolder.createFile(
             `wire-${naming.fileName}.ts`,
             `
@@ -132,11 +150,10 @@ ${implementationTypes
     )
     .join('\n\n')}
 
-export const wire${naming.ClassName} = envBranchedWire({
-    test: wire${new UnknownFormatNaming(`${implementationTypes.at(-1)!}-implementation`).ClassName},
-    development: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName},
-    production: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName}
-})
+export const wire${naming.ClassName} = envBranchedWire(${envBranchedWireArgument(
+                `wire${new UnknownFormatNaming(`${implementationTypes.at(-1)!}-implementation`).ClassName}`,
+                `wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName}`
+            )})
 
                 `.trim()
         );
