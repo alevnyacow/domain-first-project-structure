@@ -1,3 +1,10 @@
+# [8.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.0.0...v8.1.0) (2026-11-01)
+
+
+### Features
+
+* next page routes changing possibility via page move/rename ([0397b4b](https://github.com/alevnyacow/domain-first-project-structure/commit/0397b4bf5a7d9ffef441c920783f1291cda4f763))
+
 # [8.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.2.0...v8.0.0) (2026-11-01)
 
 
