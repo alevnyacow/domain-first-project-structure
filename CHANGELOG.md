@@ -1,3 +1,10 @@
+# [8.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.1.1...v8.2.0) (2026-11-01)
+
+
+### Features
+
+* add df-graph and searchable menus ([d53f3c3](https://github.com/alevnyacow/domain-first-project-structure/commit/d53f3c384ac651866e6d020fb2d4263506a05a1f))
+
 ## [8.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.1.0...v8.1.1) (2026-11-01)
 
 
