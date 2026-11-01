@@ -14,18 +14,93 @@ import { NestedName } from './nested-name';
 
 export type { MovePlan } from './module-move';
 
-export type ReactModuleKind = 'page' | 'widget';
+export type ReactModuleKind = 'page' | 'widget' | 'ui-kit' | 'hook';
 
 export type ReactModule = {
     kind: ReactModuleKind;
-    /** Nested name, e.g. `admin/users`. */
+    /** Name, nested for pages and widgets, e.g. `admin/users`. */
     name: string;
-    /** The page file or the widget folder. */
+    /** The page or hook file; the widget or UI-kit folder. */
     path: string;
     /** The name part of file names, e.g. `admin-users` in `admin-users-page.tsx`. */
     fileBase: string;
     ClassName: string;
 };
+
+type ReactKindLayout = {
+    /** Folder under `presentation/react`. */
+    folder: string;
+    /** Names may contain folders (`admin/users`). */
+    nested: boolean;
+    /** The module is a folder (widget, UI-kit) rather than files. */
+    inFolder: boolean;
+    /** For file modules: the files of a module, by file base. */
+    ownFile?: (fileBase: string) => RegExp;
+    /** Where a module of this name lives. */
+    target: (reactFolder: string, name: NestedName) => string;
+    /** Code names: a prefix group and what follows the class name. */
+    classPrefix: string;
+    classSuffix: string;
+    /** Generated story title, followed by renames. */
+    storyTitle?: (segments: string[]) => string;
+};
+
+export const reactKindLayouts: Record<ReactModuleKind, ReactKindLayout> = {
+    page: {
+        folder: 'pages',
+        nested: true,
+        inFolder: false,
+        ownFile: (fileBase) =>
+            new RegExp(`^${escapeRegExp(fileBase)}-page(?:\\.|$)`),
+        target: (reactFolder, { folders, fileName }) =>
+            path.join(reactFolder, 'pages', ...folders, `${fileName}-page.tsx`),
+        classPrefix: '(use)?',
+        classSuffix: 'Page'
+    },
+    widget: {
+        folder: 'widgets',
+        nested: true,
+        inFolder: true,
+        target: (reactFolder, { folders, folderName }) =>
+            path.join(reactFolder, 'widgets', ...folders, folderName),
+        classPrefix: '(use)?',
+        classSuffix: 'Widget|UIModel',
+        storyTitle: (segments) => ['Widgets', ...segments].join('/')
+    },
+    'ui-kit': {
+        folder: 'ui-kit',
+        nested: false,
+        inFolder: true,
+        target: (reactFolder, { fileName }) =>
+            path.join(reactFolder, 'ui-kit', fileName),
+        classPrefix: '()',
+        classSuffix: 'Props(?![\\w$])|(?![\\w$])',
+        storyTitle: (segments) => `UI-kit/${segments.join('')}`
+    },
+    hook: {
+        folder: 'hooks',
+        nested: false,
+        inFolder: false,
+        ownFile: (fileBase) =>
+            new RegExp(`^use-${escapeRegExp(fileBase)}(?:\\.|$)`),
+        target: (reactFolder, { fileName }) =>
+            path.join(reactFolder, 'hooks', `use-${fileName}.ts`),
+        classPrefix: '(use)',
+        classSuffix: '(?![\\w$])'
+    }
+};
+
+/** How menus name each kind, singular and plural. */
+export const reactKindTitles: Record<ReactModuleKind, [string, string]> = {
+    page: ['Page', 'pages'],
+    widget: ['Widget', 'widgets'],
+    'ui-kit': ['UI-kit component', 'UI-kit components'],
+    hook: ['Shared hook', 'shared hooks']
+};
+
+/** A hook's name is entered without `use-`, as its generator takes it. */
+export const reactModuleName = (kind: ReactModuleKind, rawName: string) =>
+    kind === 'hook' ? rawName.trim().replace(/^use-/, '') : rawName;
 
 /**
  * Files made before names used the whole path (`admin/users-page.tsx`)
@@ -48,50 +123,102 @@ const declaredClassName = (filePath: string, suffix: string, name: string) => {
     return declared ?? new NestedName(name).ClassName;
 };
 
+const findUiKit = (reactFolder: string): ReactModule[] => {
+    const root = path.join(reactFolder, 'ui-kit');
+    if (!fs.existsSync(root)) return [];
+    return fs
+        .readdirSync(root, { withFileTypes: true })
+        .filter(
+            (entry) =>
+                entry.isDirectory() &&
+                fs.existsSync(path.join(root, entry.name, `${entry.name}.tsx`))
+        )
+        .map(({ name }) => ({
+            kind: 'ui-kit' as const,
+            name,
+            path: path.join(root, name),
+            fileBase: name,
+            ClassName: declaredClassName(
+                path.join(root, name, `${name}.tsx`),
+                '',
+                name
+            )
+        }));
+};
+
+const findHooks = (reactFolder: string): ReactModule[] => {
+    const root = path.join(reactFolder, 'hooks');
+    if (!fs.existsSync(root)) return [];
+    return fs
+        .readdirSync(root)
+        .filter(
+            (file) =>
+                /^use-.+\.tsx?$/.test(file) && !/\.(spec|test)\./.test(file)
+        )
+        .map((file) => {
+            const name = file.replace(/^use-/, '').replace(/\.tsx?$/, '');
+            const content = fs.readFileSync(path.join(root, file), 'utf8');
+            return {
+                kind: 'hook' as const,
+                name,
+                path: path.join(root, file),
+                fileBase: name,
+                ClassName:
+                    content.match(
+                        /export\s+(?:const|function)\s+use(\w+)\b/
+                    )?.[1] ?? new NestedName(name).ClassName
+            };
+        });
+};
+
 export const findReactModules = (
     reactFolder: string,
     kind: ReactModuleKind
 ): ReactModule[] => {
     const modules =
-        kind === 'page'
-            ? walk(path.join(reactFolder, 'pages'))
-                  .filter((file) => file.endsWith('-page.tsx'))
-                  .map((file) => {
-                      const folders = path
-                          .relative(
-                              path.join(reactFolder, 'pages'),
-                              path.dirname(file)
-                          )
-                          .split(path.sep)
-                          .filter((segment) => !!segment);
-                      const fileBase = path.basename(file, '-page.tsx');
-                      const name = nestedName(folders, fileBase);
-                      return {
-                          kind,
-                          name,
-                          path: file,
-                          fileBase,
-                          ClassName: declaredClassName(file, 'Page', name)
-                      };
-                  })
-            : walk(path.join(reactFolder, 'widgets'))
-                  .filter((file) => file.endsWith('-widget.tsx'))
-                  .map((file) => {
-                      const folder = path.dirname(file);
-                      const name = toPosix(
-                          path.relative(
-                              path.join(reactFolder, 'widgets'),
-                              folder
-                          )
-                      );
-                      return {
-                          kind,
-                          name,
-                          path: folder,
-                          fileBase: path.basename(file, '-widget.tsx'),
-                          ClassName: declaredClassName(file, 'Widget', name)
-                      };
-                  });
+        kind === 'ui-kit'
+            ? findUiKit(reactFolder)
+            : kind === 'hook'
+              ? findHooks(reactFolder)
+              : kind === 'page'
+                ? walk(path.join(reactFolder, 'pages'))
+                      .filter((file) => file.endsWith('-page.tsx'))
+                      .map((file) => {
+                          const folders = path
+                              .relative(
+                                  path.join(reactFolder, 'pages'),
+                                  path.dirname(file)
+                              )
+                              .split(path.sep)
+                              .filter((segment) => !!segment);
+                          const fileBase = path.basename(file, '-page.tsx');
+                          const name = nestedName(folders, fileBase);
+                          return {
+                              kind,
+                              name,
+                              path: file,
+                              fileBase,
+                              ClassName: declaredClassName(file, 'Page', name)
+                          };
+                      })
+                : walk(path.join(reactFolder, 'widgets'))
+                      .filter((file) => file.endsWith('-widget.tsx'))
+                      .map((file) => {
+                          const folder = path.dirname(file);
+                          const name = toPosix(
+                              path.relative(
+                                  path.join(reactFolder, 'widgets'),
+                                  folder
+                              )
+                          );
+                          return {
+                              kind,
+                              name,
+                              path: folder,
+                              fileBase: path.basename(file, '-widget.tsx'),
+                              ClassName: declaredClassName(file, 'Widget', name)
+                          };
+                      });
     return modules.sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -100,10 +227,10 @@ const targetPath = (
     module: ReactModule,
     rawName: string
 ) => {
-    const { folders, folderName, fileName } = new NestedName(rawName);
-    return module.kind === 'page'
-        ? path.join(reactFolder, 'pages', ...folders, `${fileName}-page.tsx`)
-        : path.join(reactFolder, 'widgets', ...folders, folderName);
+    return reactKindLayouts[module.kind].target(
+        reactFolder,
+        new NestedName(reactModuleName(module.kind, rawName))
+    );
 };
 
 export const validateMove = (
@@ -113,6 +240,8 @@ export const validateMove = (
 ) => {
     const nameError = NestedName.validate(rawName);
     if (nameError !== true) return nameError;
+    if (!reactKindLayouts[module.kind].nested && /[\\/]/.test(rawName))
+        return 'UI-kit components and shared hooks have no folders: enter a name without "/"';
 
     const target = targetPath(reactFolder, module, rawName);
     if (target !== module.path && fs.existsSync(target)) {
@@ -162,26 +291,26 @@ export const moveReactModule = (
     rawName: string,
     route?: RouteMove
 ): MovePlan => {
-    const newName = new NestedName(rawName);
+    const layout = reactKindLayouts[module.kind];
+    const newName = new NestedName(reactModuleName(module.kind, rawName));
     const target = targetPath(reactFolder, module, rawName);
     const newClassName = newName.ClassName;
     const renameFile = (name: string) =>
         name.replace(
-            new RegExp(`^(use-)?${escapeRegExp(module.fileBase)}(?=[-.])`),
+            new RegExp(`^(use-)?${escapeRegExp(module.fileBase)}(?=[-.]|$)`),
             (_, use = '') => `${use}${newName.fileName}`
         );
 
-    const oldFolder =
-        module.kind === 'page' ? path.dirname(module.path) : module.path;
-    const newFolder = module.kind === 'page' ? path.dirname(target) : target;
+    const oldFolder = layout.inFolder ? module.path : path.dirname(module.path);
+    const newFolder = layout.inFolder ? target : path.dirname(target);
     const ownsPath = (candidate: string) =>
-        module.kind === 'page'
-            ? path.dirname(candidate) === oldFolder &&
-              new RegExp(
-                  `^${escapeRegExp(module.fileBase)}-page(?:\\.|$)`
-              ).test(path.basename(candidate))
-            : candidate === oldFolder ||
-              candidate.startsWith(`${oldFolder}${path.sep}`);
+        layout.inFolder
+            ? candidate === oldFolder ||
+              candidate.startsWith(`${oldFolder}${path.sep}`)
+            : path.dirname(candidate) === oldFolder &&
+              (layout.ownFile as (fileBase: string) => RegExp)(
+                  module.fileBase
+              ).test(path.basename(candidate));
     const routeFileSet = new Set(route ? routeFiles(route.from) : []);
     const routeTarget = (candidate: string) => {
         if (!route) return undefined;
@@ -204,35 +333,29 @@ export const moveReactModule = (
         return path.join(newFolder, ...segments);
     };
 
-    const moduleFiles =
-        module.kind === 'page'
-            ? fs
-                  .readdirSync(oldFolder)
-                  .map((name) => path.join(oldFolder, name))
-                  .filter(
-                      (file) => fs.statSync(file).isFile() && ownsPath(file)
-                  )
-            : walk(oldFolder);
+    const moduleFiles = reactModuleFiles(module);
     const moves = new Map(
         [...moduleFiles, ...routeFileSet].map(
             (file) => [file, movedPath(file) ?? file] as const
         )
     );
 
-    const suffixes = module.kind === 'page' ? 'Page' : 'Widget|UIModel';
     const classPattern = new RegExp(
-        `(?<![\\w$])(use)?${escapeRegExp(module.ClassName)}(?=${suffixes})`,
+        `(?<![\\w$])${layout.classPrefix}${escapeRegExp(module.ClassName)}(?=${layout.classSuffix})`,
         'g'
     );
-    const oldTitle = `Widgets/${module.name
-        .split('/')
-        .map((segment) => new NestedName(segment).ClassName)
-        .join('/')}`;
-    const titlePattern = new RegExp(
-        `(['"\`])${escapeRegExp(oldTitle)}\\1`,
-        'g'
+    const oldTitle = layout.storyTitle?.(
+        module.kind === 'ui-kit'
+            ? [module.ClassName]
+            : module.name
+                  .split('/')
+                  .map((segment) => new NestedName(segment).ClassName)
     );
-    const newTitle = ['Widgets', ...newName.classNameSegments].join('/');
+    const titlePattern =
+        oldTitle && new RegExp(`(['"\`])${escapeRegExp(oldTitle)}\\1`, 'g');
+    const newTitle = layout.storyTitle?.(
+        module.kind === 'ui-kit' ? [newClassName] : newName.classNameSegments
+    );
 
     return stageModuleMove({
         projectRoot,
@@ -244,9 +367,9 @@ export const moveReactModule = (
         rename: (content, { moved }) => {
             const renamed = content.replace(
                 classPattern,
-                (_, use = '') => `${use}${newClassName}`
+                (_, use) => `${use ?? ''}${newClassName}`
             );
-            return moved && module.kind === 'widget'
+            return moved && titlePattern
                 ? renamed.replace(
                       titlePattern,
                       (_, quote) => `${quote}${newTitle}${quote}`
@@ -271,11 +394,17 @@ export const pageRouteFolder = (appFolder: string, page: ReactModule) => {
         : undefined;
 };
 
-/** The files of a page (it and its same-named companions) or a widget. */
+/**
+ * The files of a module: a widget's or UI-kit component's folder, a page or
+ * hook file with its same-named companions.
+ */
 const reactModuleFiles = (module: ReactModule) => {
-    if (module.kind === 'widget') return walk(module.path);
+    const layout = reactKindLayouts[module.kind];
+    if (layout.inFolder) return walk(module.path);
     const folder = path.dirname(module.path);
-    const own = new RegExp(`^${escapeRegExp(module.fileBase)}-page(?:\\.|$)`);
+    const own = (layout.ownFile as (fileBase: string) => RegExp)(
+        module.fileBase
+    );
     return fs
         .readdirSync(folder, { withFileTypes: true })
         .filter((entry) => entry.isFile() && own.test(entry.name))
@@ -311,7 +440,7 @@ export const deleteReactModule = (
     );
     const isModule = (resolved: string) =>
         stems.has(resolved) ||
-        (module.kind === 'widget' &&
+        (reactKindLayouts[module.kind].inFolder &&
             (resolved === module.path ||
                 resolved.startsWith(`${module.path}${path.sep}`)));
 

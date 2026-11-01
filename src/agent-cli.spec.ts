@@ -888,3 +888,109 @@ test('a page without its own route takes no deleteRoute', async () => {
     expect(read('app/orders/page.tsx')).toBe('custom route');
     expect(exists('src/presentation/react/pages/orders-page.tsx')).toBe(false);
 });
+
+test('UI-kit components and shared hooks move with their files, names, story titles and importers', async () => {
+    ConfigFile.update({
+        frontend: {
+            react: {
+                framework: 'next',
+                storybookFramework: '@storybook/react-vite'
+            }
+        }
+    });
+    writePendingChanges();
+    await executeAgentRequest('df-react', {
+        operation: 'ui-kit-component',
+        name: 'button'
+    });
+    await executeAgentRequest('df-react', {
+        operation: 'shared-hook',
+        name: 'debounce'
+    });
+    write(
+        'src/presentation/react/widgets/search.tsx',
+        "import { Button, type ButtonProps } from '../ui-kit/button'\nimport { useDebounce } from '../hooks/use-debounce'\nexport const props: ButtonProps = {}\nexport const parts = [Button, useDebounce]"
+    );
+    const kit = 'src/presentation/react/ui-kit';
+    await executeAgentRequest('df-react', {
+        operation: 'move-ui-kit-component',
+        module: 'button',
+        name: 'primary-button'
+    });
+    expect(exists(`${kit}/button`)).toBe(false);
+    expect(read(`${kit}/primary-button/primary-button.tsx`)).toContain(
+        'export const PrimaryButton: FC<PrimaryButtonProps>'
+    );
+    expect(read(`${kit}/primary-button/primary-button.stories.tsx`)).toContain(
+        "title: 'UI-kit/PrimaryButton'"
+    );
+    expect(read(`${kit}/primary-button/index.ts`)).toBe(
+        "export * from './primary-button'"
+    );
+    await executeAgentRequest('df-react', {
+        operation: 'move-shared-hook',
+        module: 'debounce',
+        name: 'use-throttle'
+    });
+    expect(exists('src/presentation/react/hooks/use-debounce.ts')).toBe(false);
+    expect(read('src/presentation/react/hooks/use-throttle.ts')).toContain(
+        'export const useThrottle'
+    );
+    expect(
+        read('src/presentation/react/widgets/search.tsx')
+    ).toBe(`import { PrimaryButton, type PrimaryButtonProps } from '../ui-kit/primary-button'
+import { useThrottle } from '../hooks/use-throttle'
+export const props: PrimaryButtonProps = {}
+export const parts = [PrimaryButton, useThrottle]`);
+    expect(
+        (describeAgentCommand('df-react').project as any).reactModules
+    ).toEqual(
+        expect.arrayContaining([
+            {
+                kind: 'ui-kit',
+                name: 'primary-button',
+                file: `${kit}/primary-button`
+            },
+            {
+                kind: 'hook',
+                name: 'throttle',
+                file: 'src/presentation/react/hooks/use-throttle.ts'
+            }
+        ])
+    );
+});
+
+test('a UI-kit component in use is not deleted; an unused hook is', async () => {
+    await executeAgentRequest('df-react', {
+        operation: 'ui-kit-component',
+        name: 'badge'
+    });
+    await executeAgentRequest('df-react', {
+        operation: 'shared-hook',
+        name: 'toggle'
+    });
+    write(
+        'src/presentation/react/widgets/card.tsx',
+        "import { Badge } from '../ui-kit/badge'\nexport const parts = [Badge]"
+    );
+    const error = await executeAgentRequest('df-react', {
+        operation: 'delete-ui-kit-component',
+        module: 'badge'
+    }).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
+    expect(error.details.usedBy).toEqual([
+        [
+            'src/presentation/react/widgets/card.tsx',
+            'src/presentation/react/ui-kit/badge'
+        ]
+    ]);
+    const result = await executeAgentRequest('df-react', {
+        operation: 'delete-shared-hook',
+        module: 'toggle'
+    });
+    expect(result.files.deleted).toEqual([
+        'src/presentation/react/hooks/use-toggle.ts'
+    ]);
+    expect(exists('src/presentation/react/hooks')).toBe(false);
+    expect(exists('src/presentation/react/ui-kit/badge/badge.tsx')).toBe(true);
+});

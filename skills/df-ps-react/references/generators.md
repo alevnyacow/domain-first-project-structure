@@ -25,6 +25,10 @@ Page and widget names may have folders before them: `text:admin/panel/users` →
 
 Move or rename a page or a widget only with df-react, never by hand: `"pick:Move or rename widget" "pick:admin/users" text:team/users "yes"` (`Move or rename page` for pages; the list shows nested names, the default new name is the current one). It moves the widget folder (or the page with its `<name>-page.*` files), renames files and `<Name>Widget…` / `use<Name>UIModel` / `<Name>Page…` to the new name, updates a generated story title and every import of the module (relative and `tsconfig` aliases; importers of barrels re-exporting it get the renamed classes), and fixes relative imports inside it. Before `Apply?` it prints the files to move and to update; check them. An existing target or a move into itself is rejected.
 
+## Move, rename or delete a UI-kit component / shared hook
+
+The same runs exist for them: `"pick:Move or rename UI-kit component" pick:button text:primary-button yes`, `"pick:Move or rename shared hook" pick:debounce text:throttle yes`, `"pick:Delete UI-kit component" pick:badge yes`, `"pick:Delete shared hook" pick:toggle yes`. Names have no folders; a hook's name is entered without `use-`. A move renames the folder or `use-<name>.*` files, `<Name>` / `<Name>Props` / `use<Name>`, the `UI-kit/<Name>` story title and every import; a delete is refused while other files import the module.
+
 ## Delete page / widget
 
 Delete a page or a widget only with df-react: `"pick:Delete widget" "pick:orders/filters" yes` (`Delete page` for pages; with Next.js and the page's own route, a `yes`/`no` for deleting the route comes before `Delete?`). It deletes the widget folder (or the page with its `<name>-page.*` files) and, if confirmed, the route folder's own files. It refuses while other files import the module and lists them; nothing changes then.

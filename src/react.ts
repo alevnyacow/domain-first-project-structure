@@ -71,8 +71,12 @@ Options:
                 'New shared hook',
                 'Move or rename widget',
                 'Move or rename page',
+                'Move or rename UI-kit component',
+                'Move or rename shared hook',
                 'Delete widget',
-                'Delete page'
+                'Delete page',
+                'Delete UI-kit component',
+                'Delete shared hook'
             ]
         });
         switch (action) {
@@ -106,6 +110,22 @@ Options:
             }
             case 'Delete page': {
                 await deleteReactModuleUseCase(reactFolder, 'page');
+                return;
+            }
+            case 'Move or rename UI-kit component': {
+                await moveReactModuleUseCase(reactFolder, 'ui-kit');
+                return;
+            }
+            case 'Move or rename shared hook': {
+                await moveReactModuleUseCase(reactFolder, 'hook');
+                return;
+            }
+            case 'Delete UI-kit component': {
+                await deleteReactModuleUseCase(reactFolder, 'ui-kit');
+                return;
+            }
+            case 'Delete shared hook': {
+                await deleteReactModuleUseCase(reactFolder, 'hook');
                 return;
             }
             default: {

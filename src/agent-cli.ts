@@ -24,7 +24,11 @@ import {
     runWithAnswers
 } from './interaction';
 import { ProjectRoot } from './project-root';
-import { findReactModules } from './react-module-move';
+import {
+    findReactModules,
+    type ReactModuleKind,
+    reactKindTitles
+} from './react-module-move';
 import { savePendingChanges } from './save-pending-changes';
 import { systemImplementationChoices } from './system-implementations';
 import {
@@ -236,19 +240,20 @@ export const describeAgentCommand = (command: AgentCommand) => {
                   })),
                   integrations: integrationDescriptionsSafe(configured),
                   reactModules: config?.frontend?.react
-                      ? ['page', 'widget'].flatMap((kind) =>
-                            findReactModules(
-                                path.join(
-                                    root!,
-                                    config.project.rootFolder,
-                                    'presentation/react'
-                                ),
-                                kind as 'page' | 'widget'
-                            ).map((module) => ({
-                                kind,
-                                name: module.name,
-                                file: relative(module.path)
-                            }))
+                      ? (['page', 'widget', 'ui-kit', 'hook'] as const).flatMap(
+                            (kind) =>
+                                findReactModules(
+                                    path.join(
+                                        root!,
+                                        config.project.rootFolder,
+                                        'presentation/react'
+                                    ),
+                                    kind
+                                ).map((module) => ({
+                                    kind,
+                                    name: module.name,
+                                    file: relative(module.path)
+                                }))
                         )
                       : []
               }
@@ -444,16 +449,23 @@ const executeReact = async (request: AgentRequest) => {
         ConfigFile.Instance.data.project.rootFolder,
         'presentation/react'
     ]);
-    if (
-        /^(move|delete)-/.test(request.operation) &&
-        !findReactModules(
-            folder.path,
-            request.operation.endsWith('-page') ? 'page' : 'widget'
-        ).length
-    )
+    const kindOf = (operation: string): ReactModuleKind | undefined =>
+        operation.endsWith('-page')
+            ? 'page'
+            : operation.endsWith('-widget')
+              ? 'widget'
+              : operation.endsWith('-ui-kit-component')
+                ? 'ui-kit'
+                : operation.endsWith('-shared-hook')
+                  ? 'hook'
+                  : undefined;
+    const kind = /^(move|delete)-/.test(request.operation)
+        ? kindOf(request.operation)
+        : undefined;
+    if (kind && !findReactModules(folder.path, kind).length)
         throw new RequestError(
             'TARGET_NOT_FOUND',
-            `No React ${request.operation.endsWith('-page') ? 'pages' : 'widgets'} here.`
+            `No React ${reactKindTitles[kind][1]} here.`
         );
     const actions: Record<string, () => Promise<unknown>> = {
         page: () => scaffoldReactPage(folder),
@@ -463,7 +475,12 @@ const executeReact = async (request: AgentRequest) => {
         'move-page': () => moveReactModuleUseCase(folder, 'page'),
         'move-widget': () => moveReactModuleUseCase(folder, 'widget'),
         'delete-page': () => deleteReactModuleUseCase(folder, 'page'),
-        'delete-widget': () => deleteReactModuleUseCase(folder, 'widget')
+        'delete-widget': () => deleteReactModuleUseCase(folder, 'widget'),
+        'move-ui-kit-component': () => moveReactModuleUseCase(folder, 'ui-kit'),
+        'move-shared-hook': () => moveReactModuleUseCase(folder, 'hook'),
+        'delete-ui-kit-component': () =>
+            deleteReactModuleUseCase(folder, 'ui-kit'),
+        'delete-shared-hook': () => deleteReactModuleUseCase(folder, 'hook')
     };
     return actions[request.operation]();
 };

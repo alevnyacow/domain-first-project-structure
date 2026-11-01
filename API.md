@@ -133,7 +133,7 @@ Dependency availability follows the same context, layer and per-kind rules as th
 
 ### Operations and options
 
-The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`, `delete`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`, `delete-page`, `delete-widget`. Integrations use `operation: "add"` and an `integrations` list.
+The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`, `delete`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`, `delete-page`, `delete-widget`, `move-ui-kit-component`, `move-shared-hook`, `delete-ui-kit-component`, `delete-shared-hook`. Integrations use `operation: "add"` and an `integrations` list.
 
 - `name` and `context` use lowercase kebab-case. React page/widget names allow nested paths. Shared Kernel restrictions match the menus.
 - `implementation` and optional `testImplementation` are `{ "type": "prisma", "save": false }`. The primary type is required for queries, commands, ports and new implementations. `save` defaults to false; true records an ordinary type by category and environment role. System labels are plain `cross-context` / `in-memory`, without the UI prefix. Their existing behavior and boundaries remain in force.
@@ -823,7 +823,7 @@ Repository, command, query and port tests reference wiring factories with `wire`
 
 ## React modules (`df-react`)
 
-`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`, `Delete widget` or `Delete page`. It needs the configuration file and `frontend.react`; otherwise it prints `React is not configured: run df-init --section frontend or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
+`npx df-react` asks for one operation: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`, `Move or rename UI-kit component`, `Move or rename shared hook`, `Delete widget`, `Delete page`, `Delete UI-kit component` or `Delete shared hook`. It needs the configuration file and `frontend.react`; otherwise it prints `React is not configured: run df-init --section frontend or add Storybook with df-integration.` and exits with 1. Staging and overwrite confirmation work as in `df-scaffold`. Modules are written to `<rootFolder>/presentation/react`, `react/` below. None of them is wired or tested.
 
 ### New page
 
@@ -878,6 +878,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 - Imports of the module are updated across the project: relative imports and `tsconfig.json` `paths` aliases such as `@/`. Files importing it through barrels (`export * from`, `export { … } from`) get the renamed names too. Relative imports inside the module are adjusted to its new location.
 - The CLI prints the files to move and the files to update, then asks `Apply?`. Folders left empty are removed.
 - With Next.js (`frontend.react.framework: next`), a page's route at the same path, `app/<folders>/<name>/` (`src/app/…` when that folder exists), is offered to move along when its `page.tsx` renders `<Name>Page`. Yes moves the files of that route folder (`page.tsx`, `layout.tsx` and others) to the new path; subfolders are other routes and stay. Their imports are adjusted, and an emptied route folder is removed. No keeps the route where it is with its import updated. When the target route already has a `page.tsx`, nothing is asked and the CLI prints `<to>/page.tsx already exists: the route <from> stays.`
+- `Move or rename UI-kit component` and `Move or rename shared hook` work the same way with `UI-kit component:` / `Shared hook:` and `New name:`, without folders. A UI-kit component moves with its folder: its files, `<Name>`, `<Name>Props` and the `UI-kit/<Name>` story title follow the new name. A shared hook's `use-<name>.*` files and `use<Name>` follow it; the name is entered without `use-` (a leading `use-` is dropped, as in New shared hook).
 - Entering the current name renames files created before file names used the whole path: `pages/admin/users-page.tsx` becomes `pages/admin/admin-users-page.tsx`.
 - Prints `Nothing to change.` when nothing would change. Answering No prints `Cancelled: nothing was written.`
 
@@ -893,10 +894,10 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 **Behavior**
 
-- Deletes the files that Move or rename would move: a widget's whole folder, a page with the files next to it that share its name. Folders left empty are removed.
+- Deletes the files that Move or rename would move: a widget's or UI-kit component's whole folder, a page or shared hook with the files next to it that share its name. Folders left empty are removed. `Delete UI-kit component` and `Delete shared hook` ask `UI-kit component to delete:` / `Shared hook to delete:`.
 - With Next.js, a page's own route (`app/<folders>/<name>/`, whose `page.tsx` renders `<Name>Page`) is offered to go too: Yes deletes the files of that route folder, while subfolders, which are other routes, stay. No keeps the route, which then still imports the page, so the deletion is refused.
 - While other files import the module, the CLI prints `Nothing was deleted: these files still use it.` with every `file → import`, and nothing changes.
-- In JSON mode, `delete-page` (`module`, optional `deleteRoute`, default true) and `delete-widget` (`module`); a module still in use returns `DELETE_NOT_ALLOWED` with `details.usedBy`.
+- In JSON mode, `delete-page` (`module`, optional `deleteRoute`, default true), `delete-widget`, `delete-ui-kit-component` and `delete-shared-hook` (`module`); a module still in use returns `DELETE_NOT_ALLOWED` with `details.usedBy`.
 
 ## Integrations
 

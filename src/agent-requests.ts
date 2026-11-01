@@ -152,6 +152,10 @@ export const reactRequestSchema = z.discriminatedUnion('operation', [
             )
     }),
     operation('delete-widget', { ...common, module: nestedName }),
+    operation('move-ui-kit-component', { ...common, module: name, name }),
+    operation('move-shared-hook', { ...common, module: name, name }),
+    operation('delete-ui-kit-component', { ...common, module: name }),
+    operation('delete-shared-hook', { ...common, module: name }),
     operation('move-widget', {
         ...common,
         module: nestedName,

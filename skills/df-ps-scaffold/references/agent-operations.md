@@ -121,6 +121,10 @@ The owner configures frontend first. React and Next.js use the same operations. 
 | `move-widget` | `module`, `name` | Same for widgets. Files, imports, code names and generated story titles follow the move. |
 | `delete-page` | `module` | Deletes the page and its `<name>-page.*` files. With Next.js and the page's own route, `deleteRoute` (default true) deletes that route folder's own files too; `false` keeps the route, which still imports the page, so the delete is refused. Omit `deleteRoute` without such a route. |
 | `delete-widget` | `module` | Deletes the widget folder. Refused with `DELETE_NOT_ALLOWED` and `details.usedBy` while other files import it. |
+| `move-ui-kit-component` | `module`, `name` | Kebab-case names without folders. Folder, files, `<Name>`, `<Name>Props`, the `UI-kit/<Name>` story title and imports follow. |
+| `move-shared-hook` | `module`, `name` | Kebab-case names without folders; a leading `use-` is dropped. `use-<name>.*`, `use<Name>` and imports follow. |
+| `delete-ui-kit-component` | `module` | Deletes the component folder. Refused with `DELETE_NOT_ALLOWED` while other files import it. |
+| `delete-shared-hook` | `module` | Deletes `use-<name>.*`. Refused with `DELETE_NOT_ALLOWED` while other files import it. |
 
 All support `dryRun` and `overwrite`. Use CLI moves even for a rename or folder regrouping; an existing target or a move into itself is rejected.
 
