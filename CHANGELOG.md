@@ -1,3 +1,17 @@
+# [8.0.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.2.0...v8.0.0) (2026-11-01)
+
+
+* feat!: add cross-context ports and sectioned project setup ([dd638e6](https://github.com/alevnyacow/domain-first-project-structure/commit/dd638e6d081d6c98452725cc8f1a50239eff4841))
+
+
+### BREAKING CHANGES
+
+* 7.x configs are no longer read; run `npx df-upgrade`
+to convert them. `defaultPersistenceLayerImplementation` is replaced by
+saved implementation types. Next.js
+`frontend.react.framework`. Implementation prompts are selects, and
+df-scaffold rejects unknown arguments.
+
 # [7.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v7.1.1...v7.2.0) (2026-10-28)
 
 
