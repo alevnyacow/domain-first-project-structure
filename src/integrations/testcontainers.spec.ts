@@ -37,9 +37,8 @@ const setup = (
     fs.writeFileSync(
         path.join(project, 'domain-first.project-structure.config.json'),
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: [],
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: [] }
         })
     );
     if (withPrisma) {

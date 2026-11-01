@@ -240,6 +240,5 @@ export const initializeUseCase = async (
         const restSteps = await configureRest(withNextAdapter);
         nextSteps.push(...missingDomainFirstPackages(), ...restSteps);
     }
-    ConfigFile.migrate();
     return nextSteps;
 };

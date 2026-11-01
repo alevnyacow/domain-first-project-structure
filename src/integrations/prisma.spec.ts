@@ -36,9 +36,10 @@ const setup = (rootFolder = '.', wire = false, dependencies = {}) => {
     fs.writeFileSync(
         configPath,
         JSON.stringify({
-            rootFolder,
-            domainFirstPackages: wire ? ['@domain-first/wire'] : [],
-            useReact: false
+            project: { rootFolder },
+            backend: {
+                domainFirstPackages: wire ? ['@domain-first/wire'] : []
+            }
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
@@ -117,9 +118,12 @@ test('supports config only and preserves existing dependencies and implementatio
         path.join(project, 'domain-first.project-structure.config.json'),
         JSON.stringify({
             ...JSON.parse(originalConfig),
-            implementations: {
-                repositories: { primary: ['mongo'], test: ['stub'] },
-                ports: { primary: ['s3'], test: [] }
+            backend: {
+                ...JSON.parse(originalConfig).backend,
+                implementations: {
+                    repositories: { primary: ['mongo'], test: ['stub'] },
+                    ports: { primary: ['s3'], test: [] }
+                }
             }
         })
     );

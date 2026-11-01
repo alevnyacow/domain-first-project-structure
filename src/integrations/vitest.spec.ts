@@ -40,10 +40,8 @@ const setup = (
     fs.writeFileSync(
         configPath,
         JSON.stringify({
-            rootFolder,
-            domainFirstPackages: [],
-            useReact: false,
-            testingLibrary
+            project: { rootFolder },
+            backend: { domainFirstPackages: [], testingLibrary }
         })
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);
@@ -113,7 +111,7 @@ test('keeps another testing library when replacement is declined', async () => {
     expect(await addVitest()).toEqual([]);
     writePendingChanges();
     expect(fs.existsSync(vitestConfigPath)).toBe(false);
-    expect(JSON.parse(fs.readFileSync(configPath, 'utf8')).testingLibrary).toBe(
-        'bun:test'
-    );
+    expect(
+        JSON.parse(fs.readFileSync(configPath, 'utf8')).backend.testingLibrary
+    ).toBe('bun:test');
 });

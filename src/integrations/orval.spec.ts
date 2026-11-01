@@ -54,9 +54,11 @@ const setup = (
                       frontend: { react: { framework } }
                   }
                 : {
-                      rootFolder,
-                      domainFirstPackages: ['@domain-first/handlers-rest'],
-                      useReact
+                      project: { rootFolder },
+                      backend: {
+                          domainFirstPackages: ['@domain-first/handlers-rest']
+                      },
+                      ...(useReact ? { frontend: { react: {} } } : {})
                   }
         )
     );

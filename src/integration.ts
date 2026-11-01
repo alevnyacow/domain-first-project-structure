@@ -2,7 +2,7 @@
 
 import { parseArgs } from 'node:util';
 import { runCLI } from './agent-cli';
-import { ConfigFile } from './config-file';
+import { ConfigFile, outdatedConfigMessage } from './config-file';
 import { addIntegration } from './use-cases';
 
 void runCLI('df-integration', async () => {
@@ -31,6 +31,11 @@ Options:
         console.log(
             'No domain-first.project-structure.config.json found: run df-init first to initialize the project.'
         );
+        process.exit(1);
+    }
+
+    if (ConfigFile.outdated) {
+        console.log(outdatedConfigMessage);
         process.exit(1);
     }
 

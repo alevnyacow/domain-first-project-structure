@@ -116,6 +116,11 @@ const precondition = (command: AgentCommand) => {
             'CONFIG_NOT_FOUND',
             'Ask the project owner to run df-init.'
         );
+    if (ConfigFile.outdated)
+        throw new RequestError(
+            'CONFIG_OUTDATED',
+            'The config has the format of an earlier major version: ask the project owner to run df-upgrade.'
+        );
     if (command === 'df-scaffold' && !ConfigFile.Instance.data.backend)
         throw new RequestError(
             'BACKEND_NOT_CONFIGURED',
@@ -136,7 +141,13 @@ export const describeAgentCommand = (command: AgentCommand) => {
     } catch {
         /* Describing the protocol needs no initialized project. */
     }
-    const configured = Boolean(root && ConfigFile.exists);
+    const configStatus =
+        !root || !ConfigFile.exists
+            ? 'missing'
+            : ConfigFile.outdated
+              ? 'outdated'
+              : 'current';
+    const configured = configStatus === 'current';
     const config = configured ? ConfigFile.Instance.data : undefined;
     const owners = configured ? ownerFolders(root!) : [];
     const modules = owners.flatMap((owner) =>
@@ -152,6 +163,7 @@ export const describeAgentCommand = (command: AgentCommand) => {
             ? {
                   root,
                   configured,
+                  configStatus,
                   config,
                   contexts: owners.map((owner) => ({
                       name: owner.name,
@@ -480,7 +492,6 @@ export const executeAgentRequest = async (
             } else if (command === 'df-react') await executeReact(request);
             else nextSteps = await addIntegration({ save: false });
             assertAnswersConsumed();
-            ConfigFile.migrate();
             const relative = (file: string) =>
                 path.relative(root, file).split(path.sep).join('/');
             const planned = pendingChanges();

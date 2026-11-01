@@ -60,6 +60,7 @@ Compare the reported changes with the approved plan, then implement the generate
 | Error codes | Next action |
 | --- | --- |
 | `PROJECT_NOT_FOUND`, `CONFIG_NOT_FOUND`, `BACKEND_NOT_CONFIGURED`, `FRONTEND_NOT_CONFIGURED`, `INVALID_CONFIG` | Check project location and required config section. Ask the owner to initialize or repair settings; continue independent work only where its required sections are ready. |
+| `CONFIG_OUTDATED` | The config has the format of an earlier major version. Stop and ask the user to run `npx df-upgrade`; never run it or edit the config yourself. `--describe` reports it as `project.configStatus: "outdated"`. |
 | `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_PARAMETER`, `INVALID_ARGUMENTS` | Fix the request against the installed schema and error details. Check JSON syntax, required fields, naming and mutually exclusive CLI flags. |
 | `INVALID_CHOICE`, `INVALID_IMPLEMENTATION` | Refresh discovery and check eligibility, disabled/duplicate types and cross-context restrictions. Do not bypass rules with manual wiring/imports. |
 | `UNUSED_PARAMETERS` | Check the class key, wiring availability and integration conditions. Omit genuinely inapplicable fields; do not drop an intended dependency merely to make a request pass. |

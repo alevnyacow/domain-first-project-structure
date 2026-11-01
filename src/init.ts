@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { parseArgs } from 'node:util';
+import { ConfigFile, outdatedConfigMessage } from './config-file';
 import { printNextSteps } from './print-next-steps';
 import { savePendingChanges } from './save-pending-changes';
 import { initializeUseCase } from './use-cases';
@@ -46,6 +47,10 @@ if (
 }
 
 const run = async () => {
+    if (ConfigFile.outdated) {
+        console.log(outdatedConfigMessage);
+        process.exit(1);
+    }
     const nextSteps = await initializeUseCase(
         values.section as ConfigurationSection | undefined
     );

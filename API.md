@@ -52,6 +52,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Package scripts](#package-scripts)
 - [`df-skills`](#df-skills)
 - [`df-lint`](#df-lint)
+- [`df-upgrade`](#df-upgrade)
 - [Runtime semantics](#runtime-semantics)
 
 Notation used below:
@@ -68,7 +69,7 @@ Notation used below:
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint` |
+| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint`, `df-upgrade` |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
@@ -85,6 +86,7 @@ Notation used below:
 | `df-integration` | Adds integrations: Storybook, Prisma, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
+| `df-upgrade`     | Brings the project up to date after a major version upgrade           | [`df-upgrade`](#df-upgrade)   |
 
 ```bash
 npx df-init
@@ -93,11 +95,12 @@ npx df-react
 npx df-integration
 npx df-skills [--claude] [--codex] [--global]
 npx df-lint [rootFolder]
+npx df-upgrade [--dry-run] [--yes]
 ```
 
 ## Non-interactive JSON mode
 
-`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` remains a human setup command; `df-lint` and `df-skills` already run without interactive generation menus.
+`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` and `df-upgrade` remain human commands; `df-lint` and `df-skills` already run without interactive generation menus.
 
 ```bash
 npx df-scaffold --describe
@@ -110,7 +113,7 @@ npx df-integration --request '{"operation":"add","integrations":["storybook"]}'
 
 ### Discovery and request schemas
 
-`--describe` returns `schemaVersion: 1`, the command name, a JSON Schema in `requestSchema`, and the current project inventory. It works before initialization, but execution requires the appropriate configured section. Description reads files without migrating them.
+`--describe` returns `schemaVersion: 1`, the command name, a JSON Schema in `requestSchema`, and the current project inventory. It works before initialization, but execution requires the appropriate configured section. `project.configStatus` is `missing`, `outdated` (a config of an earlier major version: execution returns `CONFIG_OUTDATED`) or `current`; only a current config is `configured`.
 
 The inventory includes contexts (`shared-kernel` is reserved for the Shared Kernel), units, contracts, modules, eligible dependencies per implementation, saved/system implementation types, integration IDs/availability and React modules. IDs are strings:
 
@@ -136,7 +139,7 @@ The installed schema is authoritative and rejects unknown fields. Backend operat
 - Backend moves select a unit ID in `module`, with optional `name`, `targetContext` and `aggregate`. React moves use `module` and a new nested `name`. Moves use the same validation/import rewriting as the menus.
 - Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created. REST tooling must already be configured.
 - Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
-- `dryRun: true` computes the full proposed operation and migration without writing anything.
+- `dryRun: true` computes the full proposed operation without writing anything.
 - `overwrite: true` allows replacing changed existing generated files. Without it the command returns `OVERWRITE_REQUIRED` and the affected paths. Identical generated contents do not require this flag. Metadata edits such as implementation choices and normal wiring updates retain their existing behavior.
 
 ### Results and failures
@@ -159,7 +162,7 @@ type Result = {
 
 `nextSteps` contains install commands and follow-up notes; nothing is installed or executed. `overwriteRequired` is useful when reviewing a dry run. Generator diagnostics are captured in `messages`, keeping stdout to a single JSON document.
 
-Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, and configuration/precondition errors. Validation failures discard staged source, config, migration and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
+Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, `CONFIG_OUTDATED`, and configuration/precondition errors. Validation failures discard staged source, config and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
 
 ## `df-init`
 
@@ -213,7 +216,7 @@ The endpoint generator and the route are written as by the [REST endpoint genera
 ### Run lifecycle
 
 1. The [project root](#project-root) is located.
-2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. If the backend section is absent, it prints `Backend is not configured: run df-init --section backend.` and exits with 1. `df-react` and `df-integration` check the configuration file the same way; `df-react` also needs `frontend.react` ([React modules](#react-modules-df-react)), and `df-integration` hides backend integrations until backend is configured.
+2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. If it has the format of an earlier major version, it prints `domain-first.project-structure.config.json uses the format of an earlier major version: run npx df-upgrade.` and exits with 1; `df-init` and `df-lint` do the same. If the backend section is absent, it prints `Backend is not configured: run df-init --section backend.` and exits with 1. `df-react` and `df-integration` check the configuration file in the same way; `df-react` also needs `frontend.react` ([React modules](#react-modules-df-react)), and `df-integration` hides backend integrations until backend is configured.
 3. Otherwise the [main menu](#main-menu) is shown, and exactly one operation runs.
 4. Every file change of the operation is staged in memory. At the end, the staged changes are written in one step. See [Runtime semantics](#runtime-semantics).
 
@@ -306,7 +309,7 @@ type Config = {
 | `backend.withInMemoryDb` | Enables the shared [in-memory DB](#in-memory-db) behavior for repository, command and query implementations. |
 | `backend.testingLibrary` | Test imports: `describe`, `test`, `expect`, `beforeEach`. Omitted: no generated specs. |
 | `frontend.react` | Its presence enables `df-react`, OpenAPI's Swagger UI page and Orval's React Query hooks. An empty object enables React without stories. |
-| `frontend.react.framework` | `react` or `next`, selected by frontend setup; both use React generators. Omitted (legacy React settings): treated as React. Installed packages never switch on Next.js behavior; select Next.js with `df-init --section frontend`. |
+| `frontend.react.framework` | `react` or `next`, selected by frontend setup and recorded by `df-upgrade`; both use React generators. Omitted: treated as React. Installed packages never switch on Next.js behavior; select Next.js with `df-init --section frontend`. |
 | `frontend.react.storybookFramework` | Package used for story imports. Omitted: no generated stories. |
 | `backend.implementations` | Saved implementation labels, separated by contract kind and primary/test role. |
 | `backend.rules.dependencies` | Explicit dependency lists for every module kind, scaffolded by backend setup. Entries can be edited or replaced with `add`/`remove` patches. Missing kinds use defaults. |
@@ -314,7 +317,7 @@ type Config = {
 
 Settings affect future runs; generated source is not rewritten when a setting changes. Revisit sections with `df-init` to add missing backend support files, or use integrations for individual tools. Backend integrations are hidden until backend setup is complete; frontend tooling remains available independently.
 
-Legacy flat configs are read without side effects. The next saved CLI operation stages the nested config. Cancelled operations discard migration. `df-lint` reads legacy data without writing anything.
+Configs of an earlier major version (the flat 7.x config, without `project`) are not read and never rewritten by other commands; [`df-upgrade`](#df-upgrade) converts them.
 
 ### Saved implementation choices
 
@@ -336,7 +339,7 @@ Legacy flat configs are read without side effects. The next saved CLI operation 
 - The first available saved label is the default, falling back to an available system implementation, then the save-entry action. Manual input has no suggested name without an available saved label. There are no ordinary presets or implicit `api`/`mock` defaults.
 - **New Implementation** shows both primary and test choices plus available system implementations. It adds no ordinary presets. A new custom label entered with the save action is saved as `test` when used in that environment and as `primary` for other environments; without usable wiring it is saved as primary.
 - Updates are staged with source files. Cancellation or declined overwrites discard both. Updating this section preserves the other sections and does not request a config overwrite confirmation. The config can be committed and edited by hand; reordering saved arrays changes defaults for later runs.
-- Prisma integration registers `prisma` in `repositories.primary`, `commands.primary` and `queries.primary`, preserving existing choices. `df-init` no longer asks for a global persistence default. The removed `defaultPersistenceLayerImplementation` field in old config files is accepted as an unknown field and ignored; it is not used to populate the new catalog.
+- Prisma integration registers `prisma` in `repositories.primary`, `commands.primary` and `queries.primary`, preserving existing choices. `df-init` no longer asks for a global persistence default. [`df-upgrade`](#df-upgrade) moves the 7.x `defaultPersistenceLayerImplementation` to the first primary type of `repositories`, `commands` and `queries`.
 
 ### System implementation types
 
@@ -1067,7 +1070,7 @@ Reports code that breaks the Domain-First rules, grouped by rule, as `file:line:
 npx df-lint [rootFolder]
 ```
 
-`rootFolder` defaults to the one in the configuration file, or `src` without it. The dependency rules come from `backend.rules.dependencies`; `backend.rules.lint` turns checks off by the names in brackets: `{ "backend": { "rules": { "lint": { "clock": false } } } }`. Checks it doesn't mention run. Without `backend.rules` or without a configuration file, every check runs with the default dependency rules. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
+`rootFolder` defaults to the one in the configuration file, or `src` without it. The dependency rules come from `backend.rules.dependencies`; `backend.rules.lint` turns checks off by the names in brackets: `{ "backend": { "rules": { "lint": { "clock": false } } } }`. Checks it doesn't mention run. Without `backend.rules` or without a configuration file, every check runs with the default dependency rules. A configuration file of an earlier major version stops it with exit code 1 and `run npx df-upgrade`, before anything is checked. Paths are taken from the project root (the nearest `package.json`). Imports are found in `import`/`export … from`, side-effect `import '…'`, `import()` and `require()`, resolved as relative paths or `paths` aliases of the root `tsconfig.json`.
 
 | Rule                       | Reported                                                                                                   |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -1077,6 +1080,36 @@ npx df-lint [rootFolder]
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
 | Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
+
+## `df-upgrade`
+
+Brings the project up to date after upgrading the package to a new major version.
+
+```bash
+npx df-upgrade [--dry-run] [--yes]
+```
+
+| Option         | Effect                                                     |
+| -------------- | ---------------------------------------------------------- |
+| `--dry-run`    | Print the plan and write nothing                          |
+| `-y`, `--yes`  | Apply without asking, optional steps included              |
+| `-h`, `--help` | Print help and exit                                        |
+
+**Behavior**
+
+- Runs in the [project root](#project-root) and needs the configuration file; invalid JSON exits with 1.
+- Each upgrade step detects from the project's shape whether it applies, so the command needs no recorded version and can run any number of times. With nothing to do it prints `Everything is up to date.`
+- Steps are `required` (other commands refuse to run without them), `optional` (changes to generated code the user may have edited; each asks `Apply this optional step?`) or `manual` (printed under `Do it yourself:`).
+- It prints the plan of every applicable step, asks `Apply?` (default: Yes) and writes all changes together. No discards everything and prints `Cancelled: nothing was written.`
+- After a change it reminds to update the agent skills with `npx df-skills`.
+
+**Steps from 7.x**
+
+| Step | Kind | Change |
+| --- | --- | --- |
+| Split the config into sections | required | `rootFolder` → `project.rootFolder`; `domainFirstPackages`, `withInMemoryDb`, `testingLibrary`, `rules` → `backend`; `useReact: true` and `storybookFramework` → `frontend.react`, `useReact: false` → no frontend section. Unknown fields are kept |
+| Record the frontend framework | required | `frontend.react.framework`: `next` when `next` is declared in `package.json`, otherwise `react`. Applies to any React section without a framework |
+| Move the default persistence implementation | required | `defaultPersistenceLayerImplementation` becomes the first primary type of `backend.implementations.repositories`, `commands` and `queries`; a value that is not a kebab-case label is dropped |
 
 ## Runtime semantics
 

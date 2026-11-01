@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 import { parseArgs } from 'node:util';
-import { ConfigFile, configuredDependencyRules } from './config-file';
+import {
+    ConfigFile,
+    configuredDependencyRules,
+    outdatedConfigMessage
+} from './config-file';
 import { formatViolations, lintProject } from './project-lint';
 import { ProjectRoot } from './project-root';
 
@@ -28,6 +32,10 @@ if (values.help) {
 }
 
 const projectRoot = new ProjectRoot().path;
+if (ConfigFile.outdated) {
+    console.log(outdatedConfigMessage);
+    process.exit(1);
+}
 const config = ConfigFile.exists ? ConfigFile.Instance.data : undefined;
 const rootFolder = positionals[0] ?? config?.project.rootFolder ?? 'src';
 const violations = lintProject(projectRoot, rootFolder, {

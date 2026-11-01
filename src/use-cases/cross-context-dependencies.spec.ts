@@ -355,9 +355,8 @@ test('a cross-context adapter can be added to an existing port without the handl
     write(
         'domain-first.project-structure.config.json',
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: ['@domain-first/wire'],
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: ['@domain-first/wire'] }
         })
     );
     rstest

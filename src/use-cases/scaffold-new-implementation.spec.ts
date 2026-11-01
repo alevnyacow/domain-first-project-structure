@@ -37,10 +37,8 @@ const configure = (packages: string[], withInMemoryDb = false) =>
         root,
         'domain-first.project-structure.config.json',
         JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: packages,
-            withInMemoryDb,
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: { domainFirstPackages: packages, withInMemoryDb }
         })
     );
 

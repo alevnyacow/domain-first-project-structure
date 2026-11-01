@@ -100,7 +100,7 @@ All settings and saved implementation types live in `domain-first.project-struct
 
 Commit the config to share it with your team. Rerunning `df-init` offers **Project**, **Backend**, **Frontend** and **All sections**, using current values as defaults. A single-section update keeps the other sections and saved choices. Backend setup writes all standard dependency lists and enabled lint checks into `backend.rules`, so they can be edited directly. On reconfiguration, only missing rules are filled; existing lists, `add`/`remove` patches and disabled checks are preserved. Backend setup preserves existing support files and restores missing ones. Changing the source folder affects future generation; existing source is not moved. React is enabled by the presence of `frontend.react`; its `framework` is `react` or `next`, so Next.js uses the same React generators. Frontend selection is prefilled from the saved value, falling back to Next.js when `next` is declared in `package.json`. Both choices use `@storybook/react-vite` from the Storybook integration; there is no separate Storybook framework prompt. Framework settings remain grouped under `frontend.<framework>`.
 
-The old flat config remains readable. On the next saved CLI operation, it migrates into the `project`, `backend` and `frontend` sections. Cancellation discards the migration too. An absent backend or React section produces a message pointing to the corresponding `df-init --section` command. Initialization and configuration are performed by the project owner; agent skills only read these settings and ask the owner to configure missing sections.
+A config of an earlier major version is not read: commands stop and ask you to run [`df-upgrade`](#how-to-upgrade-to-a-new-major-version). An absent backend or React section produces a message pointing to the corresponding `df-init --section` command. Initialization and configuration are performed by the project owner; agent skills only read these settings and ask the owner to configure missing sections.
 
 ### Saved implementation types
 
@@ -305,6 +305,19 @@ Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](A
     }
 }
 ```
+
+### How to upgrade to a new major version
+
+After upgrading the package to a new major version, run:
+
+```bash
+npx df-upgrade --dry-run   # review the plan
+npx df-upgrade
+```
+
+It finds what the project needs, shows every change and applies them together after one confirmation; `--yes` skips the question. Until then, the other commands, `df-lint` included, stop with `run npx df-upgrade`. Running it again prints `Everything is up to date.`
+
+From 7.x it splits the config into `project`, `backend` and `frontend`, records `frontend.react.framework` explicitly (`next` when `next` is in `package.json`, otherwise `react`), and moves `defaultPersistenceLayerImplementation` to the first saved primary type of repositories, commands and queries. Then update the agent skills with `npx df-skills`.
 
 ### How to teach your coding agent
 

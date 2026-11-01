@@ -16,7 +16,7 @@ In interactive mode, if the run would replace existing files, the last prompt is
 
 ## Remembered and system implementation types
 
-In interactive mode, implementation prompts are selects. JSON requests use explicit `implementation` / `testImplementation` objects, each with `type` and optional `save`. Read the shared config’s `backend.implementations` section (legacy separate files remain readable until the CLI migrates them). Categories (`repositories`, `commands`, `queries`, `ports`) and `primary`/`test` lists are independent. Menus contain the relevant saved list, active system implementations and both manual-entry actions. There are no ordinary `api` or `mock` presets. Saved types display their exact name; the first available one is the default, then an available system type, otherwise the save-entry action with an empty input.
+In interactive mode, implementation prompts are selects. JSON requests use explicit `implementation` / `testImplementation` objects, each with `type` and optional `save`. Read the shared config’s `backend.implementations` section. Categories (`repositories`, `commands`, `queries`, `ports`) and `primary`/`test` lists are independent. Menus contain the relevant saved list, active system implementations and both manual-entry actions. There are no ordinary `api` or `mock` presets. Saved types display their exact name; the first available one is the default, then an available system type, otherwise the save-entry action with an empty input.
 
 Active system choices are explicitly labelled:
 

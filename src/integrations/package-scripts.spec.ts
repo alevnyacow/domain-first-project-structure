@@ -116,9 +116,9 @@ test('Storybook integration stages config, is repeatable and flags edited files'
     fs.writeFileSync(
         configPath,
         JSON.stringify({
-            rootFolder: 'src/client',
-            domainFirstPackages: [],
-            useReact: true
+            project: { rootFolder: 'src/client' },
+            backend: { domainFirstPackages: [] },
+            frontend: { react: {} }
         })
     );
     const gitignorePath = path.join(project, '.gitignore');

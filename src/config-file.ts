@@ -35,7 +35,7 @@ export const domainFirstPackages = [
     '@domain-first/wire',
     '@domain-first/handlers-rest'
 ] as const;
-const rulesSchema = z.object({
+export const rulesSchema = z.object({
     dependencies: dependencyRulesSchema.optional(),
     lint: z.partialRecord(z.enum(lintChecks), z.boolean()).optional()
 });
@@ -88,42 +88,31 @@ export const scaffoldBackendRules = (
     }
 });
 
-const legacyConfigSchema = backendConfigSchema.extend({
-    rootFolder: z.string(),
-    useReact: z.boolean(),
-    storybookFramework: z.string().optional(),
-    rules: rulesSchema.optional()
-});
-type LegacyConfig = z.infer<typeof legacyConfigSchema>;
+/**
+ * Configs from earlier major versions are not read: `df-upgrade` converts
+ * them. The flat 7.x config has no `project` section.
+ */
+export const isOutdatedConfig = (value: unknown) =>
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !('project' in value);
 
-const normalizeConfig = (value: unknown): ProjectConfig => {
-    if (typeof value === 'object' && value !== null && 'project' in value)
-        return configSchema.parse(value);
-    const legacy = legacyConfigSchema.parse(value);
-    return configSchema.parse({
-        project: { rootFolder: legacy.rootFolder },
-        backend: {
-            domainFirstPackages: legacy.domainFirstPackages,
-            withInMemoryDb: legacy.withInMemoryDb,
-            testingLibrary: legacy.testingLibrary,
-            implementations: legacy.implementations,
-            rules: legacy.rules
-        },
-        ...(legacy.useReact
-            ? {
-                  frontend: {
-                      react: { storybookFramework: legacy.storybookFramework }
-                  }
-              }
-            : {})
-    });
-};
+export const outdatedConfigMessage = `${configFileName} uses the format of an earlier major version: run npx df-upgrade.`;
+
+export class ConfigOutdatedError extends Error {
+    constructor() {
+        super(outdatedConfigMessage);
+    }
+}
 
 export class ConfigFile {
     public readonly data: ProjectConfig;
 
     private constructor() {
-        this.data = normalizeConfig(JSON.parse(new File(ConfigFile.path).data));
+        const raw = JSON.parse(new File(ConfigFile.path).data);
+        if (isOutdatedConfig(raw)) throw new ConfigOutdatedError();
+        this.data = configSchema.parse(raw);
     }
 
     public static get Instance() {
@@ -148,14 +137,24 @@ export class ConfigFile {
         return new File(ConfigFile.path).exists;
     }
 
-    static write = (config: ProjectConfig | LegacyConfig) => {
-        ConfigFile.stage(normalizeConfig(config));
+    /** The file exists but has the shape of an earlier major version. */
+    static get outdated() {
+        if (!ConfigFile.exists) return false;
+        try {
+            return isOutdatedConfig(JSON.parse(new File(ConfigFile.path).data));
+        } catch {
+            return false;
+        }
+    }
+
+    static write = (config: ProjectConfig) => {
+        ConfigFile.stage(configSchema.parse(config));
     };
 
     /** Update only the supplied sections, preserving the latest staged changes. */
     static update = (sections: Partial<ProjectConfig>) => {
         ConfigFile.stage(
-            normalizeConfig({ ...ConfigFile.Instance.data, ...sections })
+            configSchema.parse({ ...ConfigFile.Instance.data, ...sections })
         );
     };
 
@@ -164,13 +163,6 @@ export class ConfigFile {
             `${JSON.stringify(config, null, 4)}\n`
         );
     }
-
-    /** Read compatibility is side-effect free; migrations join the next saved run. */
-    static migrate = () => {
-        if (!ConfigFile.exists) return;
-        const raw = JSON.parse(new File(ConfigFile.path).data);
-        if (!raw.project) ConfigFile.stage(ConfigFile.Instance.data);
-    };
 }
 
 /**

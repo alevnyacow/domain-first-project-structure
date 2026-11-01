@@ -328,7 +328,9 @@ test('Next.js pages get an App Router route that renders the page component', as
         'app/admin/users/page.tsx',
         'src/presentation/react/pages/admin/admin-users-page.tsx'
     ]);
-    expect(read('app/admin/users/page.tsx')).toBe(`import { AdminUsersPage } from '../../../src/presentation/react/pages/admin/admin-users-page'
+    expect(
+        read('app/admin/users/page.tsx')
+    ).toBe(`import { AdminUsersPage } from '../../../src/presentation/react/pages/admin/admin-users-page'
 
 export default function Page() {
     return <AdminUsersPage />
@@ -499,5 +501,28 @@ test('machine errors have stable codes and do not expose stack traces', () => {
         schemaVersion: 1,
         ok: false,
         error: { code: 'OPERATION_FAILED', message: 'example' }
+    });
+});
+
+test('an outdated config stops requests and is reported by describe', async () => {
+    write(
+        configFileName,
+        JSON.stringify({
+            rootFolder: 'src',
+            domainFirstPackages: [],
+            useReact: false
+        })
+    );
+    await expect(
+        executeAgentRequest('df-scaffold', {
+            operation: 'bounded-context',
+            name: 'orders'
+        })
+    ).rejects.toMatchObject({ code: 'CONFIG_OUTDATED' });
+    expect(exists('src/bounded-contexts/orders')).toBe(false);
+    const description = describeAgentCommand('df-scaffold');
+    expect(description.project).toMatchObject({
+        configured: false,
+        configStatus: 'outdated'
     });
 });

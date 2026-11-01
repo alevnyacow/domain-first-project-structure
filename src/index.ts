@@ -2,7 +2,7 @@
 
 import { select } from '@inquirer/prompts';
 import { runCLI } from './agent-cli';
-import { ConfigFile } from './config-file';
+import { ConfigFile, outdatedConfigMessage } from './config-file';
 import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
 import { savePendingChanges } from './save-pending-changes';
@@ -30,6 +30,11 @@ const main = async () => {
         console.log(
             'No domain-first.project-structure.config.json found: run df-init first to initialize the project.'
         );
+        process.exit(1);
+    }
+
+    if (ConfigFile.outdated) {
+        console.log(outdatedConfigMessage);
         process.exit(1);
     }
 

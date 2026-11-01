@@ -10,11 +10,10 @@ import {
     rstest,
     test
 } from '@rstest/core';
-import { ConfigFile, configFileName } from './config-file';
+import { ConfigFile, ConfigOutdatedError, configFileName } from './config-file';
 import {
     discardPendingChanges,
     File,
-    filesToOverwrite,
     writePendingChanges
 } from './file-system';
 import {
@@ -43,35 +42,23 @@ afterEach(() => {
 });
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
-test('legacy flat settings migrate without changing files on read', async () => {
+test('a config of an earlier major version is refused, never rewritten', async () => {
     const legacy = {
-        rootFolder: 'src/server',
+        rootFolder: 'src',
         domainFirstPackages: ['@domain-first/wire'],
-        withInMemoryDb: true,
-        testingLibrary: 'vitest',
-        useReact: true,
-        storybookFramework: '@storybook/react-vite',
-        rules: { lint: { clock: false } },
-        defaultPersistenceLayerImplementation: 'ignored'
+        useReact: true
     };
     write(configFileName, legacy);
-    expect(ConfigFile.Instance.data).toMatchObject({
-        project: { rootFolder: 'src/server' },
-        backend: {
-            domainFirstPackages: ['@domain-first/wire'],
-            withInMemoryDb: true,
-            testingLibrary: 'vitest',
-            rules: legacy.rules
-        },
-        frontend: { react: { storybookFramework: '@storybook/react-vite' } }
-    });
+    expect(ConfigFile.outdated).toBe(true);
+    expect(() => ConfigFile.Instance).toThrow(ConfigOutdatedError);
+    expect(() => ConfigFile.Instance).toThrow('run npx df-upgrade');
+    expect(await savePendingChanges()).toBe(true);
     expect(read()).toEqual(legacy);
-    expect(filesToOverwrite()).toEqual([]);
-    await savePendingChanges();
-    expect(read()).toEqual(ConfigFile.Instance.data);
-    expect(read()).not.toHaveProperty('rootFolder');
-    expect(read()).not.toHaveProperty('defaultPersistenceLayerImplementation');
-    expect(confirm).not.toHaveBeenCalled();
+});
+
+test('a current config is not outdated', () => {
+    write(configFileName, { project: { rootFolder: 'src' } });
+    expect(ConfigFile.outdated).toBe(false);
 });
 
 test('section and implementation updates preserve each other and unrelated settings', () => {
@@ -104,11 +91,10 @@ test('section and implementation updates preserve each other and unrelated setti
     });
 });
 
-test('declined source overwrite discards config migration and saved choices together', async () => {
+test('declined source overwrite discards saved choices together with source', async () => {
     const original = {
-        rootFolder: 'src',
-        domainFirstPackages: [],
-        useReact: false
+        project: { rootFolder: 'src' },
+        backend: { domainFirstPackages: [] }
     };
     write(configFileName, original);
     fs.writeFileSync(path.join(project, 'source.ts'), 'original');

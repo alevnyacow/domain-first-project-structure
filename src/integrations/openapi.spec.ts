@@ -45,7 +45,11 @@ const setup = (
                       backend: { domainFirstPackages: [] },
                       frontend: { react: { framework } }
                   }
-                : { rootFolder, domainFirstPackages: [], useReact }
+                : {
+                      project: { rootFolder },
+                      backend: { domainFirstPackages: [] },
+                      ...(useReact ? { frontend: { react: {} } } : {})
+                  }
         )
     );
     rstest.spyOn(process, 'cwd').mockReturnValue(project);

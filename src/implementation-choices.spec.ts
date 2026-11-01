@@ -265,27 +265,6 @@ test('malformed catalog data fails before prompts or writes', async () => {
     expect(select).not.toHaveBeenCalled();
 });
 
-test('old configs remain readable while the removed global persistence field is ignored', () => {
-    fs.writeFileSync(
-        path.join(project, 'domain-first.project-structure.config.json'),
-        JSON.stringify({
-            rootFolder: 'src',
-            domainFirstPackages: [],
-            useReact: false,
-            defaultPersistenceLayerImplementation: 'prisma'
-        })
-    );
-    expect(ConfigFile.Instance.data).toEqual({
-        project: { rootFolder: 'src' },
-        backend: {
-            domainFirstPackages: [],
-            withInMemoryDb: undefined,
-            testingLibrary: undefined
-        }
-    });
-    expect(savedImplementations('repositories', 'primary')).toEqual([]);
-});
-
 for (const kind of implementationKinds) {
     for (const purpose of ['primary', 'test'] as const) {
         test(`one-off ${kind} ${purpose} labels are returned without being remembered`, async () => {
@@ -354,10 +333,11 @@ test('api, mock and inactive in-memory are ordinary saved types', async () => {
 for (const wire of [false, true]) {
     test(`in-memory is explicitly marked as a system type only for supported kinds with the DB ready, wire ${wire}`, async () => {
         ConfigFile.write({
-            rootFolder: 'src',
-            domainFirstPackages: wire ? ['@domain-first/wire'] : [],
-            withInMemoryDb: true,
-            useReact: false
+            project: { rootFolder: 'src' },
+            backend: {
+                domainFirstPackages: wire ? ['@domain-first/wire'] : [],
+                withInMemoryDb: true
+            }
         });
         scaffoldInMemoryDb(new Folder(path.join(project, 'src/shared-kernel')));
         for (const kind of implementationKinds) {
@@ -397,10 +377,11 @@ for (const wire of [false, true]) {
 
 test('in-memory is not a system choice when its DB integration is incomplete', async () => {
     ConfigFile.write({
-        rootFolder: 'src',
-        domainFirstPackages: ['@domain-first/wire'],
-        withInMemoryDb: true,
-        useReact: false
+        project: { rootFolder: 'src' },
+        backend: {
+            domainFirstPackages: ['@domain-first/wire'],
+            withInMemoryDb: true
+        }
     });
     const service = new File(
         path.join(
@@ -419,10 +400,8 @@ test('in-memory is not a system choice when its DB integration is incomplete', a
 
 test('a saved in-memory type keeps its system marker when the DB is active, without duplication', async () => {
     ConfigFile.write({
-        rootFolder: 'src',
-        domainFirstPackages: [],
-        withInMemoryDb: true,
-        useReact: false
+        project: { rootFolder: 'src' },
+        backend: { domainFirstPackages: [], withInMemoryDb: true }
     });
     scaffoldInMemoryDb(new Folder(path.join(project, 'src/shared-kernel')));
     rememberImplementation('queries', 'primary', 'in-memory');
