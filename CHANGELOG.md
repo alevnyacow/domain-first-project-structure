@@ -1,3 +1,10 @@
+# [8.5.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.4.0...v8.5.0) (2026-11-01)
+
+
+### Features
+
+* lint reading environment variables without the config port ([5fc72f3](https://github.com/alevnyacow/domain-first-project-structure/commit/5fc72f3751df449c67e540a6fb8aec5df91ab5d4))
+
 # [8.4.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.3.0...v8.4.0) (2026-11-01)
 
 
