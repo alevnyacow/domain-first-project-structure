@@ -1,3 +1,10 @@
+# [8.3.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.2.0...v8.3.0) (2026-11-01)
+
+
+### Features
+
+* delete modules ([5bcda05](https://github.com/alevnyacow/domain-first-project-structure/commit/5bcda057aaf3fe338c9ae57653f530ddad9e777a))
+
 # [8.2.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.1.1...v8.2.0) (2026-11-01)
 
 
