@@ -30,34 +30,76 @@ Tasks that only edit existing files (a bug fix, a new field, a changed rule) don
 Show the plan in this format and stop:
 
 ```markdown
-**Work plan**
+**Plan: order cancellation**
 
-| #   | Where | CLI path                   | Name        | Options                 | Files (+ new, ~ changed)                                                                                                                                                                                |
-| --- | ----- | -------------------------- | ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | sales | Domain → New Aggregate     | order       | repo prisma + in-memory | + …/domain/aggregates/order/{order.aggregate-root.ts, index.ts, order-repository.ts, specs}<br>+ …/infrastructure/repositories/{prisma,in-memory}/…<br>+ …/wiring/repositories/wire-order-repository.ts |
-| 2   | sales | Domain → New Entity        | order-line  | aggregate order         | + …/domain/aggregates/order/entities/{order-line.entity.ts, spec}<br>~ …/domain/aggregates/order/index.ts                                                                                               |
-| 3   | sales | Application → New Use Case | place-order | deps: OrderRepository   | + …/application/use-cases/place-order-use-case.ts, spec<br>+ …/wiring/use-cases/wire-place-order-use-case.ts                                                                                            |
-| 4   | react | Move or rename widget      | users → admin/users |                   | → …/widgets/admin/users/{admin-users-widget.tsx, ui/admin-users-widget-ui.tsx, hooks/use-admin-users-ui-model.ts, …}<br>~ …/pages/users-page.tsx (import) |
+**Scaffolding**
 
-Hand-written changes:
+**sales**
 
-- `order.aggregate-root.ts`: schema (id, lines, status), method `pay()`
-- `place-order-use-case.ts`: schemas, handler
+Why here: cancelling changes the order's status; orders belong to sales.
 
-Hand-created files (exception #): none; list each as `<path>` (#n)
+What will be scaffolded:
 
-Tool runs:
+| Layer | Type | Name | Details | Why |
+| --- | --- | --- | --- | --- |
+| **domain** | error | order-already-shipped | | shipped orders can't be cancelled |
+| **application** | command | cancel-order | prisma, fake in tests | one atomic status change |
+| | query | cancellable-orders | prisma | read-only list for the UI |
+| **presentation** | endpoint | POST orders/:id/cancel | → cancel-order | UI calls it over HTTP |
 
-- after application, before infrastructure: `npm run prisma:migration:plan -- --name add-order`: migration for the `order` table (applied by the user)
-- `npm run openapi && npm run client:orval`: OpenAPI document and API client with the new endpoints
+**billing**
+
+Why here: refunds are payments; payments belong to billing.
+
+What will be scaffolded:
+
+| Layer | Type | Name | Details | Why |
+| --- | --- | --- | --- | --- |
+| **application** | port | order-refunds | cross-context, stub in tests | paid amount lives in sales |
+| | use case | refund-cancelled-order | deps: OrderRefunds, PaymentGateway | read order, then call provider |
+
+**React**
+
+Why here: the user cancels from the order screen.
+
+What will be scaffolded:
+
+| Layer | Type | Name | Details | Why |
+| --- | --- | --- | --- | --- |
+| **presentation** | widget | orders/cancel-order | with separated ui | dialog has its own state |
+| | page | orders/details | add the widget | button goes on this screen |
+
+**Writing by hand**
+- cancel-order: input { orderId }, output { status }
+- prisma implementation: update status, throw OrderAlreadyShipped
+- endpoint: :id → orderId, OrderAlreadyShipped → 409
+- order-refunds adapter: sales:OrderSummaryQuery result → RefundableAmount
+
+**Running**
+- after the endpoint: npm run openapi && npm run client:orval
+
+**Question**
+1. Refund right on cancel, or after a manager confirms?
+
+Reply "ok" to start.
 ```
 
-- Every run lists the CLI path, target, name, the JSON parameters (or every answer for a legacy interactive run), and the files from its unit file. Flag overwrites of existing files.
-- Hand-written changes: members, schemas, dependencies. Not full code.
-- Tool runs: every command that generates files (migrations, OpenAPI, API client, other codegen), with what it produces and when. Use the project's own scripts; find them in `package.json` and configs. Their output needs no approval of its own and is never edited; scripts that change a database are run only by the user. Details: the project's scripts skill (`project-scripts`), if there is one.
-- Any file outside the rule 2 exceptions appears as a separate **exception request** with a reason.
+- Write the plan in the user's language (headings and sentences); module names, types, commands and paths stay as in the code. Omit empty sections.
+- **Scaffolding** has one block per owner, in run order: new contexts first, marked `(new)` (and `(provisional)` with the reason when ownership is a reversible default), then existing contexts, `shared-kernel`, React last.
+- **Why here**: one short sentence on why this owner, not another: the data or rule the context owns; for `shared-kernel`, why several contexts share it; for React, why the UI changes.
+- **What will be scaffolded**: one table per owner, one row per `df-scaffold`/`df-react` run. Layers in order domain → application → infrastructure → presentation, the layer in bold only on its first row. Repositories go with their aggregate in domain; commands, queries and ports in application (their implementations are Details); endpoints and React modules in presentation.
+  - **Type**: the unit: aggregate, entity, value object, error, error namespace, service, port, command, query, use case, implementation, endpoint, wire dependency, move; for React: page, widget, ui-kit component, hook, page move, widget move.
+  - **Name**: the entered name; for a move `old → new`; for an implementation the contract; for wire dependency the module.
+  - **Details**: only what changes behavior: implementation types (`(saved)` when saved for future runs), the test implementation, dependencies (`deps: OrderRepository`), environments, widget type, the endpoint's handler, whether a Next.js route moves (`route moves: /a → /b`). No file paths, no CLI menu paths.
+  - **Why**: at most six words: why this kind of module (`choosing-components.md`).
+- **Writing by hand**: members, schemas, mappings. Not full code.
+- **Running**: every command that generates files (migrations, OpenAPI, API client, other codegen), with what it produces and when. Use the project's own scripts; find them in `package.json` and configs. Their output needs no approval of its own and is never edited; scripts that change a database are run only by the user. Details: the project's scripts skill (`project-scripts`), if there is one.
+- **Overwrites**, only when a run would replace existing files (`overwriteRequired` of a `dryRun`): list those files.
+- **Exception requests**, only for hand-created files: `<path>` (rule 2, #n) with the reason. Any other file needs its own request with a reason.
+- **Question**, only for open decisions that change structure or domain behavior. Open questions block approval: answers first, then the updated plan.
+- The last line says what reply starts the work.
 - Approval must be explicit ("ok", "да", "делай"…). A question or silence isn't approval. Changes to the plan → show the updated plan and ask again.
-- After approval, do exactly the plan. An extra **new file**, component, or a different name/option → stop and get the delta approved. Edits to existing files needed along the way don't need approval; list them in the final report.
+- After approval, do exactly the plan. An extra module or file, or a different name/option → stop and get the delta approved. Edits to existing files needed along the way don't need approval; list them in the final report.
 
 ### 2. New files only through df-scaffold
 
@@ -81,7 +123,7 @@ Moving or renaming a module (aggregate, entity, value object, service, port, que
 
 With `@domain-first/wire`, every new dependency of a wired class (a constructor parameter plus its wire) is added by `df-scaffold`: the generator's `Dependencies:` step for a new module, `Wire dependency` for an existing one, and the `Handler:` pick for an endpoint (its generator is added automatically). Don't add constructor parameters or wire entries by hand, and don't reorder or remove the ones `df-scaffold` added.
 
-- List each module's dependencies in the plan as run options (`deps: OrderRepository`), with a `Wire dependency` run for existing modules.
+- List each module's dependencies in its plan row's Details (`deps: OrderRepository`); for an existing module, add a `wire dependency` row.
 - A dependency the CLI doesn't offer is forbidden by the project's dependency rules (the defaults, changed by `backend.rules.dependencies` in the config) or by context isolation: change the design (a port, a query or command, an infrastructure service) instead of adding it by hand.
 - A value that isn't a wired module (a database or SDK client, a config value) lives in an infrastructure service named after the implementation label (`prisma`, `in-memory-db`, `stripe`): the service creates or reads it itself (`readonly client = new PrismaClient()`), with no constructor parameter for it. Implementations get the service through `df-scaffold`, where it shows up under `Suggested`. Wrap the service's wire in `memoWire(...)` when one instance must be shared (a connection pool, an in-memory store). No `wireValue(...)`. A domain or application module never gets such a value directly: it depends on a port whose adapter uses the service.
 - An endpoint generated with `handler: never` gets its handler by re-running the endpoint generator once the handler exists, as an approved overwrite.
@@ -143,9 +185,9 @@ node scripts/drive.mjs "pick:Bounded Context: sales" pick:Domain "pick:New Aggre
 
 Implementation-type menus contain saved names and active system choices, without automatic `api` or `mock` presets. Use `pick:prisma` only when saved for that category, `"pick:System: cross-context"` for a port with a neighboring context, or `"pick:System: in-memory"` for a repository/command/query with the shared DB integration ready. New ordinary names take two steps: `"pick:Enter implementation type and save for future use" text:redis` or `"pick:Enter implementation type for this run only" text:redis`. Use the complete manual-entry label to distinguish saving from run-only input. `default` accepts the selected choice.
 
-Custom types entered with the save action update `backend.implementations` in `domain-first.project-structure.config.json`; include that generated config update in the work plan. The run-only action generates code without adding saved choices. These generator-managed choice updates are allowed; project/backend/frontend setup remains a human task. Changes are staged with the generated code and cancelled with it. Repository, command, query and port choices are independent; read that category's saved `primary`/`test` lists before preparing answers.
+Custom types entered with the save action update `backend.implementations` in `domain-first.project-structure.config.json`; mark the type `(saved)` in the plan row's Details. The run-only action generates code without adding saved choices. These generator-managed choice updates are allowed; project/backend/frontend setup remains a human task. Changes are staged with the generated code and cancelled with it. Repository, command, query and port choices are independent; read that category's saved `primary`/`test` lists before preparing answers.
 
-Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the planned files. "Still waiting for input" means too few steps; nothing was written. If the raw output ends at `Overwrite them?`, the run would replace files the plan didn't flag: show the user the listed files and ask, never just add `yes`. If prompts get out of sync, retry with `--delay 1200`.
+Check every run: exit code 0, no `WARNING`/`ABORTED`, and exactly the files its unit file lists for the planned options. "Still waiting for input" means too few steps; nothing was written. If the raw output ends at `Overwrite them?`, the run would replace files the plan's Overwrites didn't list: show the user the listed files and ask, never just add `yes`. If prompts get out of sync, retry with `--delay 1200`.
 
 ## Menu map
 

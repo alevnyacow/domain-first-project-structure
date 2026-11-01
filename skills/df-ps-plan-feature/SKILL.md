@@ -54,20 +54,52 @@ Never: pick silently, put one context's domain logic in `shared-kernel/`, create
 
 ## 4. Present the plan
 
-One message: the architectural part plus the work plan in the `df-ps-scaffold` rule 1 format. Then stop.
+One message in the `df-ps-scaffold` rule 1 format, then stop. The architecture lives in it: each context block's "Why here" is the ownership decision of step 3, each row's Why the component choice of step 2, and open decisions go to Question.
 
 ```markdown
-**Feature:** product reviews
-**Contexts:** `reviews` (new): reviews and their moderation. `sales`: unchanged; `reviews` reads purchases from the shared database.
+**Plan: product reviews**
 
-**Work plan**
-(df-ps-scaffold format: new contexts first; mark (new) and (provisional))
+**Scaffolding**
 
-**Why:** own lifecycle and vocabulary → own context (step 3, rule 3); review → aggregate (choosing-components, step 4). "Only buyers" needs `sales` data → port `customer-purchase` in `reviews` with its own models, implementation `prisma`: same database, so no `sales` endpoint is needed (choosing-components, step 9; step 3, rule 4).
+**reviews (new)**
 
-**Decisions for you:**
-1. Separate `reviews` context (recommended) or part of `catalog`?
+Why here: reviews have their own lifecycle and moderation; no context owns them.
+
+What will be scaffolded:
+
+| Layer | Type | Name | Details | Why |
+| --- | --- | --- | --- | --- |
+| **domain** | aggregate | review | repository prisma, in-memory in tests | consistency boundary with moderation |
+| | error | not-a-buyer | | only buyers may review |
+| **application** | port | customer-purchases | prisma (same database) | purchases live in sales |
+| | use case | submit-review | deps: ReviewRepository, CustomerPurchases | checks purchase, then saves |
+| **presentation** | endpoint | POST products/:id/reviews | → submit-review | UI calls it over HTTP |
+
+**React**
+
+Why here: buyers write a review on the product page.
+
+What will be scaffolded:
+
+| Layer | Type | Name | Details | Why |
+| --- | --- | --- | --- | --- |
+| **presentation** | widget | products/review-form | with separated ui | form has its own state |
+| | page | products/details | add the widget | form goes on this screen |
+
+**Writing by hand**
+- review: schema (id, productId, authorId, rating, text, status), method publish()
+- customer-purchases adapter: purchases query → HasPurchased
+- submit-review: input { productId, rating, text }, NotABuyer when no purchase
+
+**Running**
+- after domain: npm run prisma:migration:plan -- --name add-reviews (applied by the user)
+- after the endpoint: npm run openapi && npm run client:orval
+
+**Question**
+1. Separate reviews context (recommended) or part of catalog?
 2. Must reviews be moderated before publishing?
+
+Reply "ok" to start.
 ```
 
 - Ask only what changes structure or domain behavior. Decide names and details yourself.

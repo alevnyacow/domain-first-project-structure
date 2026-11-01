@@ -25,4 +25,4 @@ The same controller, path, and method replace the existing endpoint (after `Over
 4. Complete `get handle()`: pick the generating getter that fits the endpoint (`this.endpointGenerator.withoutGuards(...)`, or one with the needed guards), then `.input(...)`, `.mapInput(...)`, optional `.output(...)`, `.mapOutput(...)`.
 5. Register `restHandlers` from `<rootFolder>/presentation/rest/index.ts` in the server bootstrap (`df-ps-scaffold` `SKILL.md`, rule 2, exception 5). With the Next adapter and wire, `app/api/[...path]/route.ts` (or `src/app/…`) already serves them through `nextEndpoints(restHandlers)`; it compiles once the first endpoint exists.
 
-After new endpoints, regenerate the OpenAPI document and the API client with the project's scripts (tool runs in the plan).
+After new endpoints, regenerate the OpenAPI document and the API client with the project's scripts (Running in the plan).

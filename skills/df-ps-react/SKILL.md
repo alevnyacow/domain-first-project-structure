@@ -12,7 +12,7 @@ React modules live in `<rootFolder>/presentation/react/` (`…/react/` below) an
 1. Read `domain-first.project-structure.config.json`: source root is `project.rootFolder`; React is enabled by `frontend.react`; `frontend.react.framework` is `react` or `next`, and both use `df-react`. Stories use `frontend.react.storybookFramework` (initialization uses `@storybook/react-vite` for both React and Next.js via the shared Storybook integration). A config of an earlier major version (`CONFIG_OUTDATED`): ask the user to run `npx df-upgrade`; never run it yourself. Without the config, tell the user to run `npx df-init`; without React configured, tell them to run `npx df-init --section frontend`. Initialization and configuration belong to the human: do not run `df-init` or edit these settings yourself.
 2. A feature that also needs backend work → plan it with `df-ps-plan-feature`; React runs come last in the plan.
 3. Choose a module for each piece of UI ("Choosing the module").
-4. Show the work plan in the `df-ps-scaffold` rule 1 format and **stop until it's approved**. CLI paths are `df-react → New widget` etc.; list every answer and the files from `references/generators.md`.
+4. Show the work plan in the `df-ps-scaffold` rule 1 format (the React block) and **stop until it's approved**. Type is page, widget, ui-kit component, hook, page move or widget move; Details holds the widget type and, for a page move with Next.js, whether the route moves.
 5. Run the generators with `df-react --request` JSON in plan order (shared hooks → UI-kit → widgets → pages); check each output.
 6. Implement ("Implementing"), after the backend and the regenerated API client.
 7. Run `npx df-lint` and the project's tsc/lint/tests. Report against the plan.
