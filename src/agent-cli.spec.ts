@@ -338,7 +338,8 @@ export default function Page() {
     await executeAgentRequest('df-react', {
         operation: 'move-page',
         module: 'admin/users',
-        name: 'backoffice/users'
+        name: 'backoffice/users',
+        moveRoute: false
     });
     expect(read('app/admin/users/page.tsx')).toContain(
         "import { BackofficeUsersPage } from '../../../src/presentation/react/pages/backoffice/backoffice-users-page'"
@@ -346,6 +347,87 @@ export default function Page() {
     expect(read('app/admin/users/page.tsx')).toContain(
         'return <BackofficeUsersPage />'
     );
+});
+
+test('moving a Next.js page moves its route files; child routes stay', async () => {
+    await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'admin/users'
+    });
+    write('app/admin/users/layout.tsx', 'export default function Layout() {}');
+    write('app/admin/users/[id]/page.tsx', 'export default function User() {}');
+    const preview = await executeAgentRequest('df-react', {
+        operation: 'move-page',
+        module: 'admin/users',
+        name: 'backoffice/users',
+        dryRun: true
+    });
+    expect(preview.files.deleted).toEqual(
+        expect.arrayContaining([
+            'app/admin/users/page.tsx',
+            'app/admin/users/layout.tsx'
+        ])
+    );
+    await executeAgentRequest('df-react', {
+        operation: 'move-page',
+        module: 'admin/users',
+        name: 'backoffice/users'
+    });
+    expect(exists('app/admin/users/page.tsx')).toBe(false);
+    expect(exists('app/admin/users/layout.tsx')).toBe(false);
+    expect(exists('app/admin/users/[id]/page.tsx')).toBe(true);
+    expect(read('app/backoffice/users/layout.tsx')).toBe(
+        'export default function Layout() {}'
+    );
+    expect(
+        read('app/backoffice/users/page.tsx')
+    ).toBe(`import { BackofficeUsersPage } from '../../../src/presentation/react/pages/backoffice/backoffice-users-page'
+
+export default function Page() {
+    return <BackofficeUsersPage />
+}`);
+});
+
+test('an emptied route folder is removed, and a taken target route is never replaced', async () => {
+    await executeAgentRequest('df-react', {
+        operation: 'page',
+        name: 'orders'
+    });
+    await executeAgentRequest('df-react', {
+        operation: 'move-page',
+        module: 'orders',
+        name: 'purchases'
+    });
+    expect(exists('app/orders')).toBe(false);
+    expect(exists('app/purchases/page.tsx')).toBe(true);
+
+    await executeAgentRequest('df-react', { operation: 'page', name: 'carts' });
+    write('app/baskets/page.tsx', 'custom route');
+    const result = await executeAgentRequest('df-react', {
+        operation: 'move-page',
+        module: 'carts',
+        name: 'baskets'
+    });
+    expect(read('app/baskets/page.tsx')).toBe('custom route');
+    expect(read('app/carts/page.tsx')).toContain('BasketsPage');
+    expect(result.messages).toContain(
+        'app/baskets/page.tsx already exists: the route app/carts stays.'
+    );
+    // A route at the page path that doesn't render the page isn't its route.
+    await expect(
+        executeAgentRequest('df-react', {
+            operation: 'move-page',
+            module: 'baskets',
+            name: 'trolleys',
+            moveRoute: true
+        })
+    ).rejects.toMatchObject({ code: 'UNUSED_PARAMETERS' });
+    await executeAgentRequest('df-react', {
+        operation: 'move-page',
+        module: 'baskets',
+        name: 'trolleys'
+    });
+    expect(read('app/baskets/page.tsx')).toBe('custom route');
 });
 
 test('Next.js pages use src/app when it exists and keep an existing route', async () => {

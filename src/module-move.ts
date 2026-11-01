@@ -136,8 +136,12 @@ export type MovePlan = {
 
 export type ModuleMove = {
     projectRoot: string;
-    /** Folders emptied by the move are removed up to this one (exclusive). */
+    /**
+     * Folders emptied by the move are removed up to this one (exclusive),
+     * or up to the folder `stopAtFor` gives for a file outside it.
+     */
     stopAt: string;
+    stopAtFor?: (file: string) => string | undefined;
     /** Old path → new path of every file of the module. */
     moves: Map<string, string>;
     /**
@@ -164,8 +168,10 @@ export const stageModuleMove = ({
     moves,
     movedPath,
     rename,
-    everyFile = (content) => content
+    everyFile = (content) => content,
+    stopAtFor
 }: ModuleMove): MovePlan => {
+    const stopFor = (file: string) => stopAtFor?.(file) ?? stopAt;
     const { resolve, specifierFor, codeFiles } = projectImports(projectRoot);
 
     /**
@@ -225,7 +231,7 @@ export const stageModuleMove = ({
 
     for (const [file, newFile] of moves) {
         if (!codeFiles.has(file) && newFile !== file) {
-            new File(file).moveTo(newFile, stopAt);
+            new File(file).moveTo(newFile, stopFor(file));
         }
     }
 
@@ -235,7 +241,7 @@ export const stageModuleMove = ({
         const next = rewrite(content, file, newFile ?? file);
         if (newFile && newFile !== file) {
             new File(newFile).data = next;
-            new File(file).delete(stopAt);
+            new File(file).delete(stopFor(file));
         } else if (next !== content) {
             new File(file).update(next);
             if (!newFile) updated.push(file);

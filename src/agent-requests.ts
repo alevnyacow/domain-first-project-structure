@@ -123,7 +123,17 @@ export const reactRequestSchema = z.discriminatedUnion('operation', [
     }),
     operation('ui-kit-component', { ...common, name }),
     operation('shared-hook', { ...common, name }),
-    operation('move-page', { ...common, module: nestedName, name: nestedName }),
+    operation('move-page', {
+        ...common,
+        module: nestedName,
+        name: nestedName,
+        moveRoute: z
+            .boolean()
+            .optional()
+            .describe(
+                'With Next.js and a route at the page path: move it too (default true). Omit it without such a route.'
+            )
+    }),
     operation('move-widget', {
         ...common,
         module: nestedName,

@@ -60,7 +60,7 @@ If the CLI cannot run, report the failure and give the user the prepared JSON co
 
 ### Moving and renaming
 
-Moving or renaming a page or widget is a df-react run (`Move or rename page` / `Move or rename widget`): it creates the files at the new paths, so it needs an approved plan. Don't move, rename, or copy their files by hand, and don't rename their `<Name>Page…`, `<Name>Widget…`, or `use<Name>UIModel` by hand: df-react keeps file names, code names, story titles, and imports in sync. List each move as a run: old → new name, the files to move (`→`), and the files whose imports change (`~`).
+Moving or renaming a page or widget is a df-react run (`Move or rename page` / `Move or rename widget`): it creates the files at the new paths, so it needs an approved plan. With Next.js, moving a page can also move its App Router route and so change its URL: state in the plan whether the route moves (`moveRoute`), and ask the user when the request doesn't say. Don't move, rename, or copy their files by hand, and don't rename their `<Name>Page…`, `<Name>Widget…`, or `use<Name>UIModel` by hand: df-react keeps file names, code names, story titles, and imports in sync. List each move as a run: old → new name, the files to move (`→`), and the files whose imports change (`~`).
 
 ### Files you may create by hand
 

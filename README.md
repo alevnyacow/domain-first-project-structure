@@ -265,7 +265,7 @@ admin/panel/users  →  pages/admin/panel/admin-panel-users-page.tsx  (AdminPane
 
 With Next.js, a new page also gets its App Router route, `app/admin/panel/users/page.tsx`, which renders `AdminPanelUsersPage`. An existing route is never overwritten.
 
-**Move or rename page** and **Move or rename widget** move the files and update every import in the project.
+**Move or rename page** and **Move or rename widget** move the files and update every import in the project. With Next.js, moving a page also offers to move its route, `app/admin/users/` → `app/backoffice/users/`, since its URL changes with it.
 
 ### How to add tooling
 

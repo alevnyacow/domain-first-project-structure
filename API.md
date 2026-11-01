@@ -814,7 +814,7 @@ Repository, command, query and port tests reference wiring factories with `wire`
 
 **Output**: `react/pages/<folders>/<file>-page.tsx` with `type <Name>PageProps = {}` and `const <Name>Page: FC<<Name>PageProps>`.
 
-With Next.js (`frontend.react.framework: next`), the page also gets its App Router route at the same path: `app/<folders>/<name>/page.tsx` (`src/app/…` when that folder exists), a default export that renders `<Name>Page`. An existing route file is kept and the CLI says to render the page there. Moving or renaming a page updates the route's import but leaves the route where it is: move it yourself when the URL changes.
+With Next.js (`frontend.react.framework: next`), the page also gets its App Router route at the same path: `app/<folders>/<name>/page.tsx` (`src/app/…` when that folder exists), a default export that renders `<Name>Page`. An existing route file is kept and the CLI says to render the page there. Moving or renaming the page offers to move this route too ([Move or rename page](#move-or-rename-page--widget)).
 
 ### New widget
 
@@ -850,6 +850,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 | ----------------------------------- | ---------------- |
 | `Page:` / `Widget:`                 |                  |
 | `New name (folders split by "/"):`  | The current name |
+| `Move the Next.js route too: <from> → <to>? Its URL changes.` | Yes. Pages with Next.js only, see below |
 | `Apply?`                            | Yes              |
 
 **Behavior**
@@ -859,6 +860,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 - File names, `<Name>Page`, `<Name>Widget…`, `use<Name>UIModel` and generated story titles follow the new name.
 - Imports of the module are updated across the project: relative imports and `tsconfig.json` `paths` aliases such as `@/`. Files importing it through barrels (`export * from`, `export { … } from`) get the renamed names too. Relative imports inside the module are adjusted to its new location.
 - The CLI prints the files to move and the files to update, then asks `Apply?`. Folders left empty are removed.
+- With Next.js (`frontend.react.framework: next`), a page's route at the same path, `app/<folders>/<name>/` (`src/app/…` when that folder exists), is offered to move along when its `page.tsx` renders `<Name>Page`. Yes moves the files of that route folder (`page.tsx`, `layout.tsx` and others) to the new path; subfolders are other routes and stay. Their imports are adjusted, and an emptied route folder is removed. No keeps the route where it is with its import updated. When the target route already has a `page.tsx`, nothing is asked and the CLI prints `<to>/page.tsx already exists: the route <from> stays.`
 - Entering the current name renames files created before file names used the whole path: `pages/admin/users-page.tsx` becomes `pages/admin/admin-users-page.tsx`.
 - Prints `Nothing to change.` when nothing would change. Answering No prints `Cancelled: nothing was written.`
 

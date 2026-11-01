@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+    codeExtension,
     escapeRegExp,
     type MovePlan,
     stageModuleMove,
@@ -121,15 +122,43 @@ export const validateMove = (
     return true;
 };
 
+/** A Next.js App Router route folder moved with a page. */
+export type RouteMove = {
+    /** The App Router folder, e.g. `<root>/app`. */
+    appFolder: string;
+    from: string;
+    to: string;
+};
+
+/** The route folder of a nested page name: `admin/users` → `<app>/admin/users`. */
+export const routeFolder = (appFolder: string, rawName: string) => {
+    const { folders, folderName } = new NestedName(rawName);
+    return path.join(appFolder, ...folders, folderName);
+};
+
+/**
+ * The files of a route segment itself: `page.tsx`, `layout.tsx` and the
+ * like. Subfolders are other routes and stay.
+ */
+export const routeFiles = (folder: string) =>
+    fs.existsSync(folder)
+        ? fs
+              .readdirSync(folder, { withFileTypes: true })
+              .filter((entry) => entry.isFile())
+              .map((entry) => path.join(folder, entry.name))
+        : [];
+
 /**
  * Stages the move with pending changes: files of the module, its imports
- * of other files, and every import of it in the project.
+ * of other files, and every import of it in the project. With `route`, the
+ * files of that Next.js route folder move too.
  */
 export const moveReactModule = (
     projectRoot: string,
     reactFolder: string,
     module: ReactModule,
-    rawName: string
+    rawName: string,
+    route?: RouteMove
 ): MovePlan => {
     const newName = new NestedName(rawName);
     const target = targetPath(reactFolder, module, rawName);
@@ -151,8 +180,20 @@ export const moveReactModule = (
               ).test(path.basename(candidate))
             : candidate === oldFolder ||
               candidate.startsWith(`${oldFolder}${path.sep}`);
+    const routeFileSet = new Set(route ? routeFiles(route.from) : []);
+    const routeTarget = (candidate: string) => {
+        if (!route) return undefined;
+        const file = [...routeFileSet].find(
+            (x) => x === candidate || x.replace(codeExtension, '') === candidate
+        );
+        if (!file) return undefined;
+        const moved = path.join(route.to, path.relative(route.from, file));
+        return file === candidate ? moved : moved.replace(codeExtension, '');
+    };
     /** Where a path of the module goes; undefined for other paths. */
     const movedPath = (candidate: string) => {
+        const routed = routeTarget(candidate);
+        if (routed) return routed;
         if (!ownsPath(candidate)) return undefined;
         // Only file names carry the module name; widget subfolders keep theirs
         const segments = path.relative(oldFolder, candidate).split(path.sep);
@@ -171,7 +212,9 @@ export const moveReactModule = (
                   )
             : walk(oldFolder);
     const moves = new Map(
-        moduleFiles.map((file) => [file, movedPath(file) ?? file] as const)
+        [...moduleFiles, ...routeFileSet].map(
+            (file) => [file, movedPath(file) ?? file] as const
+        )
     );
 
     const suffixes = module.kind === 'page' ? 'Page' : 'Widget|UIModel';
@@ -192,6 +235,8 @@ export const moveReactModule = (
     return stageModuleMove({
         projectRoot,
         stopAt: reactFolder,
+        stopAtFor: (file) =>
+            route && routeFileSet.has(file) ? route.appFolder : undefined,
         moves,
         movedPath,
         rename: (content, { moved }) => {

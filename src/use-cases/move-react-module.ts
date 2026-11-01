@@ -1,13 +1,57 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { discardPendingChanges, type Folder } from '../file-system';
 import { confirm, input, report, select } from '../interaction';
+import { nextAppFolder, usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import {
     findReactModules,
     moveReactModule,
+    type ReactModule,
     type ReactModuleKind,
+    type RouteMove,
+    routeFolder,
     validateMove
 } from '../react-module-move';
+
+/**
+ * With Next.js, a page's route at the same path (`app/<name>/page.tsx`)
+ * can follow the page. The URL changes with it, so it is asked.
+ */
+const promptRouteMove = async (
+    root: string,
+    page: ReactModule,
+    newName: string
+): Promise<RouteMove | undefined> => {
+    if (!usesNext()) return undefined;
+    const appFolder = path.join(root, nextAppFolder(root));
+    const from = routeFolder(appFolder, page.name);
+    const to = routeFolder(appFolder, newName);
+    const relative = (file: string) =>
+        path.relative(root, file).split(path.sep).join('/');
+    const routePage = path.join(from, 'page.tsx');
+    // Only a route that renders this page belongs to it.
+    if (
+        from === to ||
+        !fs.existsSync(routePage) ||
+        !new RegExp(`\\b${page.ClassName}Page\\b`).test(
+            fs.readFileSync(routePage, 'utf8')
+        )
+    )
+        return undefined;
+    if (fs.existsSync(path.join(to, 'page.tsx'))) {
+        report(
+            `${relative(to)}/page.tsx already exists: the route ${relative(from)} stays.`
+        );
+        return undefined;
+    }
+    const move = await confirm({
+        key: 'moveRoute',
+        message: `Move the Next.js route too: ${relative(from)} → ${relative(to)}? Its URL changes.`,
+        default: true
+    });
+    return move ? { appFolder, from, to } : undefined;
+};
 
 export const moveReactModuleUseCase = async (
     presentationReactFolder: Folder,
@@ -38,13 +82,22 @@ export const moveReactModuleUseCase = async (
     });
 
     const root = new ProjectRoot().path;
-    const { moves, updated } = moveReactModule(root, reactFolder, module, name);
+    const relative = (file: string) =>
+        path.relative(root, file).split(path.sep).join('/');
+    const route =
+        kind === 'page' ? await promptRouteMove(root, module, name) : undefined;
+    const { moves, updated } = moveReactModule(
+        root,
+        reactFolder,
+        module,
+        name,
+        route
+    );
     if (!moves.length && !updated.length) {
         report('Nothing to change.');
         return;
     }
 
-    const relative = (file: string) => path.relative(root, file);
     report(
         [
             'Files to move:',
