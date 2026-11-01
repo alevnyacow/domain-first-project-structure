@@ -1,3 +1,10 @@
+# [8.4.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.3.0...v8.4.0) (2026-11-01)
+
+
+### Features
+
+* move, rename and delete UI-kit components and shared hooks ([21e6d3e](https://github.com/alevnyacow/domain-first-project-structure/commit/21e6d3e1ea34caf1896a7027c3bfac1c930b9f06))
+
 # [8.3.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.2.0...v8.3.0) (2026-11-01)
 
 
