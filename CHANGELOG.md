@@ -1,3 +1,10 @@
+## [8.1.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.1.0...v8.1.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* new output format in `plan-feature` skill ([03e6289](https://github.com/alevnyacow/domain-first-project-structure/commit/03e62896dda4e59fb21abac2c610918cb3755f09))
+
 # [8.1.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.0.0...v8.1.0) (2026-11-01)
 
 
