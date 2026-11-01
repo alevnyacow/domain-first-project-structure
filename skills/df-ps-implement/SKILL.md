@@ -42,7 +42,8 @@ Run it from the project root; `rootFolder` defaults to the config's. It resolves
 - imports against the layers ("Ground rules"; specs excluded);
 - module files importing kinds the project's dependency rules don't allow (a use case importing a use case, a query importing a command, …), and wired dependencies they don't allow ("Wiring" below, `df-ps-scaffold` rule 3); an implementation importing its own contract is fine;
 - a widget importing another widget (a widget = the nearest folder under `presentation/react/widgets/` with a `*-widget.tsx`, nested widgets included), UI-kit importing widgets, pages or contexts, shared hooks importing UI-kit, widgets, pages or contexts;
-- `new Date()` / `Date.now()` in domain or application (use the `clock` port).
+- `new Date()` / `Date.now()` in domain or application (use the `clock` port);
+- `process.env` / `import.meta.env` in domain or application (use the `config` port).
 
 It exits with 1 when anything is found. Checks turned off in the config (`backend.rules.lint`) aren't reported; don't turn checks off yourself.
 

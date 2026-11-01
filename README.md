@@ -88,7 +88,8 @@ All settings and saved implementation types live in `domain-first.project-struct
                 "layers": true,
                 "dependencies": true,
                 "react": true,
-                "clock": true
+                "clock": true,
+                "config": true
             }
         }
     },
@@ -283,13 +284,13 @@ The endpoint generator and the in-memory DB are what `df-init` scaffolds; as int
 npx df-lint
 ```
 
-It reports what breaks the Domain-First rules: forbidden imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time without the clock port. It exits with 1 when something is found, so you can run it in CI.
+It reports what breaks the Domain-First rules: forbidden imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time or environment variables without the clock and config ports. It exits with 1 when something is found, so you can run it in CI.
 
 `df-init` scaffolds all standard rules into `backend.rules` during backend setup. Teams can edit these entries directly: what each kind of module may depend on (`backend.rules.dependencies`) and which checks run (`backend.rules.lint`). `df-scaffold` offers dependencies by the same rules. For older or manually shortened configs without `backend.rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
 
 - Kinds in `backend.rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `infrastructure-services`, `presentation-services`.
 - A kind's value: a list that replaces its defaults, or `{ "add": [...], "remove": [...] }`.
-- Checks in `backend.rules.lint`: `context-isolation`, `shared-kernel`, `layers`, `dependencies`, `react`, `clock`.
+- Checks in `backend.rules.lint`: `context-isolation`, `shared-kernel`, `layers`, `dependencies`, `react`, `clock`, `config`.
 
 Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](API.md#df-lint).
 

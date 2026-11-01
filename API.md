@@ -1141,6 +1141,7 @@ npx df-lint [rootFolder]
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
 | Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
+| Config (`config`)          | `process.env`, `process['env']` or `import.meta.env` in domain or application (use the config port)        |
 
 ## `df-upgrade`
 

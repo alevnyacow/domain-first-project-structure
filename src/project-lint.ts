@@ -498,9 +498,28 @@ const wiringViolations = (
 };
 
 /**
- * Domain and application code reads time through the clock port.
+ * Domain and application code reads what the environment provides (the
+ * time, the configuration) through ports, never directly.
  */
-const clockViolations = (projectRoot: string, rootFolder: string) => {
+const directReadChecks = [
+    {
+        check: 'clock',
+        pattern: /\bnew\s+Date\s*\(\s*\)|\bDate\.now\s*\(/g,
+        rule: 'domain or application reads the current time directly (use the clock port):'
+    },
+    {
+        check: 'config',
+        pattern:
+            /\bprocess\s*\??\.\s*env\b|\bprocess\s*\[\s*(['"`])env\1\s*\]|\bimport\.meta\.env\b/g,
+        rule: 'domain or application reads environment variables directly (use the config port):'
+    }
+] as const satisfies {
+    check: LintCheck;
+    pattern: RegExp;
+    rule: string;
+}[];
+
+const directReadViolations = (projectRoot: string, rootFolder: string) => {
     const root = path.resolve(projectRoot, rootFolder);
     const folders = [
         path.join(root, 'shared-kernel'),
@@ -519,16 +538,16 @@ const clockViolations = (projectRoot: string, rootFolder: string) => {
         .filter((file) => !isSpec(file))
         .flatMap((file) => {
             const source = fs.readFileSync(file, 'utf8');
-            return [
-                ...source.matchAll(/\bnew\s+Date\s*\(\s*\)|\bDate\.now\s*\(/g)
-            ].map(
-                (match): Violation => ({
-                    check: 'clock',
-                    rule: 'domain or application reads the current time directly (use the clock port):',
-                    file,
-                    line: lineAt(source, match.index),
-                    text: match[0]
-                })
+            return directReadChecks.flatMap(({ check, pattern, rule }) =>
+                [...source.matchAll(pattern)].map(
+                    (match): Violation => ({
+                        check,
+                        rule,
+                        file,
+                        line: lineAt(source, match.index),
+                        text: match[0]
+                    })
+                )
             );
         });
 };
@@ -549,7 +568,7 @@ export const lintProject = (
     [
         ...importViolations(projectRoot, rootFolder, rules),
         ...wiringViolations(projectRoot, rootFolder, rules),
-        ...clockViolations(projectRoot, rootFolder)
+        ...directReadViolations(projectRoot, rootFolder)
     ].filter((x) => checks[x.check] !== false);
 
 /**

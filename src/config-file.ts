@@ -18,7 +18,8 @@ export const lintChecks = [
     'layers',
     'dependencies',
     'react',
-    'clock'
+    'clock',
+    'config'
 ] as const;
 
 export type LintCheck = (typeof lintChecks)[number];

@@ -251,7 +251,8 @@ import { ListQuery } from '../../../application/queries/list-query'`,
         const files = {
             [`${sales}/application/use-cases/pay-use-case.ts`]:
                 "import { CancelUseCase } from './cancel-use-case'",
-            [`${sales}/domain/a.ts`]: 'const a = new Date()'
+            [`${sales}/domain/a.ts`]:
+                'const a = new Date()\nconst b = process.env.LIMIT'
         };
 
         expect(
@@ -259,7 +260,7 @@ import { ListQuery } from '../../../application/queries/list-query'`,
                 rules: resolveDependencyRules({
                     'use-cases': { add: ['use-cases'] }
                 }),
-                checks: { clock: false }
+                checks: { clock: false, config: false }
             })
         ).toEqual([]);
     });
@@ -364,6 +365,31 @@ export const wireInvoice = envBranchedWire({ development: wireImplementation })`
                 [`${sales}/infrastructure/c.ts`]: 'const now = new Date()'
             }).map((x) => `${x.file}:${x.line}`)
         ).toEqual([`${sales}/domain/a.ts:1`, `${sales}/application/b.ts:1`]);
+    });
+
+    test('reports reading environment variables in domain and application', () => {
+        expect(
+            lint({
+                'src/shared-kernel/domain/a.ts':
+                    "const a = process.env.LIMIT\nconst b = process['env']\nconst c = process?.env",
+                [`${sales}/application/b.ts`]:
+                    'const { LIMIT } = process.env\nconst d = import.meta.env.LIMIT',
+                [`${sales}/application/b.spec.ts`]: 'process.env.NODE_ENV',
+                [`${sales}/infrastructure/c.ts`]: 'const url = process.env.URL',
+                [`${sales}/wiring/d.ts`]: 'process.env.NODE_ENV'
+            }).map((x) => `${x.rule} ${x.file}:${x.line}`)
+        ).toEqual(
+            [
+                'src/shared-kernel/domain/a.ts:1',
+                'src/shared-kernel/domain/a.ts:2',
+                'src/shared-kernel/domain/a.ts:3',
+                `${sales}/application/b.ts:1`,
+                `${sales}/application/b.ts:2`
+            ].map(
+                (location) =>
+                    `domain or application reads environment variables directly (use the config port): ${location}`
+            )
+        );
     });
 });
 

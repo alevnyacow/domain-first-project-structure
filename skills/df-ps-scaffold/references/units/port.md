@@ -1,6 +1,6 @@
 # Port
 
-When: a capability across this context's boundary: another bounded context, an external system, or time (`../choosing-components.md`, steps 9–10). Own aggregate persistence → repository; atomic operations on this context's own storage → command/query. One method is enough. Wanting to mock a class or imagining multiple implementations does not by itself establish a boundary. The `clock` port usually belongs in the Shared Kernel.
+When: a capability across this context's boundary: another bounded context, an external system, time or configuration (`../choosing-components.md`, steps 9–10). Own aggregate persistence → repository; atomic operations on this context's own storage → command/query. One method is enough. Wanting to mock a class or imagining multiple implementations does not by itself establish a boundary. The `clock` and `config` ports usually belong in the Shared Kernel.
 
 ## Generate (context and Shared Kernel)
 
@@ -19,7 +19,7 @@ Prompts: name → primary adapter select → `With test implementation` → test
 - For another context, define the port in the consuming context with its own models and errors. A `cross-context` adapter can inject queries, commands and use cases from any neighboring context; choices are labelled `(<context>)` and names get context-qualified aliases. Only this adapter imports neighboring handler types, and only its matching wiring imports their factories. Never import foreign models, errors, repositories, ports, services, infrastructure or barrels.
 - Implement the capability's methods by mapping input, invoking injected handlers, and mapping results/errors. The CLI creates the contract, adapters and dependencies; it does not generate methods or delegation. Keep business coordination in the consuming use case.
 - One implementation per adapter: `api` performs the real interaction (an SDK or HTTP client, through an [infrastructure service](services.md) for the client); `mock`/`fake` is deterministic.
-- Use the Shared Kernel `clock` port instead of `new Date()` / `Date.now()` in domain and application code.
+- Use the Shared Kernel `clock` port instead of `new Date()` / `Date.now()` in domain and application code, and a `config` port instead of `process.env` / `import.meta.env`. Its adapter reads the environment; infrastructure and wiring may read it directly.
 
 ## Test
 

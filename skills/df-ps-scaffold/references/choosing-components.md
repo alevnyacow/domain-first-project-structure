@@ -57,11 +57,12 @@ Example: `order-confirmation` prepares a message and calls the injected `mailer`
 | Application / infrastructure service | Used by use cases → application. Only by adapters/repositories → infrastructure. |
 | Logic infrastructure needs from an application service | Infrastructure never sees application services. Pure logic without ports → domain service. Logic over ports → infrastructure calls the ports directly. Technical (mapping, retries, external API formats) → infrastructure service. |
 | Clock | Always a port (`clock`, usually in Shared Kernel). A command or query never uses it: the use case reads the time and passes it in the input. |
+| Configuration | Values application logic needs (limits, feature flags) → a port (`config`, usually in Shared Kernel), with methods in the application's terms. Settings only an adapter needs (connection strings, API keys) → that adapter or its infrastructure service reads them; no port. |
 
 ## Where it goes
 
 - Default: the context that owns the data and rules (`df-ps-plan-feature`, step 3).
-- Shared Kernel: technical, ownerless pieces (`clock`, `mailer` ports, shared HTTP client, errors like `unauthorized`) and **universal** entities / value objects: the same meaning and rules in every context, owned by none (`money`, `email`, `address`). A Shared Kernel domain service holds rules at the junction of these universal types only. Anything with one context's meaning or rules (`order-status`, `customer`) stays in that context, even if other contexts need it; they duplicate it in the models of their own ports.
+- Shared Kernel: technical, ownerless pieces (`clock`, `config`, `mailer` ports, shared HTTP client, errors like `unauthorized`) and **universal** entities / value objects: the same meaning and rules in every context, owned by none (`money`, `email`, `address`). A Shared Kernel domain service holds rules at the junction of these universal types only. Anything with one context's meaning or rules (`order-status`, `customer`) stays in that context, even if other contexts need it; they duplicate it in the models of their own ports.
 - Another context's data or behavior → an application port in the consuming context (step 9).
 
 ## Example
