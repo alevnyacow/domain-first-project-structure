@@ -76,6 +76,7 @@ const createProject = async (packages: string[], withInMemoryDb = true) => {
     answer({
         'Root folder (use "/" for inner folders):': 'src',
         '@domain-first packages': packages,
+        'envBranchedWire branches:': 'default',
         'Scaffold in-memory DB for test implementations': withInMemoryDb,
         'Configure project now?': true,
         'Configure backend now?': true,

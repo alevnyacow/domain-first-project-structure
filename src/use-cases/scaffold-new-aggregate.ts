@@ -7,6 +7,10 @@ import {
 import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import {
+    envBranchedWireArgument,
+    offersTestImplementation
+} from '../wire-branches';
 import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -110,10 +114,12 @@ describe('${aggregateNaming.withSpaces}', () => {
         let addTestImplementation: boolean = false;
         let testImplementationType: string = '';
 
-        addTestImplementation = await confirm({
-            key: 'withTestImplementation',
-            message: 'Add a test implementation for Repository'
-        });
+        addTestImplementation =
+            offersTestImplementation() &&
+            (await confirm({
+                key: 'withTestImplementation',
+                message: 'Add a test implementation for Repository'
+            }));
 
         if (addTestImplementation) {
             testImplementationType = (
@@ -226,11 +232,10 @@ ${implementationTypes
     )
     .join('\n\n')}
 
-export const wire${aggregateNaming.ClassName}Repository = envBranchedWire({
-    test: wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}Implementation,
-    development: wire${implementationNaming.ClassName}Implementation,
-    production: wire${implementationNaming.ClassName}Implementation
-})
+export const wire${aggregateNaming.ClassName}Repository = envBranchedWire(${envBranchedWireArgument(
+                        `wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}Implementation`,
+                        `wire${implementationNaming.ClassName}Implementation`
+                    )})
     `.trim()
                 );
 

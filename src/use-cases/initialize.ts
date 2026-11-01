@@ -1,12 +1,14 @@
+import path from 'node:path';
 import { checkbox, confirm, input, select } from '@inquirer/prompts';
 import {
     type BackendConfig,
+    branchNameSchema,
     ConfigFile,
     type ProjectConfig,
     domainFirstPackages as packageChoices,
     scaffoldBackendRules
 } from '../config-file';
-import { Folder, withoutOverwrites } from '../file-system';
+import { File, Folder, withoutOverwrites } from '../file-system';
 import { scaffoldInMemoryDb } from '../in-memory-db';
 import {
     addStorybook,
@@ -18,6 +20,7 @@ import {
     storybookFrameworkPackage
 } from '../integrations';
 import { ProjectRoot } from '../project-root';
+import { defaultEnvBranches, envBranchedWireSource } from '../wire-branches';
 
 export const configurationSections = [
     'project',
@@ -37,7 +40,93 @@ const configureProject = async (config: ProjectConfig) => {
     });
 };
 
-const configureBackend = async (config: ProjectConfig): Promise<void> => {
+const createTestBranch = Symbol('create-test-branch');
+const noTestBranch = Symbol('no-test-branch');
+
+/**
+ * With `wire`: the default `NODE_ENV` branches (nothing saved) or custom
+ * ones, one of them for tests.
+ */
+const promptEnvBranches = async (
+    current: BackendConfig['envBranches']
+): Promise<BackendConfig['envBranches']> => {
+    const kind = await select<'default' | 'custom'>({
+        message: 'envBranchedWire branches:',
+        choices: [
+            {
+                name: 'Default: test, development, production by NODE_ENV',
+                value: 'default'
+            },
+            { name: 'Custom branches', value: 'custom' }
+        ],
+        default: current ? 'custom' : 'default'
+    });
+    if (kind === 'default') return undefined;
+    const parse = (value: string) =>
+        value
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean);
+    const names = parse(
+        await input({
+            message: 'Branches (comma-separated):',
+            default: current?.names.join(', '),
+            validate: (value) => {
+                const names = parse(value);
+                if (!names.length) return 'Enter at least one branch.';
+                if (names.length === 1 && names[0] === 'test')
+                    return 'Add a branch for primary implementations besides test.';
+                const invalid = names.find(
+                    (name) => !branchNameSchema.safeParse(name).success
+                );
+                if (invalid)
+                    return `${invalid}: use lowercase letters and digits, e.g. staging.`;
+                return new Set(names).size === names.length
+                    ? true
+                    : 'Branch names must be unique.';
+            }
+        })
+    );
+    const test = await select<
+        string | typeof createTestBranch | typeof noTestBranch
+    >({
+        message: 'Test branch:',
+        choices: [
+            ...names.map((name) => ({
+                name,
+                value: name,
+                // Primary implementations need a branch of their own.
+                disabled: names.length === 1 ? '(the only branch)' : false
+            })),
+            ...(names.includes('test')
+                ? []
+                : [
+                      {
+                          name: 'Create a "test" branch',
+                          value: createTestBranch as typeof createTestBranch
+                      }
+                  ]),
+            {
+                name: 'No test branch: every branch uses the primary implementation',
+                value: noTestBranch as typeof noTestBranch
+            }
+        ],
+        default:
+            current && !current.test
+                ? noTestBranch
+                : current?.test && names.includes(current.test)
+                  ? current.test
+                  : names.includes('test')
+                    ? 'test'
+                    : createTestBranch
+    });
+    if (test === noTestBranch) return { names };
+    return test === createTestBranch
+        ? { names: [...names, 'test'], test: 'test' }
+        : { names, test };
+};
+
+const configureBackend = async (config: ProjectConfig): Promise<string[]> => {
     const current = config.backend;
     const domainFirstPackages = await checkbox<
         BackendConfig['domainFirstPackages'][number]
@@ -49,6 +138,9 @@ const configureBackend = async (config: ProjectConfig): Promise<void> => {
             checked: current?.domainFirstPackages.includes(value) ?? false
         }))
     });
+    const envBranches = domainFirstPackages.includes('@domain-first/wire')
+        ? await promptEnvBranches(current?.envBranches)
+        : current?.envBranches;
     const withInMemoryDb = await confirm({
         message: 'Scaffold in-memory DB for test implementations',
         default: current ? Boolean(current.withInMemoryDb) : true
@@ -67,6 +159,7 @@ const configureBackend = async (config: ProjectConfig): Promise<void> => {
         backend: {
             ...current,
             domainFirstPackages,
+            envBranches,
             withInMemoryDb,
             testingLibrary,
             rules: scaffoldBackendRules(current?.rules)
@@ -75,25 +168,44 @@ const configureBackend = async (config: ProjectConfig): Promise<void> => {
 
     const rootFolder = new Folder(new ProjectRoot().path);
     const rootFolderName = config.project.rootFolder;
+    const wiringFolder = rootFolder.subitem([
+        rootFolderName,
+        'shared-kernel',
+        'wiring'
+    ]);
+    const notes: string[] = [];
+    const envBranchedWireExisted = new File(
+        path.join(wiringFolder.path, 'env-branched-wire.ts')
+    ).exists;
+    if (
+        domainFirstPackages.includes('@domain-first/wire') &&
+        envBranchedWireExisted &&
+        JSON.stringify(envBranches ?? null) !==
+            JSON.stringify(current?.envBranches ?? null)
+    ) {
+        const { names } = envBranches ?? defaultEnvBranches;
+        notes.push(
+            `${rootFolderName}/shared-kernel/wiring/env-branched-wire.ts and existing envBranchedWire calls keep their branches: change them to ${names.join(', ')} yourself`
+        );
+    }
     // Reconfiguration adds missing support files without replacing user code.
     withoutOverwrites(() => {
         if (domainFirstPackages.includes('@domain-first/wire')) {
-            rootFolder
-                .subitem([rootFolderName, 'shared-kernel', 'wiring'])
-                .createFile(
-                    'env-branched-wire.ts',
-                    `import { branchedWire } from '@domain-first/wire'
-
-export const envBranchedWire = branchedWire(() => {
-    return process.env.NODE_ENV ?? 'development' as 'test' | 'development' | 'production'
-});`
-                );
+            wiringFolder.createFile(
+                'env-branched-wire.ts',
+                envBranchedWireSource()
+            );
         }
         if (withInMemoryDb)
             scaffoldInMemoryDb(
                 rootFolder.subitem([rootFolderName, 'shared-kernel'])
             );
     });
+    if (envBranches && !envBranchedWireExisted)
+        notes.push(
+            `${rootFolderName}/shared-kernel/wiring/env-branched-wire.ts doesn't compile until you write currentBranch: return the branch this process runs in (${envBranches.names.join(', ')})`
+        );
+    return notes;
 };
 
 const configureFrontend = async (config: ProjectConfig) => {
@@ -225,7 +337,7 @@ export const initializeUseCase = async (
                 await configureProject(config);
                 break;
             case 'backend':
-                await configureBackend(config);
+                nextSteps.push(...(await configureBackend(config)));
                 backendConfigured = true;
                 break;
             case 'frontend': {

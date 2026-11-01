@@ -4,6 +4,10 @@ import { createImplementation } from '../implementations';
 import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import {
+    envBranchedWireArgument,
+    offersTestImplementation
+} from '../wire-branches';
 import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -27,10 +31,12 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     let addTestImplementation: boolean = false;
     let testImplementationType: string = '';
 
-    addTestImplementation = await confirm({
-        key: 'withTestImplementation',
-        message: 'Add a test implementation for Query'
-    });
+    addTestImplementation =
+        offersTestImplementation() &&
+        (await confirm({
+            key: 'withTestImplementation',
+            message: 'Add a test implementation for Query'
+        }));
 
     if (addTestImplementation) {
         testImplementationType = (
@@ -157,11 +163,10 @@ ${implementationTypes
     )
     .join('\n\n')}
 
-export const wire${naming.ClassName}Query = envBranchedWire({
-    test: wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}Implementation,
-    development: wire${implementationNaming.ClassName}Implementation,
-    production: wire${implementationNaming.ClassName}Implementation
-})
+export const wire${naming.ClassName}Query = envBranchedWire(${envBranchedWireArgument(
+                    `wire${addTestImplementation ? testImplementationNaming.ClassName : implementationNaming.ClassName}Implementation`,
+                    `wire${implementationNaming.ClassName}Implementation`
+                )})
     `.trim()
             );
 

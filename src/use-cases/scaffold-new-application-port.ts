@@ -4,6 +4,10 @@ import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
+import {
+    envBranchedWireArgument,
+    offersTestImplementation
+} from '../wire-branches';
 import { promptImplementationType } from './prompt-implementation-type';
 import { wireNewModuleDependencies } from './wire-dependency';
 
@@ -44,10 +48,12 @@ export abstract class ${naming.ClassName} {
         }
     );
 
-    const addTestImplementation = await confirm({
-        key: 'withTestImplementation',
-        message: 'With test implementation'
-    });
+    const addTestImplementation =
+        offersTestImplementation() &&
+        (await confirm({
+            key: 'withTestImplementation',
+            message: 'With test implementation'
+        }));
     let testImplementationType = '';
     if (addTestImplementation) {
         testImplementationType = (
@@ -144,11 +150,10 @@ ${implementationTypes
     )
     .join('\n\n')}
 
-export const wire${naming.ClassName} = envBranchedWire({
-    test: wire${new UnknownFormatNaming(`${implementationTypes.at(-1)!}-implementation`).ClassName},
-    development: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName},
-    production: wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName}
-})
+export const wire${naming.ClassName} = envBranchedWire(${envBranchedWireArgument(
+                `wire${new UnknownFormatNaming(`${implementationTypes.at(-1)!}-implementation`).ClassName}`,
+                `wire${new UnknownFormatNaming(`${implementationTypes.at(0)!}-implementation`).ClassName}`
+            )})
 
                 `.trim()
         );

@@ -235,6 +235,7 @@ test('existing config prompts for one section, pre-fills its settings and keeps 
     expect(prompts).toEqual([
         'Configuration section:',
         '@domain-first packages',
+        'envBranchedWire branches:',
         'Scaffold in-memory DB for test implementations',
         'Scaffold unit tests',
         'Unit testing library:'
@@ -536,4 +537,157 @@ test('interrupted initialization never writes a partially configured project', a
     await expect(initializeUseCase()).rejects.toThrow('cancelled');
     discardPendingChanges();
     expect(fs.readdirSync(project)).toEqual(['package.json']);
+});
+
+const envWirePath = () =>
+    path.join(project, 'src/shared-kernel/wiring/env-branched-wire.ts');
+const backendAnswers = {
+    '@domain-first packages': ['@domain-first/wire'],
+    'Scaffold in-memory DB for test implementations': false,
+    'Scaffold unit tests': false
+};
+
+test('default wire branches save nothing and select the branch by NODE_ENV', async () => {
+    answer(backendAnswers);
+    const steps = await initializeUseCase('backend');
+    await persist();
+    expect(ConfigFile.backend).not.toHaveProperty('envBranches');
+    expect(fs.readFileSync(envWirePath(), 'utf8')).toContain(
+        "process.env.NODE_ENV ?? 'development'"
+    );
+    expect(steps.join('\n')).not.toContain('currentBranch');
+});
+
+test('custom wire branches with a created test branch leave the selector for the user', async () => {
+    answer({
+        ...backendAnswers,
+        'envBranchedWire branches:': 'custom',
+        'Branches (comma-separated):': ' local, staging ,production '
+    });
+    // The test branch question defaults to creating one.
+    const steps = await initializeUseCase('backend');
+    await persist();
+    expect(ConfigFile.backend.envBranches).toEqual({
+        names: ['local', 'staging', 'production', 'test'],
+        test: 'test'
+    });
+    expect(
+        fs.readFileSync(envWirePath(), 'utf8')
+    ).toBe(`import { branchedWire } from '@domain-first/wire'
+
+export type EnvBranch = 'local' | 'staging' | 'production' | 'test'
+
+/**
+ * The branch this process runs in. Write how it is selected:
+ * until then, this function doesn't compile.
+ */
+const currentBranch = (): EnvBranch => {
+}
+
+export const envBranchedWire = branchedWire(currentBranch)`);
+    expect(steps).toContain(
+        "src/shared-kernel/wiring/env-branched-wire.ts doesn't compile until you write currentBranch: return the branch this process runs in (local, staging, production, test)"
+    );
+});
+
+test('one of the custom branches can be the test branch; names are validated', async () => {
+    answer({
+        ...backendAnswers,
+        'envBranchedWire branches:': 'custom',
+        'Branches (comma-separated):': 'qa, prod',
+        'Test branch:': 'qa'
+    });
+    await initializeUseCase('backend');
+    await persist();
+    expect(ConfigFile.backend.envBranches).toEqual({
+        names: ['qa', 'prod'],
+        test: 'qa'
+    });
+    const { validate } = rstest
+        .mocked(input)
+        .mock.calls.map(([config]) => config as any)
+        .find(({ message }) => message === 'Branches (comma-separated):');
+    expect(validate('qa, qa')).toBe('Branch names must be unique.');
+    expect(validate('Staging')).toContain('lowercase');
+    expect(validate('test')).toContain('besides test');
+    expect(validate('local')).toBe(true);
+});
+
+test('changing branches of an existing wire setup keeps env-branched-wire.ts and says so', async () => {
+    ConfigFile.write({
+        project: { rootFolder: 'src' },
+        backend: { domainFirstPackages: ['@domain-first/wire'] }
+    });
+    writePendingChanges();
+    fs.mkdirSync(path.dirname(envWirePath()), { recursive: true });
+    fs.writeFileSync(envWirePath(), '// user wire');
+    answer({
+        ...backendAnswers,
+        'envBranchedWire branches:': 'custom',
+        'Branches (comma-separated):': 'qa, prod',
+        'Test branch:': 'qa'
+    });
+    const steps = await initializeUseCase('backend');
+    await persist();
+    expect(fs.readFileSync(envWirePath(), 'utf8')).toBe('// user wire');
+    expect(steps).toContain(
+        'src/shared-kernel/wiring/env-branched-wire.ts and existing envBranchedWire calls keep their branches: change them to qa, prod yourself'
+    );
+});
+
+test('custom wire branches can go without a test branch, even a single one', async () => {
+    answer({
+        ...backendAnswers,
+        'envBranchedWire branches:': 'custom',
+        'Branches (comma-separated):': 'local'
+    });
+    rstest
+        .mocked(select)
+        .mockImplementation(
+            async ({ message, choices, default: fallback }: any) => {
+                prompts.push(message);
+                if (message === 'envBranchedWire branches:') return 'custom';
+                if (message === 'Test branch:') {
+                    expect(choices[0]).toMatchObject({
+                        value: 'local',
+                        disabled: '(the only branch)'
+                    });
+                    return choices.at(-1).value;
+                }
+                return fallback;
+            }
+        );
+    await initializeUseCase('backend');
+    await persist();
+    expect(ConfigFile.backend.envBranches).toEqual({ names: ['local'] });
+    expect(fs.readFileSync(envWirePath(), 'utf8')).toContain(
+        "export type EnvBranch = 'local'"
+    );
+});
+
+test('an entered test branch is preselected instead of offering to create one', async () => {
+    answer({
+        ...backendAnswers,
+        'envBranchedWire branches:': 'custom',
+        'Branches (comma-separated):': 'local, test, production'
+    });
+    await initializeUseCase('backend');
+    await persist();
+    const testBranch = rstest
+        .mocked(select)
+        .mock.calls.map(([config]) => config as any)
+        .find(({ message }) => message === 'Test branch:');
+    expect(testBranch.default).toBe('test');
+    expect(
+        testBranch.choices.map(({ name }: { name: string }) => name)
+    ).toEqual([
+        'local',
+        'test',
+        'production',
+        'No test branch: every branch uses the primary implementation'
+    ]);
+    expect(ConfigFile.backend.envBranches).toEqual({
+        names: ['local', 'test', 'production'],
+        test: 'test'
+    });
 });

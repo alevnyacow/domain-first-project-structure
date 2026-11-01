@@ -15,6 +15,7 @@ import {
 } from '../implementations';
 import { checkbox, report, Separator, select } from '../interaction';
 import { systemImplementationChoices } from '../system-implementations';
+import { envBranches } from '../wire-branches';
 import {
     addBranchedImplementation,
     readWiredModule,
@@ -30,8 +31,6 @@ const kindTitles: Record<string, string> = {
     query: 'Queries',
     port: 'Ports'
 };
-
-const environments = ['test', 'development', 'production'];
 
 /**
  * The branches of the module's wire, undefined if it isn't an
@@ -102,6 +101,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
     );
 
     const { file, className } = createImplementation(ownerFolder, unit, label);
+    const branches = envBranches();
     const rememberFor = (environments: string[]) => {
         if (!saveForFutureUse) return;
         if (
@@ -112,16 +112,16 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
             ).some((choice) => choice.value === label)
         )
             return;
-        if (environments.includes('test'))
+        if (branches.test && environments.includes(branches.test))
             rememberImplementation(kind, 'test', label);
-        if (environments.some((environment) => environment !== 'test'))
+        if (environments.some((environment) => environment !== branches.test))
             rememberImplementation(kind, 'primary', label);
     };
 
     if (
         !ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
     ) {
-        rememberFor(['development']);
+        rememberFor(branches.primary);
         return;
     }
 
@@ -129,9 +129,9 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         contractWireFile(unit).split('/')
     );
     const wireName = `wire${contractClassName(unit)}`;
-    const branches = branchesOf(wireFile, wireName);
-    if (!branches) {
-        rememberFor(['development']);
+    const wired = branchesOf(wireFile, wireName);
+    if (!wired) {
+        rememberFor(branches.primary);
         report(
             `${wireFile.path} has no ${wireName} = envBranchedWire({...}): wire ${className} there yourself.`
         );
@@ -144,17 +144,21 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
     const chosenEnvironments = await checkbox({
         key: 'environments',
         message: 'Environments:',
-        choices: [...new Set([...environments, ...branches.keys()])].map(
-            (environment) => {
-                const current = branches.get(environment);
-                return {
-                    name: current
-                        ? `${environment} (now: ${labelOfWire.get(current) ?? current})`
-                        : environment,
-                    value: environment
-                };
-            }
-        ),
+        choices: [
+            ...new Set([
+                ...(branches.test ? [branches.test] : []),
+                ...branches.primary,
+                ...wired.keys()
+            ])
+        ].map((environment) => {
+            const current = wired.get(environment);
+            return {
+                name: current
+                    ? `${environment} (now: ${labelOfWire.get(current) ?? current})`
+                    : environment,
+                value: environment
+            };
+        }),
         required: true
     });
     rememberFor(chosenEnvironments);

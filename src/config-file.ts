@@ -39,9 +39,36 @@ export const rulesSchema = z.object({
     dependencies: dependencyRulesSchema.optional(),
     lint: z.partialRecord(z.enum(lintChecks), z.boolean()).optional()
 });
+export const branchNameSchema = z
+    .string()
+    .regex(
+        /^[a-z][a-z0-9]*$/,
+        'Use lowercase letters and digits, e.g. staging.'
+    );
+/**
+ * Custom `envBranchedWire` branches. Absent: `test`, `development` and
+ * `production`, selected by `NODE_ENV`. Without `test`, every branch gets
+ * the primary implementation and no test implementations are generated.
+ */
+export const envBranchesSchema = z
+    .object({
+        names: z.array(branchNameSchema).min(1),
+        test: branchNameSchema.optional()
+    })
+    .refine(({ names }) => new Set(names).size === names.length, {
+        message: 'Branch names must be unique.'
+    })
+    .refine(({ names, test }) => test === undefined || names.includes(test), {
+        message: 'The test branch must be one of the branches.'
+    })
+    .refine(({ names, test }) => test === undefined || names.length > 1, {
+        message:
+            'The primary implementation needs a branch besides the test one.'
+    });
 export const backendConfigSchema = z
     .object({
         domainFirstPackages: z.array(z.enum(domainFirstPackages)),
+        envBranches: envBranchesSchema.optional(),
         withInMemoryDb: z.boolean().optional(),
         testingLibrary: z.string().optional(),
         implementations: implementationOptionsSchema.optional(),

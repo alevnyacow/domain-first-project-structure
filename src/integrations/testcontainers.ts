@@ -2,6 +2,7 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { ProjectRoot } from '../project-root';
+import { envBranches } from '../wire-branches';
 import { addPackageScripts, describeScripts } from './package-scripts';
 import { prismaScripts } from './prisma';
 
@@ -230,6 +231,11 @@ export const addTestcontainers = async (): Promise<string[]> => {
             : [
                   `Add '${integrationFolder}/**' to test.exclude in vitest.config.ts, so unit tests skip integration specs.`
               ]),
+        ...(envBranches().custom
+            ? [
+                  `${integrationFolder} runs with NODE_ENV=development and ${integrationFolder}/setup-env.ts requires it, but your envBranchedWire branches are custom: make currentBranch in shared-kernel/wiring/env-branched-wire.ts return the branch for integration specs, and adjust setup-env.ts.`
+              ]
+            : []),
         'Docker must be running for integration specs.',
         ...describeScripts(selected, {
             'test:integration': `run integration specs from ${integrationFolder} against PostgreSQL in a container`

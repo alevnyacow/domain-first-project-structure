@@ -212,3 +212,31 @@ test('asks to exclude integration specs from a unit config of another shape', as
         fs.readFileSync(path.join(project, 'vitest.config.ts'), 'utf8')
     ).toBe("exclude: ['**/node_modules/**']");
 });
+
+test('with custom wire branches, notes that integration specs need their branch', async () => {
+    const { project } = setup(installed);
+    const configPath = path.join(
+        project,
+        'domain-first.project-structure.config.json'
+    );
+    fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+            project: { rootFolder: 'src' },
+            backend: {
+                domainFirstPackages: ['@domain-first/wire'],
+                envBranches: { names: ['local', 'test'], test: 'test' }
+            }
+        })
+    );
+    const steps = await addTestcontainers();
+    expect(steps.some((step) => step.includes('make currentBranch'))).toBe(
+        true
+    );
+});
+
+test('with default wire branches, the NODE_ENV setup needs no note', async () => {
+    setup(installed);
+    const steps = await addTestcontainers();
+    expect(steps.some((step) => step.includes('currentBranch'))).toBe(false);
+});

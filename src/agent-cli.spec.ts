@@ -526,3 +526,75 @@ test('an outdated config stops requests and is reported by describe', async () =
         configStatus: 'outdated'
     });
 });
+
+test('custom wire branches shape generated wires and New Implementation environments', async () => {
+    ConfigFile.update({
+        backend: {
+            ...ConfigFile.backend,
+            envBranches: { names: ['qa', 'staging', 'prod'], test: 'qa' }
+        }
+    });
+    writePendingChanges();
+    await executeAgentRequest('df-scaffold', {
+        ...query,
+        testImplementation: { type: 'fake' },
+        dependencies: { PrismaOrdersQuery: [], FakeOrdersQuery: [] }
+    });
+    const wireFile =
+        'src/bounded-contexts/sales/wiring/queries/wire-orders-query.ts';
+    expect(
+        read(wireFile)
+    ).toContain(`export const wireOrdersQuery = envBranchedWire({
+    qa: wireFakeImplementation,
+    staging: wirePrismaImplementation,
+    prod: wirePrismaImplementation
+})`);
+    await expect(
+        executeAgentRequest('df-scaffold', {
+            operation: 'implementation',
+            context: 'sales',
+            contract: 'query:orders',
+            implementation: { type: 'sql' },
+            environments: ['development']
+        })
+    ).rejects.toMatchObject({ code: 'INVALID_CHOICE' });
+    await executeAgentRequest('df-scaffold', {
+        operation: 'implementation',
+        context: 'sales',
+        contract: 'query:orders',
+        implementation: { type: 'sql', save: true },
+        environments: ['staging'],
+        dependencies: { SqlOrdersQuery: [] }
+    });
+    expect(read(wireFile)).toContain('staging: wireSqlImplementation');
+    expect(ConfigFile.backend.implementations?.queries?.primary).toContain(
+        'sql'
+    );
+});
+
+test('without a test branch, every branch gets the primary implementation and no test one is asked', async () => {
+    ConfigFile.update({
+        backend: {
+            ...ConfigFile.backend,
+            envBranches: { names: ['staging', 'prod'] }
+        }
+    });
+    writePendingChanges();
+    await expect(
+        executeAgentRequest('df-scaffold', {
+            ...query,
+            testImplementation: { type: 'fake' },
+            dependencies: { PrismaOrdersQuery: [] }
+        })
+    ).rejects.toMatchObject({ code: 'UNUSED_PARAMETERS' });
+    await executeAgentRequest('df-scaffold', {
+        ...query,
+        dependencies: { PrismaOrdersQuery: [] }
+    });
+    expect(
+        read('src/bounded-contexts/sales/wiring/queries/wire-orders-query.ts')
+    ).toContain(`export const wireOrdersQuery = envBranchedWire({
+    staging: wirePrismaImplementation,
+    prod: wirePrismaImplementation
+})`);
+});

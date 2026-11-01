@@ -62,7 +62,7 @@ export const wirePlaceOrderUseCase = wireClass(PlaceOrderUseCase, [
 ```
 
 - Use the injected dependencies in the class body; don't edit the parameter list or the wire list.
-- Env-branched files (repositories, commands/queries, ports): each `wire<Impl>Implementation` has its own dependencies, added per implementation. `NODE_ENV=test` selects the test one; vitest sets it.
+- Env-branched files (repositories, commands/queries, ports): each `wire<Impl>Implementation` has its own dependencies, added per implementation. `NODE_ENV=test` selects the test one by default (vitest sets it); with `backend.envBranches` the project's `currentBranch` in `env-branched-wire.ts` selects the branch, and `backend.envBranches.test` is the test one. If `currentBranch` has no body yet, ask the user how the branch is chosen; don't invent it.
 - External clients and config values: an infrastructure service ([services](../df-ps-scaffold/references/units/services.md)), never a `wireValue(...)`.
 - A needed dependency the CLI doesn't offer: see rule 3 (change the design).
 

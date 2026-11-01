@@ -187,6 +187,9 @@ Current settings prefill the prompts. Only the chosen sections change; opting in
 | --- | --- | --- | --- |
 | Project | `Root folder (use "/" for inner folders):` | input, default `src` | `project.rootFolder` |
 | Backend | `@domain-first packages` | checkbox | `backend.domainFirstPackages` |
+| Backend | `envBranchedWire branches:` (with `wire`) | select: `Default: test, development, production by NODE_ENV` / `Custom branches` | Default: nothing saved. Custom: `backend.envBranches` |
+| Backend | `Branches (comma-separated):` (custom branches) | input: lowercase letters and digits, unique | `backend.envBranches.names` |
+| Backend | `Test branch:` (custom branches) | select: one of the branches, `Create a "test" branch`, or `No test branch: every branch uses the primary implementation` | `backend.envBranches.test`; a created `test` is appended to the names; no test branch leaves `test` out |
 | Backend | `Scaffold in-memory DB for test implementations` | confirm | `backend.withInMemoryDb` |
 | Backend | `Scaffold unit tests` | confirm | Whether to ask for the testing library |
 | Backend | `Unit testing library:` | input, default `vitest` | `backend.testingLibrary` |
@@ -270,6 +273,7 @@ type Config = {
             | '@domain-first/wire'
             | '@domain-first/handlers-rest'
         >;
+        envBranches?: { names: string[]; test: string };
         withInMemoryDb?: boolean;
         testingLibrary?: string;
         implementations?: Partial<Record<
@@ -306,6 +310,7 @@ type Config = {
 | --- | --- |
 | `project.rootFolder` | Source folder relative to the project root, e.g. `src/server`. |
 | `backend.domainFirstPackages` | Template integrations. An empty array selects plain classes. An absent backend means setup was deferred. |
+| `backend.envBranches` | Custom [`envBranchedWire`](#envbranchedwire) branches: unique `names` (lowercase letters and digits) and optionally the `test` one among them, with at least one other branch. Without `test`, every branch gets the primary implementation and generators don't ask for test implementations. Omitted: `test`, `development`, `production` by `NODE_ENV`. |
 | `backend.withInMemoryDb` | Enables the shared [in-memory DB](#in-memory-db) behavior for repository, command and query implementations. |
 | `backend.testingLibrary` | Test imports: `describe`, `test`, `expect`, `beforeEach`. Omitted: no generated specs. |
 | `frontend.react` | Its presence enables `df-react`, OpenAPI's Swagger UI page and Orval's React Query hooks. An empty object enables React without stories. |
@@ -566,7 +571,7 @@ A `cross-context` adapter can inject queries, commands and use cases from any ne
 | ---------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `Contract:`            |                                   | Repositories, commands, queries and ports of the context, with their implementations: `order (in-memory, prisma)` |
 | `Implementation type:` |                                   | Saved primary and test types for the contract category, available system implementations and both manual-entry actions; ports offer `System: cross-context (calls handlers in another bounded context)` only when another bounded context exists (never in the Shared Kernel). Existing types are disabled; duplicate custom labels are rejected                                        |
-| `Environments:`        | With `wire` and an env-branched wire | Checkbox, at least one: `test`, `development`, `production`, each with its current implementation: `development (now: s3)` |
+| `Environments:`        | With `wire` and an env-branched wire | Checkbox, at least one: the [branches](#envbranchedwire) (`test`, `development`, `production` by default) and any other of the wire, each with its current implementation: `development (now: s3)` |
 | `Dependencies for <Impl>:` | With `wire`                   | As in [Dependency selection](#dependency-selection), for the new implementation only                    |
 
 **Output**
@@ -665,6 +670,25 @@ Repositories, commands, queries and ports wire every implementation separately a
 | `production`             | The primary implementation                                    |
 
 Any other value makes the wire throw `NonExistingBranchError` from `@domain-first/wire`.
+
+**Custom branches.** With `backend.envBranches`, `df-init` writes the branches as a type and leaves choosing one to you. `currentBranch` has no body, so the project doesn't compile until you write it:
+
+```ts
+import { branchedWire } from '@domain-first/wire'
+
+export type EnvBranch = 'local' | 'staging' | 'production' | 'test'
+
+/**
+ * The branch this process runs in. Write how it is selected:
+ * until then, this function doesn't compile.
+ */
+const currentBranch = (): EnvBranch => {
+}
+
+export const envBranchedWire = branchedWire(currentBranch)
+```
+
+Generated wires list the test branch first with the test implementation (the primary one without it), then every other branch with the primary implementation, in the configured order. Without a test branch, every branch gets the primary implementation, and repositories, commands, queries and ports don't ask `Add a test implementation…` / `With test implementation` (in JSON mode, `testImplementation` is rejected as unused). `New Implementation` offers the configured branches. Changing the branches later doesn't rewrite `env-branched-wire.ts` or existing wires: `df-init` notes that they keep their branches.
 
 ### Dependency selection
 
@@ -970,7 +994,7 @@ The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, scr
 | ------------------ | ----------------------------------------------------------------------------------------------------------- |
 | `vitest.config.ts` | Runs `specs/integration/**/*.spec.ts` with `NODE_ENV=development`, so `envBranchedWire` picks development implementations. Paths are relative to the project root. When `@domain-first/handlers-next` is declared, it is inlined |
 | `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container, without `--advance-ref`, so the `db` ref of the development database stays as is |
-| `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container |
+| `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container. With custom [branches](#envbranchedwire), the CLI notes that `currentBranch` must return the branch for integration specs and `setup-env.ts` may need adjusting |
 
 Specs get the container's address in `DATABASE_URL`, so the Prisma infrastructure service connects to it. Change the image, credentials and connection string in `global-setup.ts`, and the variable name in `setup-env.ts`. All specs of a run share one database: give each spec its own data.
 

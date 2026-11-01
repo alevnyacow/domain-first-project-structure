@@ -53,7 +53,7 @@ npx df-init --section backend
 npx df-init --section frontend
 ```
 
-Project asks for the source folder. Backend asks for the `@domain-first` packages, shared in-memory DB and testing library, then adds the required Shared Kernel files. With `@domain-first/handlers-rest`, it adds the [endpoint generator](#how-to-add-a-rest-endpoint). Frontend offers **React** or **Next.js**, then Storybook. Enabling Storybook runs the existing React + Vite integration: it creates `.storybook` configs, package scripts and the build-output `.gitignore` entry. Selecting Next.js with a configured backend asks **Use @domain-first/handlers-next for REST endpoints** once. Yes adds `handlers-rest` to the backend packages if needed, connects `nextAdapter` and creates the catch-all route. This works before `next` is installed. With backend deferred, REST setup waits until backend configuration. Missing packages are printed as an install command; nothing is installed automatically.
+Project asks for the source folder. Backend asks for the `@domain-first` packages, the [`envBranchedWire` branches](#how-to-switch-implementations) with `wire`, shared in-memory DB and testing library, then adds the required Shared Kernel files. With `@domain-first/handlers-rest`, it adds the [endpoint generator](#how-to-add-a-rest-endpoint). Frontend offers **React** or **Next.js**, then Storybook. Enabling Storybook runs the existing React + Vite integration: it creates `.storybook` configs, package scripts and the build-output `.gitignore` entry. Selecting Next.js with a configured backend asks **Use @domain-first/handlers-next for REST endpoints** once. Yes adds `handlers-rest` to the backend packages if needed, connects `nextAdapter` and creates the catch-all route. This works before `next` is installed. With backend deferred, REST setup waits until backend configuration. Missing packages are printed as an install command; nothing is installed automatically.
 
 All settings and saved implementation types live in `domain-first.project-structure.config.json`:
 
@@ -177,6 +177,8 @@ export const wireOrderRepository = envBranchedWire({
 ```
 
 Tests get the test implementation, everything else gets the primary one.
+
+Your environments may differ: choose **Custom branches** during backend setup and enter them, e.g. `local, staging, production`, then pick the test branch, let `df-init` add `test`, or go without one: then every branch gets the primary implementation and no test implementations are asked for. Generated wires use these branches. How the current branch is chosen is yours: `env-branched-wire.ts` gets an empty `currentBranch` function that doesn't compile until you write it.
 
 ### How to wire dependencies
 
