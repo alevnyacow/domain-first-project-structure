@@ -40,7 +40,7 @@ npx df-integration --request '{"operation":"add","integrations":["storybook"]}'
 - `dependencies`: implementation/class name → array of qualified module IDs. Omitted entries keep the generator's checked suggestions; `[]` explicitly selects none when that selection applies. When wiring is off or no candidates exist, omit the group; see the [dependency conditions](agent-operations.md#dependency-keys-and-system-implementations). Every supplied dependency group must apply to the operation. Different primary/test implementations have independent lists.
 - Aggregate repositories require `withRepository: true` and an `implementation`. Without it, aggregate creation makes no repository.
 - New implementations use a `contract` ID and, with a branched wire, an explicit `environments` array. Moves use a `module` unit ID and optional `targetContext`, `aggregate` and `name`. `wire-dependency` uses a wiring target ID in `module` plus its `dependencies` entry.
-- Endpoints use `controller`, lowercase `method`, relative `path` and a qualified `handler` ID when a wired handler is available. A new controller is created when its name does not exist.
+- Endpoints use `controller`, lowercase `method`, relative `path` and a qualified `handler` ID when a wired handler is available. A new controller is created when its name does not exist; omit `controller` for an endpoint at the context root (`/<context>`, `/<context>/:id`).
 - Integration-specific fields and script conflict decisions are in the integration request schema. Conflicts require explicit decisions, e.g. `"scriptConflicts": { "storybook": "keep" }`. Configuration changes that require confirmation interactively also require their explicit request field.
 
 ## Check the result

@@ -125,10 +125,11 @@ export const createOpenApiDataFromEndpointLogicExtractor = ({
         path: readonly string[];
     }): OpenApiData | undefined => {
         try {
-            const [currentBoundedContext, controller, ...relativePath] =
-                routeMetadata.path;
+            // The controller, if any, is the first folder of the path:
+            // context-root endpoints live right in presentation/rest.
+            const [currentBoundedContext, ...relativePath] = routeMetadata.path;
 
-            if (!currentBoundedContext || !controller) {
+            if (!currentBoundedContext) {
                 return undefined;
             }
 
@@ -138,7 +139,6 @@ export const createOpenApiDataFromEndpointLogicExtractor = ({
                     currentBoundedContext,
                     'presentation',
                     'rest',
-                    controller,
                     ...relativePath.map(pathParameterAsName),
                     \`\${routeMetadata.method.toUpperCase()}.ts\`
                 )

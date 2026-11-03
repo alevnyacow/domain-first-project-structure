@@ -319,13 +319,17 @@ const answersFor = (
                       : 'New error without namespace';
         if (request.operation === 'endpoint') {
             delete answers.controller;
-            const existing = owner!
-                .subitem(['presentation', 'rest'])
-                .content.subfolderNames.includes(request.controller!);
-            answers.controllerSelection = existing
-                ? request.controller
-                : 'New controller';
-            if (!existing) answers.controllerName = request.controller;
+            if (request.controller === undefined)
+                answers.controllerSelection = 'No controller (context root)';
+            else {
+                const existing = owner!
+                    .subitem(['presentation', 'rest'])
+                    .content.subfolderNames.includes(request.controller);
+                answers.controllerSelection = existing
+                    ? request.controller
+                    : 'New controller';
+                if (!existing) answers.controllerName = request.controller;
+            }
         }
         if (request.operation === 'move')
             defaults.targetContext = request.context;

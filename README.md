@@ -239,6 +239,8 @@ With `@domain-first/handlers-rest`, choose **Presentation → New Handlers-REST 
 src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts   // GET /sales/orders/recent
 ```
 
+For the context itself, pick **No controller (context root)**: context `social-networks`, an empty path and `get` give `GET /social-networks` in `src/bounded-contexts/social-networks/presentation/rest/GET.ts` (`SocialNetworksGetEndpoint`); path `:id` gives `GET /social-networks/:id`.
+
 Every endpoint uses the one endpoint generator of the project, `RestEndpointGeneratorPresentationService` in `src/shared-kernel/presentation/services/`. Initialization scaffolds it as a regular Shared Kernel presentation service (class, spec and wire):
 
 ```ts

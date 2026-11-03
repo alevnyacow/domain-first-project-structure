@@ -86,7 +86,11 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
     operation('endpoint', {
         ...common,
         ...owner,
-        controller: name,
+        controller: name
+            .optional()
+            .describe(
+                'Omit for an endpoint at the context root (`/<context>`); then path is empty or starts with a :param.'
+            ),
         method: z.enum(['get', 'post', 'put', 'patch', 'delete']),
         path: z
             .string()

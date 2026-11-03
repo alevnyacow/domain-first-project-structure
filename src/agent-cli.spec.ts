@@ -550,6 +550,69 @@ test('REST integration and endpoint creation use the same handler wiring as inte
     expect(repeated.files.updated).toEqual([]);
 });
 
+test('endpoints without a controller live at the context root', async () => {
+    ConfigFile.update({
+        backend: {
+            ...ConfigFile.backend,
+            domainFirstPackages: [
+                '@domain-first/wire',
+                '@domain-first/handlers-rest'
+            ]
+        }
+    });
+    writePendingChanges();
+    await executeAgentRequest('df-integration', {
+        operation: 'add',
+        integrations: ['rest-endpoint-generator'],
+        nextAdapter: true
+    });
+    await executeAgentRequest('df-scaffold', query);
+    for (const path of ['', ':id'])
+        await executeAgentRequest('df-scaffold', {
+            operation: 'endpoint',
+            context: 'sales',
+            method: 'get',
+            path,
+            handler: 'sales:OrdersQuery'
+        });
+    const root = read('src/bounded-contexts/sales/presentation/rest/GET.ts');
+    expect(root).toContain('export class SalesGetEndpoint');
+    expect(root).toContain("path: ['sales'] }");
+    expect(root).toContain("tags: ['sales']");
+    expect(
+        read('src/bounded-contexts/sales/presentation/rest/_id_/GET.ts')
+    ).toContain("path: ['sales', ':id'] }");
+    expect(
+        read('src/bounded-contexts/sales/wiring/presentation/rest/index.ts')
+    ).toBe(
+        "export * from './wire-sales-get-endpoint'\nexport * from './wire-sales-_id_-get-endpoint'"
+    );
+    expect(read('src/presentation/rest/wires.ts')).toContain(
+        "export * from '../../bounded-contexts/sales/wiring/presentation/rest/wire-sales-_id_-get-endpoint'"
+    );
+    expect(read('src/presentation/rest/index.ts')).toContain('restHandlers');
+    await expect(
+        executeAgentRequest('df-scaffold', {
+            operation: 'endpoint',
+            context: 'sales',
+            method: 'get',
+            path: 'recent',
+            handler: 'sales:OrdersQuery'
+        })
+    ).rejects.toThrow('"recent" is a controller');
+    await executeAgentRequest('df-scaffold', {
+        operation: 'endpoint',
+        context: 'sales',
+        controller: 'orders',
+        method: 'get',
+        path: '',
+        handler: 'sales:OrdersQuery'
+    });
+    expect(
+        read('src/bounded-contexts/sales/wiring/presentation/rest/index.ts')
+    ).toContain("export * from './orders'");
+});
+
 test('backend moves and entity creation use stable unit IDs and preserve aggregate placement', async () => {
     await executeAgentRequest('df-scaffold', {
         operation: 'aggregate',
