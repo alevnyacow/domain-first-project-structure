@@ -1,3 +1,10 @@
+## [8.5.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.5.0...v8.5.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* empty controller names support in rest presentation ([bb23f3f](https://github.com/alevnyacow/domain-first-project-structure/commit/bb23f3f2cb884364d27378f930b1454ab16124ca))
+
 # [8.5.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.4.0...v8.5.0) (2026-11-01)
 
 
