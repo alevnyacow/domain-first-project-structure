@@ -1184,7 +1184,7 @@ Runtime routes and types don't change; only files move.
 
 | Step | Kind | Change |
 | --- | --- | --- |
-| Move context-root REST endpoints to `(root)` | optional | In every context, `presentation/rest/<METHOD>.ts` and `_param_/` move to `presentation/rest/(root)/`, the wires in `wiring/presentation/rest/` to its `(root)/` with an `index.ts`. `wiring/presentation/rest/index.ts` and `<rootFolder>/presentation/rest/wires.ts` re-export `(root)` once instead of every endpoint. Imports of and in the moved files are rewritten. An existing target file stops the upgrade |
+| Move context-root REST endpoints to `(root)` | optional | In every context, `presentation/rest/<METHOD>.ts` and `_param_/` move to `presentation/rest/(root)/`, the wires in `wiring/presentation/rest/` to its `(root)/` with an `index.ts`. `wiring/presentation/rest/index.ts` and `<rootFolder>/presentation/rest/wires.ts` re-export `(root)` once instead of every endpoint, also when they missed its endpoints. Imports of and in the moved files are rewritten. An existing target file stops the upgrade |
 | Let the OpenAPI extractor find `(root)` | optional | The 8.5.1 lookup in `scripts/extract-open-api-data-from-endpoint.ts` is replaced by the current one |
 | Update the OpenAPI extractor by hand | manual | An extractor changed by hand, when context-root endpoints exist |
 

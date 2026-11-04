@@ -70,26 +70,32 @@ const rootMoves = (contextFolder: string) => {
 
 const exportPattern = /^export\s+\*\s+from\s+(['"])([^'"]+)\1;?\s*$/;
 
+const exportedSpecifier = (line: string) =>
+    line.trim().match(exportPattern)?.[2];
+
 /**
  * Replaces the re-exports of single context-root wires with one of the
- * `(root)` folder, where the first of them was, and returns them.
+ * `(root)` folder, where the first of them was, and returns them. The
+ * `(root)` re-export is added even without them: every wired endpoint
+ * must reach `restHandlers`.
  */
 const regroupExports = (
     file: File,
     isRootWire: (specifier: string) => boolean,
-    groupLine: string
+    groupSpecifier: string
 ) => {
-    if (!file.exists) return [];
-    const lines = file.data.split('\n');
+    const lines = file.exists ? file.data.split('\n') : [];
     const rootWires = lines.filter((line) => {
-        const specifier = line.trim().match(exportPattern)?.[2];
+        const specifier = exportedSpecifier(line);
         return !!specifier && isRootWire(specifier);
     });
-    if (!rootWires.length) return [];
-    const first = lines.indexOf(rootWires[0]);
+    const first = rootWires.length
+        ? lines.indexOf(rootWires[0])
+        : lines.length -
+          [...lines].reverse().findIndex((line) => !!line.trim());
     const kept = lines.filter((line) => !rootWires.includes(line));
-    if (!kept.some((line) => line.trim() === groupLine))
-        kept.splice(first, 0, groupLine);
+    if (!kept.some((line) => exportedSpecifier(line) === groupSpecifier))
+        kept.splice(first, 0, `export * from '${groupSpecifier}'`);
     file.update(kept.join('\n'));
     return rootWires;
 };
@@ -111,8 +117,8 @@ export const restRootControllerStep: UpgradeStep = {
                 ),
                 ...(wired
                     ? [
-                          `${relative(path.join(wiring, 'index.ts'))}: one line for ./${rootControllerFolder}`,
-                          `${relative(path.join(new ProjectRoot().path, rootFolderOf(context)!, 'presentation', 'rest', 'wires.ts'))}: the ${name} context-root lines → one line for ${rootControllerFolder}`
+                          `${relative(path.join(wiring, 'index.ts'))}: the context-root lines → one line for ./${rootControllerFolder}`,
+                          `${relative(path.join(new ProjectRoot().path, rootFolderOf(context)!, 'presentation', 'rest', 'wires.ts'))}: the ${name} context-root lines → one line for ${rootControllerFolder}, added if missing`
                       ]
                     : []),
                 'Imports of the moved files are rewritten'
@@ -176,26 +182,31 @@ export const restRootControllerStep: UpgradeStep = {
         for (const contextFolder of contexts) {
             const name = path.basename(contextFolder);
             const { wiring } = restFolders(contextFolder);
-            const rootWires = regroupExports(
+            const movedWires = legacyRootEndpoints(contextFolder).wireFiles;
+            if (!movedWires.length) continue;
+            const listed = regroupExports(
                 new File(path.join(wiring, 'index.ts')),
                 (specifier) =>
                     specifier.startsWith(`./${rootControllerFolder}/`),
-                `export * from './${rootControllerFolder}'`
-            );
-            if (rootWires.length) {
-                new File(
-                    path.join(wiring, rootControllerFolder, 'index.ts')
-                ).data = rootWires
-                    .map((line) =>
-                        line.replace(`./${rootControllerFolder}/`, './')
-                    )
-                    .join('\n');
-            }
+                `./${rootControllerFolder}`
+            ).map((line) => line.replace(`./${rootControllerFolder}/`, './'));
+            /** Wires the index missed are re-exported too. */
+            const unlisted = movedWires
+                .map((file) => `./${path.basename(file, '.ts')}`)
+                .filter(
+                    (specifier) =>
+                        !listed.some(
+                            (line) => exportedSpecifier(line) === specifier
+                        )
+                )
+                .map((specifier) => `export * from '${specifier}'`);
+            new File(path.join(wiring, rootControllerFolder, 'index.ts')).data =
+                [...listed, ...unlisted].join('\n');
             const wiringPath = `bounded-contexts/${name}/wiring/presentation/rest/${rootControllerFolder}`;
             regroupExports(
                 sharedWires,
                 (specifier) => specifier.includes(`${wiringPath}/`),
-                `export * from '../../${wiringPath}'`
+                `../../${wiringPath}`
             );
         }
     }

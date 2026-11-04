@@ -605,6 +605,16 @@ test('endpoints without a controller live in the (root) controller', async () =>
     );
     expect(read('src/presentation/rest/index.ts')).toContain('restHandlers');
 
+    // A formatter's semicolons don't make the re-exports repeat
+    write(
+        'src/presentation/rest/wires.ts',
+        "export * from '../../bounded-contexts/sales/wiring/presentation/rest/(root)';"
+    );
+    await endpoint({ path: 'recent' });
+    expect(read('src/presentation/rest/wires.ts')).toBe(
+        "export * from '../../bounded-contexts/sales/wiring/presentation/rest/(root)';"
+    );
+
     // `/sales/from-scratch` belongs to the root, `/sales/orders` to a controller
     await expect(
         endpoint({ controller: 'from-scratch', path: '' })
@@ -612,7 +622,7 @@ test('endpoints without a controller live in the (root) controller', async () =>
     await expect(endpoint({ controller: 'sales', path: '' })).rejects.toThrow(
         'is the context itself'
     );
-    await endpoint({ controller: 'orders', path: 'recent' });
+    await endpoint({ controller: 'orders', path: 'latest' });
     await expect(endpoint({ path: 'orders' })).rejects.toThrow(
         'belongs to controller "orders"'
     );
@@ -621,9 +631,9 @@ test('endpoints without a controller live in the (root) controller', async () =>
     );
     expect(
         read(
-            'src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts'
+            'src/bounded-contexts/sales/presentation/rest/orders/latest/GET.ts'
         )
-    ).toContain("path: ['sales', 'orders', 'recent'] }");
+    ).toContain("path: ['sales', 'orders', 'latest'] }");
 });
 
 test('context-root endpoints of the 8.5 layout ask for df-upgrade first', async () => {

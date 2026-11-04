@@ -245,14 +245,16 @@ export class File extends FileSystemItem {
     };
 
     /**
-     * Re-running a generator for the same name must not duplicate the line.
+     * Re-running a generator for the same name must not duplicate the line,
+     * also after a formatter added the semicolon.
      */
     addLineIfMissing = (newLine: string, separator = '\n') => {
+        const normalized = (line: string) => line.trim().replace(/;$/, '');
         const alreadyAdded =
             this.exists &&
             this.data
                 .split('\n')
-                .some((line) => line.trim() === newLine.trim());
+                .some((line) => normalized(line) === normalized(newLine));
 
         if (!alreadyAdded) {
             this.addLine(newLine, separator);

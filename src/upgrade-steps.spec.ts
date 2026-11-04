@@ -292,3 +292,20 @@ test('an extractor changed by hand is left to the user', async () => {
         'openapi-extractor-manual'
     ]);
 });
+
+test('context-root wires missing from the re-exports still reach restHandlers', async () => {
+    legacyLayout();
+    write(`${wiring}/index.ts`, "export * from './comments';");
+    write('src/presentation/rest/wires.ts', `${sharedWire('comments')};`);
+    await planUpgrade(current);
+    writePendingChanges();
+    expect(read(`${wiring}/(root)/index.ts`)).toBe(
+        "export * from './wire-posts-_id_-get-endpoint'\nexport * from './wire-posts-get-endpoint'"
+    );
+    expect(read(`${wiring}/index.ts`)).toBe(
+        "export * from './comments';\nexport * from './(root)'"
+    );
+    expect(read('src/presentation/rest/wires.ts')).toBe(
+        [`${sharedWire('comments')};`, sharedWire('(root)')].join('\n')
+    );
+});
