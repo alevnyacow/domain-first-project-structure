@@ -1,3 +1,10 @@
+# [8.6.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.5.1...v8.6.0) (2026-11-04)
+
+
+### Features
+
+* context-root REST controller in presentation/rest/(root) ([27b0716](https://github.com/alevnyacow/domain-first-project-structure/commit/27b07161dec51c0febec93f68517cd715d02b38f))
+
 ## [8.5.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.5.0...v8.5.1) (2026-11-03)
 
 
