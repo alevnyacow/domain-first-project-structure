@@ -4,7 +4,7 @@ When: an HTTP entry point (`../choosing-components.md`, step 2). It exposes a qu
 
 ## Generate (context only)
 
-Prompts: controller (select: existing | `New controller` → name | `No controller (context root)`) → method (`get` `post` `patch` `delete` `put`) → relative path (may be empty: `default`) → {wire} `Handler:` (select: queries, commands, and use cases of `<C>`, grouped; skipped if there are none).
+Prompts: controller (select: `(root) — /<C>` | existing | `New controller` → name) → method (`get` `post` `patch` `delete` `put`) → relative path (may be empty: `default`) → {wire} `Handler:` (select: queries, commands, and use cases of `<C>`, grouped; skipped if there are none).
 
 `… pick:Presentation "pick:New Handlers" "pick:New controller" text:orders pick:get text:recent pick:RecentOrdersQuery`
 `… pick:Presentation "pick:New Handlers" pick:orders pick:post default pick:PlaceOrder`
@@ -15,7 +15,7 @@ For `sales`, `orders`, `get`, `recent`:
 - {wire} `<C>/wiring/presentation/rest/orders/wire-orders-recent-get-endpoint.ts` (`[wireRestEndpointGeneratorPresentationService, wireRecentOrdersQuery]`; `[]` without the generator file) + a line in that folder's `index.ts`
 - {wire}, new controller only: `<C>/wiring/presentation/rest/index.ts`, `<rootFolder>/presentation/rest/wires.ts` (lines appended), `<rootFolder>/presentation/rest/index.ts` (`restHandlers`, created once)
 
-- No controller, context `social-networks`, `get`, empty path: `<C>/presentation/rest/GET.ts`, `class SocialNetworksGetEndpoint`, route `['social-networks']`, tag `'social-networks'`; {wire} `<C>/wiring/presentation/rest/wire-social-networks-get-endpoint.ts`, a line in `<C>/wiring/presentation/rest/index.ts` and one in `<rootFolder>/presentation/rest/wires.ts`. Use it for collection endpoints of the context (`GET /social-networks`, `POST /social-networks`, `GET /social-networks/:id`) instead of a `list` controller or `/social-networks/social-networks`. Its path is empty or starts with `:param`: a static first segment is a controller.
+- `(root)`, context `social-networks`, `get`, empty path: `<C>/presentation/rest/(root)/GET.ts`, `class SocialNetworksGetEndpoint`, route `['social-networks']`, tag `'social-networks'`; {wire} `<C>/wiring/presentation/rest/(root)/wire-social-networks-get-endpoint.ts`, with `(root)` re-exported once like a controller. `(root)` is not a route segment. Use it for the context's own resource (`GET /social-networks`, `GET /social-networks/:id`, `POST /social-networks/from-scratch`) instead of a `list` controller or `/social-networks/social-networks`. A route belongs to one controller: `(root)/from-scratch` and controller `from-scratch` exclude each other, and no controller is named like the context.
 
 The same controller, path, and method replace the existing endpoint (after `Overwrite them?`). Generate the exposed handler first, so `Handler:` lists it. If `handler: never` is left, re-run the endpoint generator once the handler exists, as an approved overwrite; don't replace it by hand.
 

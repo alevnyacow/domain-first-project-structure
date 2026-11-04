@@ -1,24 +1,26 @@
 import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
-import { input, select } from '../interaction';
+import { input, RequestError, select } from '../interaction';
+import {
+    hasLegacyRootEndpoints,
+    isPathParameterName,
+    pathParameterAsName,
+    restControllers,
+    rootControllerFolder,
+    rootStaticSegments
+} from '../rest-layout';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { relativeImport } from '../wiring';
 import { findRestEndpointGenerator } from './rest-endpoint-generator';
 import { promptEndpointHandler } from './wire-dependency';
 
 const newController = 'New controller';
-const withoutController = 'No controller (context root)';
-
 /**
- * Path parameters (`:id`) can't be part of file and folder names
- * everywhere (Windows), so they are named `_id_` there.
+ * The answer value of the context-root controller, kept from 8.5 so
+ * recorded answers still select it.
  */
-const pathParameterAsName = (segment: string) =>
-    segment.startsWith(':') ? `_${segment.slice(1)}_` : segment;
-
-const isPathParameterName = (name: string) =>
-    name.startsWith(':') || /^_.+_$/.test(name);
+export const rootControllerChoice = 'No controller (context root)';
 
 /**
  * `<rootFolder>/presentation/rest/`: `wires.ts` and `restHandlers`.
@@ -26,62 +28,82 @@ const isPathParameterName = (name: string) =>
 const sharedRestFolder = (boundedContextFolder: Folder) =>
     boundedContextFolder.subitem(['..', '..', 'presentation', 'rest']);
 
+export const legacyRootEndpointsMessage = (context: string) =>
+    `${context} keeps its context-root endpoints in the 8.5 layout (presentation/rest/<METHOD>.ts, _param_/). Run npx df-upgrade to move them to presentation/rest/${rootControllerFolder}/ first.`;
+
 export const scaffoldNewHandlersRestEndpoint = async (
     boundedContextFolder: Folder
 ) => {
+    const context = boundedContextFolder.name;
     const restPresentationFolder = boundedContextFolder.subitem([
         'presentation',
         'rest'
     ]);
+    const controllers = restControllers(boundedContextFolder.path);
     /**
-     * Folders of context-root endpoints starting with a path parameter
-     * (`_id_`) aren't controllers.
+     * `/<context>/<segment>` belongs either to the root or to a
+     * controller: `(root)/from-scratch/` and controller `from-scratch`
+     * would share every route.
      */
-    const controllers = restPresentationFolder.content.subfolderNames.filter(
-        (x) => !isPathParameterName(x)
-    );
+    const rootSegments = rootStaticSegments(boundedContextFolder.path);
 
     let controllerChoice = await select({
         key: 'controllerSelection',
         message: 'Controller: ',
-        choices: [...controllers, newController, withoutController]
+        choices: [
+            {
+                value: rootControllerChoice,
+                name: `${rootControllerFolder} — /${context}`
+            },
+            ...controllers,
+            newController
+        ]
     });
+
+    if (
+        controllerChoice === rootControllerChoice &&
+        hasLegacyRootEndpoints(boundedContextFolder.path)
+    ) {
+        throw new RequestError(
+            'UPGRADE_REQUIRED',
+            legacyRootEndpointsMessage(context)
+        );
+    }
 
     if (controllerChoice === newController) {
         controllerChoice = await input({
             key: 'controllerName',
             message: 'Name: ',
-            validate: (value) =>
-                !value.trim()
-                    ? `Name is required; pick "${withoutController}" for an endpoint at the context root`
-                    : isPathParameterName(value) || value.includes('/')
-                      ? 'A controller is one static path segment'
-                      : true
+            validate: (value) => {
+                if (!value.trim())
+                    return `Name is required; pick "${rootControllerFolder}" for an endpoint at the context root`;
+                if (
+                    isPathParameterName(value) ||
+                    value.includes('/') ||
+                    /[()]/.test(value)
+                )
+                    return 'A controller is one static path segment';
+                if (value === context)
+                    return `"${value}" is the context itself: pick "${rootControllerFolder}" for /${context}`;
+                if (rootSegments.includes(value))
+                    return `/${context}/${value} belongs to the context root (${rootControllerFolder}/${value}): add the endpoint there`;
+                return true;
+            }
         });
     }
 
     /**
-     * Endpoints at the context root (`GET /<context>`) live right in
-     * `presentation/rest/`, and their wires in `wiring/presentation/rest/`.
+     * Endpoints at the context root (`GET /<context>`) live in
+     * `presentation/rest/(root)/`, and their wires in
+     * `wiring/presentation/rest/(root)/`.
      */
     const controller =
-        controllerChoice === withoutController ? undefined : controllerChoice;
+        controllerChoice === rootControllerChoice
+            ? undefined
+            : controllerChoice;
 
     const withWiring =
         ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
-
-    if (controller && !controllers.includes(controller) && withWiring) {
-        boundedContextFolder
-            .subitem(['wiring', 'presentation', 'rest'])
-            .file('index.ts')
-            .addLine(`export * from './${controller}'`);
-
-        sharedRestFolder(boundedContextFolder)
-            .file('wires.ts')
-            .addLine(
-                `export * from '../../bounded-contexts/${boundedContextFolder.name}/wiring/presentation/rest/${controller}'`
-            );
-    }
 
     const method = await select({
         key: 'method',
@@ -93,15 +115,14 @@ export const scaffoldNewHandlersRestEndpoint = async (
         await input({
             key: 'path',
             message: 'Relative path (split by "/"):',
-            /**
-             * Below the context root, a static first segment is a
-             * controller: `/<context>/orders` is controller `orders`.
-             */
             validate: (value) => {
                 const [first] = value.split('/').filter((x) => !!x);
-                return controller || !first || first.startsWith(':')
+                return controller ||
+                    !first ||
+                    first.startsWith(':') ||
+                    !controllers.includes(first)
                     ? true
-                    : `Without a controller, the path is empty or starts with a path parameter; "${first}" is a controller`;
+                    : `/${context}/${first} belongs to controller "${first}": add the endpoint there`;
             }
         })
     )
@@ -109,10 +130,13 @@ export const scaffoldNewHandlersRestEndpoint = async (
         .filter((x) => !!x);
 
     /**
-     * The controller is the first folder below `presentation/rest/`; the
-     * context-root endpoints have none.
+     * The first folder below `presentation/rest/` is the controller, or
+     * `(root)`, which is not part of the route.
      */
-    const folderSegments = [
+    const group = controller ?? rootControllerFolder;
+    const folderSegments = [group, ...routeSegments];
+    const routePath = [
+        context,
         ...(controller ? [controller] : []),
         ...routeSegments
     ];
@@ -124,10 +148,7 @@ export const scaffoldNewHandlersRestEndpoint = async (
      * Named after the context without a controller: wires of every
      * context meet in `<rootFolder>/presentation/rest/wires.ts`.
      */
-    const nameSegments = [
-        controller ?? boundedContextFolder.name,
-        ...routeSegments
-    ];
+    const nameSegments = [controller ?? context, ...routeSegments];
     const nameBase = `${[...nameSegments.map(pathParameterAsName), method].join('-')}-endpoint`;
 
     /**
@@ -184,8 +205,8 @@ export class ${endpointClassName} {
 
     get handle() {
         return this.endpointGenerator(this.handler.handle, {
-            route: { method: '${method}', path: [${[boundedContextFolder.name, ...folderSegments].map((x) => `'${x}'`).join(', ')}] },
-            tags: ['${boundedContextFolder.name}${controller ? `: ${controller}` : ''}'],
+            route: { method: '${method}', path: [${routePath.map((x) => `'${x}'`).join(', ')}] },
+            tags: ['${context}${controller ? `: ${controller}` : ''}'],
         })
     }
 }
@@ -200,7 +221,7 @@ export class ${endpointClassName} {
             'wiring',
             'presentation',
             'rest',
-            ...(controller ? [controller] : [])
+            group
         ]);
 
         const wireNameBase = `wire-${nameBase}`;
@@ -239,16 +260,18 @@ export const wire${endpointClassName} = wireClass(
             .addLineIfMissing(`export * from './${wireNaming.fileName}'`);
 
         /**
-         * A controller is re-exported once, when it is created; a
-         * context-root endpoint is re-exported on its own.
+         * A controller, `(root)` included, is re-exported once: its
+         * `index.ts` re-exports its endpoints.
          */
-        if (!controller) {
-            sharedRestFolder(boundedContextFolder)
-                .file('wires.ts')
-                .addLineIfMissing(
-                    `export * from '../../bounded-contexts/${boundedContextFolder.name}/wiring/presentation/rest/${wireNaming.fileName}'`
-                );
-        }
+        boundedContextFolder
+            .subitem(['wiring', 'presentation', 'rest'])
+            .file('index.ts')
+            .addLineIfMissing(`export * from './${group}'`);
+        sharedRestFolder(boundedContextFolder)
+            .file('wires.ts')
+            .addLineIfMissing(
+                `export * from '../../bounded-contexts/${context}/wiring/presentation/rest/${group}'`
+            );
 
         const restHandlersFile =
             sharedRestFolder(boundedContextFolder).file('index.ts');

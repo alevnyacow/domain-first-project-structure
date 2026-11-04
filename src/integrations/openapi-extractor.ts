@@ -4,13 +4,72 @@ export const openapiExtractorPath =
     'scripts/extract-open-api-data-from-endpoint.ts';
 
 // Endpoint files are resolved from the project root the script runs in.
-const rootFolderSegments = (rootFolder: string) =>
+const rootFolderSegments = (rootFolder: string, indent = 20) =>
     rootFolder
         .split(/[\\/]/)
         .map((segment) => segment.trim())
         .filter((segment) => !!segment && segment !== '.')
-        .map((segment) => `'${segment}',\n                    `)
+        .map((segment) => `'${segment}',\n${' '.repeat(indent)}`)
         .join('');
+
+/**
+ * How 8.5.1 found the endpoint file, as scaffolded: context-root endpoints
+ * right in `presentation/rest/`. `df-upgrade` replaces it with
+ * `endpointFileLookup`.
+ */
+export const legacyEndpointFileLookup = (
+    rootFolder: string
+) => `            // The controller, if any, is the first folder of the path:
+            // context-root endpoints live right in presentation/rest.
+            const [currentBoundedContext, ...relativePath] = routeMetadata.path;
+
+            if (!currentBoundedContext) {
+                return undefined;
+            }
+
+            const endpointFile = project.getSourceFile(
+                path.join(
+                    ${rootFolderSegments(rootFolder)}'bounded-contexts',
+                    currentBoundedContext,
+                    'presentation',
+                    'rest',
+                    ...relativePath.map(pathParameterAsName),
+                    \`\${routeMetadata.method.toUpperCase()}.ts\`
+                )
+            );
+`;
+
+/**
+ * A controller is the first folder of the route; any other route belongs
+ * to the context-root controller in `presentation/rest/(root)/`. The
+ * generator keeps the two apart, so at most one of the files exists.
+ */
+export const endpointFileLookup = (
+    rootFolder: string
+) => `            const [currentBoundedContext, ...relativePath] = routeMetadata.path;
+
+            if (!currentBoundedContext) {
+                return undefined;
+            }
+
+            // A controller is the first folder of the path; other routes
+            // belong to the context root in presentation/rest/(root).
+            const restFolder = path.join(
+                ${rootFolderSegments(rootFolder, 16)}'bounded-contexts',
+                currentBoundedContext,
+                'presentation',
+                'rest'
+            );
+            const endpointPath = [
+                ...relativePath.map(pathParameterAsName),
+                \`\${routeMetadata.method.toUpperCase()}.ts\`
+            ];
+            const endpointFile =
+                project.getSourceFile(path.join(restFolder, ...endpointPath)) ??
+                project.getSourceFile(
+                    path.join(restFolder, '(root)', ...endpointPath)
+                );
+`;
 
 export const openapiExtractor = (
     rootFolder: string
@@ -125,25 +184,7 @@ export const createOpenApiDataFromEndpointLogicExtractor = ({
         path: readonly string[];
     }): OpenApiData | undefined => {
         try {
-            // The controller, if any, is the first folder of the path:
-            // context-root endpoints live right in presentation/rest.
-            const [currentBoundedContext, ...relativePath] = routeMetadata.path;
-
-            if (!currentBoundedContext) {
-                return undefined;
-            }
-
-            const endpointFile = project.getSourceFile(
-                path.join(
-                    ${rootFolderSegments(rootFolder)}'bounded-contexts',
-                    currentBoundedContext,
-                    'presentation',
-                    'rest',
-                    ...relativePath.map(pathParameterAsName),
-                    \`\${routeMetadata.method.toUpperCase()}.ts\`
-                )
-            );
-
+${endpointFileLookup(rootFolder)}
             if (!endpointFile) {
                 return undefined;
             }

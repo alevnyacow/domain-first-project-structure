@@ -550,7 +550,7 @@ test('REST integration and endpoint creation use the same handler wiring as inte
     expect(repeated.files.updated).toEqual([]);
 });
 
-test('endpoints without a controller live at the context root', async () => {
+test('endpoints without a controller live in the (root) controller', async () => {
     ConfigFile.update({
         backend: {
             ...ConfigFile.backend,
@@ -567,50 +567,107 @@ test('endpoints without a controller live at the context root', async () => {
         nextAdapter: true
     });
     await executeAgentRequest('df-scaffold', query);
-    for (const path of ['', ':id'])
-        await executeAgentRequest('df-scaffold', {
-            operation: 'endpoint',
-            context: 'sales',
-            method: 'get',
-            path,
-            handler: 'sales:OrdersQuery'
-        });
-    const root = read('src/bounded-contexts/sales/presentation/rest/GET.ts');
-    expect(root).toContain('export class SalesGetEndpoint');
-    expect(root).toContain("path: ['sales'] }");
-    expect(root).toContain("tags: ['sales']");
-    expect(
-        read('src/bounded-contexts/sales/presentation/rest/_id_/GET.ts')
-    ).toContain("path: ['sales', ':id'] }");
-    expect(
-        read('src/bounded-contexts/sales/wiring/presentation/rest/index.ts')
-    ).toBe(
-        "export * from './wire-sales-get-endpoint'\nexport * from './wire-sales-_id_-get-endpoint'"
-    );
-    expect(read('src/presentation/rest/wires.ts')).toContain(
-        "export * from '../../bounded-contexts/sales/wiring/presentation/rest/wire-sales-_id_-get-endpoint'"
-    );
-    expect(read('src/presentation/rest/index.ts')).toContain('restHandlers');
-    await expect(
+    const endpoint = (fields: Record<string, string>) =>
         executeAgentRequest('df-scaffold', {
             operation: 'endpoint',
             context: 'sales',
             method: 'get',
-            path: 'recent',
-            handler: 'sales:OrdersQuery'
-        })
-    ).rejects.toThrow('"recent" is a controller');
-    await executeAgentRequest('df-scaffold', {
+            handler: 'sales:OrdersQuery',
+            ...fields
+        });
+    for (const path of ['', ':id', 'from-scratch']) await endpoint({ path });
+    const rest = 'src/bounded-contexts/sales/presentation/rest/(root)';
+    const root = read(`${rest}/GET.ts`);
+    expect(root).toContain('export class SalesGetEndpoint');
+    expect(root).toContain("path: ['sales'] }");
+    expect(root).toContain("tags: ['sales']");
+    expect(read(`${rest}/_id_/GET.ts`)).toContain("path: ['sales', ':id'] }");
+    expect(read(`${rest}/from-scratch/GET.ts`)).toContain(
+        'export class SalesFromScratchGetEndpoint'
+    );
+    expect(read(`${rest}/from-scratch/GET.ts`)).toContain(
+        "path: ['sales', 'from-scratch'] }"
+    );
+    const wiring = 'src/bounded-contexts/sales/wiring/presentation/rest';
+    expect(read(`${wiring}/index.ts`)).toBe("export * from './(root)'");
+    expect(read(`${wiring}/(root)/index.ts`)).toBe(
+        [
+            "export * from './wire-sales-get-endpoint'",
+            "export * from './wire-sales-_id_-get-endpoint'",
+            "export * from './wire-sales-from-scratch-get-endpoint'"
+        ].join('\n')
+    );
+    expect(read(`${wiring}/(root)/wire-sales-get-endpoint.ts`)).toContain(
+        "from '../../../../presentation/rest/(root)/GET'"
+    );
+    expect(read('src/presentation/rest/wires.ts')).toBe(
+        "export * from '../../bounded-contexts/sales/wiring/presentation/rest/(root)'"
+    );
+    expect(read('src/presentation/rest/index.ts')).toContain('restHandlers');
+
+    // `/sales/from-scratch` belongs to the root, `/sales/orders` to a controller
+    await expect(
+        endpoint({ controller: 'from-scratch', path: '' })
+    ).rejects.toThrow('belongs to the context root');
+    await expect(endpoint({ controller: 'sales', path: '' })).rejects.toThrow(
+        'is the context itself'
+    );
+    await endpoint({ controller: 'orders', path: 'recent' });
+    await expect(endpoint({ path: 'orders' })).rejects.toThrow(
+        'belongs to controller "orders"'
+    );
+    expect(read(`${wiring}/index.ts`)).toBe(
+        "export * from './(root)'\nexport * from './orders'"
+    );
+    expect(
+        read(
+            'src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts'
+        )
+    ).toContain("path: ['sales', 'orders', 'recent'] }");
+});
+
+test('context-root endpoints of the 8.5 layout ask for df-upgrade first', async () => {
+    ConfigFile.update({
+        backend: {
+            ...ConfigFile.backend,
+            domainFirstPackages: [
+                '@domain-first/wire',
+                '@domain-first/handlers-rest'
+            ]
+        }
+    });
+    writePendingChanges();
+    await executeAgentRequest('df-integration', {
+        operation: 'add',
+        integrations: ['rest-endpoint-generator'],
+        nextAdapter: true
+    });
+    write(
+        'src/bounded-contexts/sales/presentation/rest/GET.ts',
+        'export class SalesGetEndpoint {}'
+    );
+    const request = {
         operation: 'endpoint',
         context: 'sales',
-        controller: 'orders',
-        method: 'get',
-        path: '',
-        handler: 'sales:OrdersQuery'
+        method: 'post',
+        path: ''
+    };
+    await expect(executeAgentRequest('df-scaffold', request)).rejects.toThrow(
+        'Run npx df-upgrade'
+    );
+    expect(
+        agentError(
+            await executeAgentRequest('df-scaffold', request).catch((e) => e)
+        ).error.code
+    ).toBe('UPGRADE_REQUIRED');
+    // Controllers are not affected
+    await executeAgentRequest('df-scaffold', {
+        ...request,
+        controller: 'orders'
     });
     expect(
-        read('src/bounded-contexts/sales/wiring/presentation/rest/index.ts')
-    ).toContain("export * from './orders'");
+        exists('src/bounded-contexts/sales/presentation/rest/orders/POST.ts')
+    ).toBe(true);
 });
 
 test('backend moves and entity creation use stable unit IDs and preserve aggregate placement', async () => {

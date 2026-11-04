@@ -29,6 +29,7 @@ import {
     type ReactModuleKind,
     reactKindTitles
 } from './react-module-move';
+import { restControllers } from './rest-layout';
 import { savePendingChanges } from './save-pending-changes';
 import { systemImplementationChoices } from './system-implementations';
 import {
@@ -59,6 +60,7 @@ import {
 } from './use-cases';
 import { integrationDescriptions } from './use-cases/add-integration';
 import { findRestEndpointGenerator } from './use-cases/rest-endpoint-generator';
+import { rootControllerChoice } from './use-cases/scaffold-new-handlers-rest-endpoint';
 import { availableDependencies, findWiredModules } from './wiring';
 
 export type AgentRequest = {
@@ -320,11 +322,11 @@ const answersFor = (
         if (request.operation === 'endpoint') {
             delete answers.controller;
             if (request.controller === undefined)
-                answers.controllerSelection = 'No controller (context root)';
+                answers.controllerSelection = rootControllerChoice;
             else {
-                const existing = owner!
-                    .subitem(['presentation', 'rest'])
-                    .content.subfolderNames.includes(request.controller);
+                const existing = restControllers(owner!.path).includes(
+                    request.controller
+                );
                 answers.controllerSelection = existing
                     ? request.controller
                     : 'New controller';

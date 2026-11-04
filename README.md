@@ -239,7 +239,7 @@ With `@domain-first/handlers-rest`, choose **Presentation → New Handlers-REST 
 src/bounded-contexts/sales/presentation/rest/orders/recent/GET.ts   // GET /sales/orders/recent
 ```
 
-For the context itself, pick **No controller (context root)**: context `social-networks`, an empty path and `get` give `GET /social-networks` in `src/bounded-contexts/social-networks/presentation/rest/GET.ts` (`SocialNetworksGetEndpoint`); path `:id` gives `GET /social-networks/:id`.
+For the context itself, pick the context-root controller **(root) — /social-networks**. It lives in `presentation/rest/(root)/`, a folder that is not part of the route: an empty path and `get` give `GET /social-networks` in `src/bounded-contexts/social-networks/presentation/rest/(root)/GET.ts` (`SocialNetworksGetEndpoint`), path `:id` gives `GET /social-networks/:id`, and path `from-scratch` with `post` gives `POST /social-networks/from-scratch`. A route belongs to one controller, so `(root)/from-scratch` and a controller `from-scratch` exclude each other. Projects with context-root endpoints of 8.5 move them with `npx df-upgrade`.
 
 Every endpoint uses the one endpoint generator of the project, `RestEndpointGeneratorPresentationService` in `src/shared-kernel/presentation/services/`. Initialization scaffolds it as a regular Shared Kernel presentation service (class, spec and wire):
 

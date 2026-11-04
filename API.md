@@ -88,7 +88,7 @@ Notation used below:
 | `df-integration` | Adds integrations: Storybook, Prisma, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
-| `df-upgrade`     | Brings the project up to date after a major version upgrade           | [`df-upgrade`](#df-upgrade)   |
+| `df-upgrade`     | Brings the project up to date after a package upgrade                 | [`df-upgrade`](#df-upgrade)   |
 | `df-graph`       | Prints the contexts and their dependencies as a Mermaid chart         | [`df-graph`](#df-graph)       |
 
 ```bash
@@ -141,7 +141,7 @@ The installed schema is authoritative and rejects unknown fields. Backend operat
 - `dependencies` maps each implementation/class name to qualified dependency IDs. Omitted entries keep checked suggestions; an explicit `[]` disables suggestions. Every supplied group must apply to the operation, otherwise nothing is written.
 - New implementations select a `contract` and, with a branched wire, an explicit nonempty `environments` list. Their dependency groups refer to the new concrete class.
 - Backend moves select a unit ID in `module`, with optional `name`, `targetContext` and `aggregate`. React moves use `module` and a new nested `name`. Moves use the same validation/import rewriting as the menus.
-- Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created; without `controller`, the endpoint is at the context root (`path` empty or starting with `:param`). REST tooling must already be configured.
+- Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created; without `controller`, the endpoint belongs to the context-root controller `(root)` (`/<context>/<path>`). REST tooling must already be configured.
 - Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
 - `dryRun: true` computes the full proposed operation without writing anything.
 - `overwrite: true` allows replacing changed existing generated files. Without it the command returns `OVERWRITE_REQUIRED` and the affected paths. Identical generated contents do not require this flag. Metadata edits such as implementation choices and normal wiring updates retain their existing behavior.
@@ -166,7 +166,7 @@ type Result = {
 
 `nextSteps` contains install commands and follow-up notes; nothing is installed or executed. `overwriteRequired` is useful when reviewing a dry run. Generator diagnostics are captured in `messages`, keeping stdout to a single JSON document.
 
-Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, `DELETE_NOT_ALLOWED`, `CONFIG_OUTDATED`, and configuration/precondition errors. Validation failures discard staged source, config and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
+Failures return `{ "schemaVersion": 1, "ok": false, "error": { "code": "...", "message": "...", "details": {} } }` with exit code 1. Details are present when applicable, including validation issue fields, eligible choices or overwrite paths. Codes include `INVALID_JSON`, `INVALID_REQUEST`, `MISSING_PARAMETER`, `INVALID_CHOICE`, `INVALID_IMPLEMENTATION`, `UNUSED_PARAMETERS`, `OVERWRITE_REQUIRED`, `CONTEXT_NOT_FOUND`, `TARGET_NOT_FOUND`, `MOVE_NOT_ALLOWED`, `DELETE_NOT_ALLOWED`, `CONFIG_OUTDATED`, `UPGRADE_REQUIRED` (an endpoint in the context-root controller of a context with 8.5 context-root endpoints; run `df-upgrade`), and configuration/precondition errors. Validation failures discard staged source, config and implementation-history changes before writing. Interactive and JSON modes share the same generators and filesystem staging.
 
 ## `df-init`
 
@@ -607,10 +607,10 @@ Bounded contexts only, with `handlers-rest`.
 
 | Prompt                            | Condition                                     | Choices / value                                                              |
 | --------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Controller:`                     |                                               | Subfolders of `presentation/rest/` (except `_param_` ones), `New controller` and `No controller (context root)` |
-| `Name:`                           | New controller                                | Controller name: one static segment, not empty                               |
+| `Controller:`                     |                                               | `(root) — /<context>` (answer value `No controller (context root)`), subfolders of `presentation/rest/` except `(root)`, and `New controller` |
+| `Name:`                           | New controller                                | Controller name: one static segment, not empty, not the context name, not a static first segment of `(root)` |
 | `Method:`                         |                                               | `get`, `post`, `patch`, `delete`, `put`                                      |
-| `Relative path (split by "/"):`   |                                               | Path below the controller; may be empty. `:param` segments are path parameters. Without a controller: empty or starting with `:param` |
+| `Relative path (split by "/"):`   |                                               | Path below the controller; may be empty. `:param` segments are path parameters. In `(root)`, the first static segment must not be a controller |
 | `Handler:`                        | With `wire` and at least one candidate        | Wired queries, commands and use cases of the context                         |
 
 **Output**
@@ -620,17 +620,18 @@ Bounded contexts only, with `handlers-rest`.
 | `presentation/rest/<controller>/<path>/<METHOD>.ts`                         | Always                          | Endpoint class                                                          |
 | `wiring/presentation/rest/<controller>/wire-<controller>-<path>-<method>-endpoint.ts` | With `wire`           | `wire<Class>`, with the chosen generator and handler factories          |
 | `wiring/presentation/rest/<controller>/index.ts`                            | With `wire`                     | Re-exports of the controller's endpoint factories                       |
-| `wiring/presentation/rest/index.ts`                                         | With `wire`, new controller     | `export * from './<controller>'` added                                   |
-| `<rootFolder>/presentation/rest/wires.ts`                                   | With `wire`, new controller     | Re-export of the controller's factories added                            |
+| `wiring/presentation/rest/index.ts`                                         | With `wire`, once per controller | `export * from './<controller>'` added                                  |
+| `<rootFolder>/presentation/rest/wires.ts`                                   | With `wire`, once per controller | Re-export of the controller's factories added                           |
 | `<rootFolder>/presentation/rest/index.ts`                                   | With `wire`, created once       | `export const restHandlers = Object.values(wires).map(x => x().handle)` |
 
-Without a controller, the endpoint is at the context root: `presentation/rest/<path>/<METHOD>.ts`, its wire `wiring/presentation/rest/wire-<context>-<path>-<method>-endpoint.ts`, re-exported from `wiring/presentation/rest/index.ts` and, one line per endpoint, from `<rootFolder>/presentation/rest/wires.ts`.
+The context-root controller is the folder `(root)`: `presentation/rest/(root)/<path>/<METHOD>.ts` and `wiring/presentation/rest/(root)/wire-<context>-<path>-<method>-endpoint.ts`. Like a Next.js route group, `(root)` is not a segment of the route: `(root)/from-scratch/POST.ts` is `POST /<context>/from-scratch`. Otherwise it is wired and re-exported like any controller.
 
 - Path parameters are named `_param_` in folder and class names, since `:` is not allowed there. The route keeps `:param`.
 - The class name joins the controller, path segments, method and `Endpoint` in class form: `orders/recent` with `get` gives `OrdersRecentGetEndpoint`. Without a controller, the context takes its place: `social-networks` with `get` gives `SocialNetworksGetEndpoint`.
 - The route is `{ method, path: ['<context>', '<controller>', ...segments] }`, and the tag is `'<context>: <controller>'`. Without a controller: `['<context>', ...segments]` and `'<context>'`.
-- Below the context root, a static first segment is a controller, so `/<context>/recent` is controller `recent`, not a context-root endpoint with path `recent`.
-- The OpenAPI extractor finds the endpoint file of both kinds; projects whose `scripts/extract-open-api-data-from-endpoint.ts` predates context-root endpoints get the new one by re-adding the OpenAPI integration.
+- `/<context>/<segment>` belongs to one controller: a new controller can't be named like a static first segment of `(root)`, `(root)` can't get a path whose first static segment is a controller, and a controller can't be named like the context. Path parameters (`(root)/_id_/`) don't collide.
+- Context-root endpoints of 8.5 lived right in `presentation/rest/` (`<METHOD>.ts`, `_param_/`). In such a context, `(root)` is refused with `UPGRADE_REQUIRED` until [`df-upgrade`](#df-upgrade) moves them; controllers are not affected.
+- The OpenAPI extractor looks the endpoint file up in the controller folder (`presentation/rest/<path>/<METHOD>.ts`), then in `(root)`.
 - The constructor takes `endpointGenerator: RestEndpointGeneratorPresentationService`, the [endpoint generator](#endpoint-generator) of the Shared Kernel, and `handler`, the chosen handler or `never` without one. `get handle()` calls `this.endpointGenerator(this.handler.handle, { route, tags })`, which doesn't compile on purpose: the user picks a generating getter of the service, e.g. `this.endpointGenerator.withoutGuards(...)`.
 - In projects without the generator file, the generator type is `EndpointGenerator` from `@domain-first/handlers-rest` and the wire takes no dependencies.
 
@@ -1149,7 +1150,7 @@ npx df-lint [rootFolder]
 
 ## `df-upgrade`
 
-Brings the project up to date after upgrading the package to a new major version.
+Brings the project up to date after upgrading the package.
 
 ```bash
 npx df-upgrade [--dry-run] [--yes]
@@ -1176,6 +1177,16 @@ npx df-upgrade [--dry-run] [--yes]
 | Split the config into sections | required | `rootFolder` → `project.rootFolder`; `domainFirstPackages`, `withInMemoryDb`, `testingLibrary`, `rules` → `backend`; `useReact: true` and `storybookFramework` → `frontend.react`, `useReact: false` → no frontend section. Unknown fields are kept |
 | Record the frontend framework | required | `frontend.react.framework`: `next` when `next` is declared in `package.json`, otherwise `react`. Applies to any React section without a framework |
 | Move the default persistence implementation | required | `defaultPersistenceLayerImplementation` becomes the first primary type of `backend.implementations.repositories`, `commands` and `queries`; a value that is not a kebab-case label is dropped |
+
+**Steps from 8.5**
+
+Runtime routes and types don't change; only files move.
+
+| Step | Kind | Change |
+| --- | --- | --- |
+| Move context-root REST endpoints to `(root)` | optional | In every context, `presentation/rest/<METHOD>.ts` and `_param_/` move to `presentation/rest/(root)/`, the wires in `wiring/presentation/rest/` to its `(root)/` with an `index.ts`. `wiring/presentation/rest/index.ts` and `<rootFolder>/presentation/rest/wires.ts` re-export `(root)` once instead of every endpoint. Imports of and in the moved files are rewritten. An existing target file stops the upgrade |
+| Let the OpenAPI extractor find `(root)` | optional | The 8.5.1 lookup in `scripts/extract-open-api-data-from-endpoint.ts` is replaced by the current one |
+| Update the OpenAPI extractor by hand | manual | An extractor changed by hand, when context-root endpoints exist |
 
 ## `df-graph`
 

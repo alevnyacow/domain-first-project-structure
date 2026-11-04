@@ -14,10 +14,11 @@ import { type PlannedStep, planUpgrade, skillsNote } from './upgrade-steps';
 
 const help = `Usage: df-upgrade [--dry-run] [--yes]
 
-Brings the project up to date after upgrading @domain-first/project-structure
-to a new major version. Finds the steps the project needs, shows what each
-one changes, asks once and applies them together. Other commands refuse a
-config of an earlier major version until it is upgraded.
+Brings the project up to date after upgrading @domain-first/project-structure.
+Finds the steps the project needs, shows what each one changes, asks once
+and applies them together. Other commands refuse a config of an earlier
+major version until it is upgraded; optional steps move generated code to
+the current layout.
 
 Options:
   --dry-run  show the plan without writing anything
@@ -94,7 +95,7 @@ const run = async () => {
     }
     if (config) ConfigFile.write(config);
     writePendingChanges();
-    console.log(`\nUpgraded ${configFileName}.`);
+    console.log(config ? `\nUpgraded ${configFileName}.` : '\nUpgraded.');
     console.log('\nDo it yourself:');
     for (const note of manual) console.log(`  ${note}`);
 };

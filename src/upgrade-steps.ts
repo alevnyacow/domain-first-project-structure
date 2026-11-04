@@ -8,6 +8,11 @@ import {
 } from './config-file';
 import { implementationLabelSchema } from './implementation-options-schema';
 import { hasDependency } from './integrations/missing-domain-first-packages';
+import {
+    openapiExtractorManualStep,
+    openapiExtractorRootStep,
+    restRootControllerStep
+} from './upgrade-rest-root';
 
 type Draft = Record<string, unknown>;
 
@@ -20,6 +25,7 @@ export type UpgradeContext = { config: Draft };
 /**
  * - `required`: other commands refuse to run until it is applied.
  * - `optional`: changes generated code the user may have edited; asked one by one.
+ *   Staged file changes are written with the config.
  * - `manual`: a note about what the user does themselves; changes nothing.
  */
 export type UpgradeStepKind = 'required' | 'optional' | 'manual';
@@ -181,7 +187,10 @@ const persistenceStep: UpgradeStep = {
 export const upgradeSteps: UpgradeStep[] = [
     sectionsStep,
     frameworkStep,
-    persistenceStep
+    persistenceStep,
+    restRootControllerStep,
+    openapiExtractorRootStep,
+    openapiExtractorManualStep
 ];
 
 /** Shown after any change: skills of an earlier version describe the old CLI. */
@@ -206,6 +215,7 @@ export const planUpgrade = async (
     const context: UpgradeContext = {
         config: structuredClone(record(config))
     };
+    const original = JSON.stringify(context.config);
     const planned: PlannedStep[] = [];
     for (const step of steps) {
         if (!step.detect(context)) continue;
@@ -216,10 +226,12 @@ export const planUpgrade = async (
         step.apply?.(context);
     }
     const changed = planned.some(({ step }) => step.kind !== 'manual');
+    /** Steps that only move files leave the config as it is. */
+    const configChanged = JSON.stringify(context.config) !== original;
     return {
         planned,
         changed,
-        config: changed
+        config: configChanged
             ? (configSchema.parse(context.config) as ProjectConfig)
             : undefined
     };

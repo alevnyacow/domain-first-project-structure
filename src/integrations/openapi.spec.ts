@@ -280,13 +280,22 @@ test('the Swagger UI page asks for resolveJsonModule unless it is set', async ()
 test('resolves endpoint files under the root folder', () => {
     expect(openapiExtractor('.')).toContain(
         `path.join(
-                    'bounded-contexts',`
+                'bounded-contexts',`
     );
     expect(openapiExtractor('./src\\server/')).toContain(
         `path.join(
-                    'src',
-                    'server',
-                    'bounded-contexts',`
+                'src',
+                'server',
+                'bounded-contexts',`
+    );
+});
+
+test('finds controller endpoints and those of the context root in (root)', () => {
+    expect(openapiExtractor('src')).toContain(
+        `project.getSourceFile(path.join(restFolder, ...endpointPath)) ??
+                project.getSourceFile(
+                    path.join(restFolder, '(root)', ...endpointPath)
+                );`
     );
 });
 
