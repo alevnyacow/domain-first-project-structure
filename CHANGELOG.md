@@ -1,3 +1,10 @@
+## [8.6.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.6.0...v8.6.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* keep every REST endpoint in the shared wires ([250aa41](https://github.com/alevnyacow/domain-first-project-structure/commit/250aa41a8f3d53a396c368050338736dc5497c68))
+
 # [8.6.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.5.1...v8.6.0) (2026-11-04)
 
 
