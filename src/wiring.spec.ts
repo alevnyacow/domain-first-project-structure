@@ -360,7 +360,7 @@ describe('isSuggestedFor', () => {
         typeFile: `/c/${layer}/services/${fileBase}.ts`
     });
 
-    test('matches the label as whole words', () => {
+    test('suggests the system service of the implementation', () => {
         expect(
             isSuggestedFor(
                 service('in-memory-db-infrastructure-service'),
@@ -370,8 +370,32 @@ describe('isSuggestedFor', () => {
         expect(
             isSuggestedFor(service('prisma-infrastructure-service'), 'prisma')
         ).toBe(true);
+    });
+
+    test('does not guess from a name', () => {
         expect(
-            isSuggestedFor(service('rapid-infrastructure-service'), 'api')
+            isSuggestedFor(
+                service('prisma-order-mapper-infrastructure-service'),
+                'prisma'
+            )
+        ).toBe(false);
+        expect(
+            isSuggestedFor(service('stripe-infrastructure-service'), 'stripe')
+        ).toBe(false);
+        expect(
+            isSuggestedFor(
+                service('stripe-client-infrastructure-service'),
+                'stripe'
+            )
+        ).toBe(false);
+    });
+
+    test('does not suggest a system service for another implementation', () => {
+        expect(
+            isSuggestedFor(
+                service('prisma-infrastructure-service'),
+                'in-memory'
+            )
         ).toBe(false);
     });
 

@@ -64,6 +64,16 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
     operation('domain-service', { ...named, ...wired }),
     operation('application-service', { ...named, ...wired }),
     operation('infrastructure-service', { ...named, ...wired }),
+    operation('helper', {
+        ...common,
+        ...owner,
+        name: nestedName.describe(
+            'Kebab-case, folders split by "/": mappers/social-network-type.'
+        ),
+        implementationType: name.describe(
+            'A saved or system implementation type: a helper belongs to one.'
+        )
+    }),
     operation('presentation-service', { ...named, ...wired }),
     operation('use-case', { ...named, ...wired }),
     operation('command', { ...named, ...implementations }),

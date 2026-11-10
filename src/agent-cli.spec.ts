@@ -23,6 +23,7 @@ import {
 } from './file-system';
 import { scaffoldInMemoryDb } from './in-memory-db';
 import { lintProject } from './project-lint';
+import { scaffoldNewInfrastructureHelper } from './use-cases/scaffold-new-infrastructure-helper';
 
 rstest.mock('@inquirer/prompts', () => ({
     input: rstest.fn(() => {
@@ -1123,4 +1124,121 @@ test('a UI-kit component in use is not deleted; an unused hook is', async () => 
     ]);
     expect(exists('src/presentation/react/hooks')).toBe(false);
     expect(exists('src/presentation/react/ui-kit/badge/badge.tsx')).toBe(true);
+});
+
+const withHelperLabels = () => {
+    ConfigFile.write({
+        project: { rootFolder: 'src' },
+        backend: {
+            domainFirstPackages: ['@domain-first/wire'],
+            withInMemoryDb: true,
+            testingLibrary: 'vitest',
+            implementations: {
+                queries: { primary: ['prisma'], test: [] },
+                ports: { primary: ['stripe'], test: [] }
+            }
+        },
+        frontend: { react: { framework: 'next' } }
+    });
+    writePendingChanges();
+};
+const helpers = 'src/bounded-contexts/sales/infrastructure/helpers';
+
+test('a helper accepts a relative path inside its implementation', async () => {
+    withHelperLabels();
+    const labelled = await executeAgentRequest('df-scaffold', {
+        operation: 'helper',
+        context: 'sales',
+        name: 'mappers/social-network-type',
+        implementationType: 'prisma'
+    });
+    expect(labelled.files.created.sort()).toEqual([
+        `${helpers}/prisma/mappers/prisma-social-network-type.spec.ts`,
+        `${helpers}/prisma/mappers/prisma-social-network-type.ts`
+    ]);
+    expect(
+        read(`${helpers}/prisma/mappers/prisma-social-network-type.ts`)
+    ).toBe('export const prismaSocialNetworkType = () => {}');
+    expect(
+        read(`${helpers}/prisma/mappers/prisma-social-network-type.spec.ts`)
+    ).toContain("from './prisma-social-network-type'");
+
+    await executeAgentRequest('df-scaffold', {
+        operation: 'helper',
+        context: 'shared-kernel',
+        name: 'errors',
+        implementationType: 'prisma'
+    });
+    expect(
+        exists(
+            'src/shared-kernel/infrastructure/helpers/prisma/prisma-errors.ts'
+        )
+    ).toBe(true);
+
+    write(
+        'src/bounded-contexts/sales/infrastructure/queries/prisma/prisma-orders-query.ts',
+        "import { prismaSocialNetworkType } from '../../helpers/prisma/mappers/prisma-social-network-type'\nexport const parts = [prismaSocialNetworkType]"
+    );
+    expect(lintProject(project, 'src')).toEqual([]);
+});
+
+test('a helper requires a known implementation type', async () => {
+    withHelperLabels();
+    const request = (fields: object) =>
+        executeAgentRequest('df-scaffold', {
+            operation: 'helper',
+            context: 'sales',
+            name: 'order',
+            ...fields
+        }).catch((caught) => caught);
+
+    expect(await request({})).toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(await request({ implementationType: 'unknown' })).toMatchObject({
+        code: 'INVALID_CHOICE'
+    });
+    expect(exists(helpers)).toBe(false);
+});
+
+test('a helper is unavailable until the project has an implementation type', async () => {
+    ConfigFile.update({
+        backend: { ...ConfigFile.backend, withInMemoryDb: false }
+    });
+    writePendingChanges();
+    const error = await executeAgentRequest('df-scaffold', {
+        operation: 'helper',
+        context: 'sales',
+        name: 'order',
+        implementationType: 'prisma'
+    }).catch((caught) => caught);
+    expect(error).toMatchObject({ code: 'TARGET_NOT_FOUND' });
+});
+
+test('a helper does not repeat the implementation already in its name', async () => {
+    withHelperLabels();
+    await executeAgentRequest('df-scaffold', {
+        operation: 'helper',
+        context: 'sales',
+        name: 'prisma-errors',
+        implementationType: 'prisma'
+    });
+    expect(exists(`${helpers}/prisma/prisma-errors.ts`)).toBe(true);
+});
+
+test('the helper menu has known implementation types and no manual entry', async () => {
+    withHelperLabels();
+    rstest.mocked(input).mockResolvedValueOnce('mappers/order');
+    rstest.mocked(select).mockResolvedValueOnce('stripe');
+    await scaffoldNewInfrastructureHelper(
+        new Folder(path.join(project, 'src/bounded-contexts/sales'))
+    );
+    writePendingChanges();
+    const [{ choices }] = rstest.mocked(select).mock.calls[0] as unknown as [
+        { choices: { name: string }[] }
+    ];
+    expect(choices.map(({ name }) => name)).toEqual([
+        'in-memory',
+        'prisma',
+        'stripe'
+    ]);
+    expect(exists(`${helpers}/stripe/mappers/stripe-order.ts`)).toBe(true);
 });

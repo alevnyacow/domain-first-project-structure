@@ -21,6 +21,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [New Entity and New Value Object](#new-entity-and-new-value-object)
     - [Errors](#errors)
     - [New Service](#new-service)
+    - [New Helper](#new-helper)
     - [New Use Case](#new-use-case)
     - [New Command and New Query](#new-command-and-new-query)
     - [New Port](#new-port)
@@ -96,7 +97,7 @@ npx df-init
 npx df-scaffold
 npx df-react
 npx df-integration
-npx df-skills [--claude] [--codex] [--global]
+npx df-skills [--claude] [--codex] [--global] [--principles]
 npx df-lint [rootFolder]
 npx df-upgrade [--dry-run] [--yes]
 npx df-graph [--context <name>] [--json | --markdown | --html] [--out <file>]
@@ -247,7 +248,7 @@ After choosing a bounded context or the Shared Kernel, the CLI asks for a layer 
 | ----------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `Domain`          | `New Aggregate`, `New Entity`, `New Value Object`, `Errors`, `New Service`   | `New Entity`, `New Value Object`, `Errors`, `New Service` |
 | `Application`     | `New Query`, `New Command`, `New Use Case`, `New Port`, `New Service`        | `New Port`, `New Service`                            |
-| `Infrastructure`  | `New Service`, `New Implementation`                                          | `New Service`, `New Implementation`                  |
+| `Infrastructure`  | `New Service`, `New Helper`, `New Implementation`                            | `New Service`, `New Helper`, `New Implementation`    |
 | `Presentation`    | `New Handlers-REST Endpoint` (with `handlers-rest`), `New Service`           | `New Service`                                        |
 | `Wire dependency` | With `wire`: [Wire dependency](#wire-dependency)                             | With `wire`: [Wire dependency](#wire-dependency)     |
 | `Move or rename`  | [Move or rename](#move-or-rename)                                            | [Move or rename](#move-or-rename)                    |
@@ -506,6 +507,23 @@ Available in every layer. **Prompts**: `Name:`.
 
 The class is empty. The factory is `wire<Class> = wireClass(<Class>, [])`.
 
+### New Helper
+
+Infrastructure layer of a bounded context or the Shared Kernel. A helper is stateless technical code of one implementation type: a mapper, a query builder, an error translator. It has no class and no wire. Code shared by several implementation types, or code with a dependency, is an [infrastructure service](#new-service).
+
+**Prompts**: `Name:`, with folders split by `/` (`mappers/social-network-type`), then `Implementation:`, an implementation type the project already has (saved in any category, or a system one). Types can't be entered here. Without any known type the generator stops and asks to add an implementation first. With a testing library, a spec is created next to the file.
+
+With `prisma` the name above gives `infrastructure/helpers/prisma/mappers/prisma-social-network-type.ts` exporting `prismaSocialNetworkType`. A name that already starts with the type (`prisma-errors`) doesn't get the prefix twice.
+
+[`df-lint`](#df-lint) checks, under `layers`:
+
+- A helper is inside the folder of its implementation type: nothing lies right under `helpers/`.
+- Only `infrastructure` imports helpers. Wiring, application and presentation don't.
+- An implementation sees helpers of its own type, in its context and the Shared Kernel. Infrastructure services see all helpers. A helper sees helpers of its own type.
+- A helper imports domain models, other helpers and, with `import type`, query, command and port contracts. It doesn't import repositories, domain services or other infrastructure.
+
+Helpers are not modules: `Move or rename` and `Delete` don't list them, and they are moved and deleted by hand.
+
 ### New Use Case
 
 Bounded contexts only. **Prompts**: `Name:`.
@@ -707,7 +725,7 @@ The last step of every generator that creates a factory, except REST endpoints, 
 - Candidates are the wired modules of the context and of the Shared Kernel, the latter labelled `(shared-kernel)`. Only `cross-context` port adapters also see the application handlers of neighboring bounded contexts, labelled `(<context>)`. A module is any `wire*` factory found under `wiring/`.
 - Candidates are filtered by the [dependency rules](#dependency-rules), excluding the module itself and modules it already depends on.
 - Choices are grouped by kind: Repositories, Domain services, Ports, Application services, Queries, Commands, Use cases, Infrastructure services, Presentation services.
-- An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). Infrastructure modules whose file name contains the implementation label as whole words are listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck one to leave it out.
+- An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). The system service of the implementation is listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck it to leave it out. Any other service is an ordinary choice, whatever its name.
 - When there are no candidates, nothing is asked.
 
 Each selected module is added, in order:
@@ -1112,7 +1130,22 @@ npx df-skills [options]
 | `--claude`     | Install for Claude Code into `.claude/skills`              |
 | `--codex`      | Install for Codex into `.agents/skills`                    |
 | `--global`     | Install into the home directory instead of the current one |
+| `--principles` | Connect the programming principles to the project. Not available with `--global` |
 | `-h`, `--help` | Print help and exit                                        |
+
+**Programming principles**
+
+The package ships `principles/df-principles.md`, instructions that apply to every session rather than to one task. They are connected to a project only, never with `--global`.
+
+| Agent       | What is written                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | The text into `.claude/df-principles.md` and one import line into `CLAUDE.md`: `@.claude/df-principles.md`. If only `.claude/CLAUDE.md` exists, the line goes there as `@df-principles.md` |
+| Codex       | The text into `AGENTS.md`, between `<!-- df-principles:start -->` and `<!-- df-principles:end -->`, since Codex has no imports |
+
+- Without an agent flag, `df-skills` asks whether to add them when an agent isn't connected yet. With an agent flag, only `--principles` connects them.
+- Connected principles are refreshed on every run, with no question or flag. A project whose import line or block was removed stays without them until `--principles` or a positive answer.
+- Only the import line or the block changes: the rest of `CLAUDE.md` and `AGENTS.md` stays as it is, and a missing file is created.
+- `AGENTS.md` with damaged markers (not exactly one start followed by one end) isn't changed, and a warning is printed.
 
 **Behavior**
 
@@ -1123,7 +1156,7 @@ npx df-skills [options]
 | Skill                   | Purpose                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------- |
 | `df-ps-plan-feature`    | Turns a feature request into a plan of bounded contexts and components                   |
-| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules, JSON workflow and legacy CLI driver       |
+| `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules and JSON workflow       |
 | `df-ps-react`           | Chooses, generates (`df-react`), moves and implements pages, widgets, UI-kit and hooks    |
 | `df-ps-implement`       | Fills in the generated backend code                                                      |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |

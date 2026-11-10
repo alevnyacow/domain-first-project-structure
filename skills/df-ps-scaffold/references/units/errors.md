@@ -6,10 +6,6 @@ When: a business failure callers must recognize (`../choosing-components.md`, st
 
 First prompt (select): `New error without namespace` | `New namespace` | `New error in namespace <ns>`, then a name.
 
-`… pick:Domain pick:Errors "pick:New namespace" text:order`
-`… pick:Domain pick:Errors "pick:New error in namespace order" text:not-found`
-`… pick:Domain pick:Errors "pick:New error without" text:order-closed`
-
 - Without namespace: appends `export class N extends CtxErrors.define('n') {}` to `<C>/domain/errors/index.ts`; the first one also puts `CtxErrors = errorNamespace('ctx')` (with its import) at the top of `index.ts`
 - New namespace: `<C>/domain/errors/ns.ts` (`NsErrors = errorNamespace('ctx').subnamespace('ns')`) + `export * from './ns'` in `index.ts`
 - In namespace: appends `export class NsN extends NsErrors.define('n') {}` to `ns.ts` (namespace first), extending the namespace the file exports

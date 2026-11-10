@@ -347,7 +347,7 @@ The package ships skills that teach coding agents to plan features, scaffold wit
 npx df-skills --claude
 ```
 
-Run it again after upgrading the package to get the new versions.
+Run it again after upgrading the package to get the new versions. Add `--principles` to also connect the programming principles to `CLAUDE.md` and `AGENTS.md`.
 
 ## License
 

@@ -10,6 +10,7 @@ export default defineConfig({
       react: './src/react.ts',
       upgrade: './src/upgrade.ts',
       graph: './src/graph.ts',
+      'agent-principles': './src/agent-principles.ts',
     },
   },
   lib: [

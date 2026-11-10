@@ -1,6 +1,6 @@
 # Non-interactive operations for agents
 
-Prefer the JSON interface for `df-scaffold`, `df-react` and `df-integration`. Use the interactive driver only with older CLI versions that lack this interface. Initialization (`df-init`) remains a human task. The same plan, file creation and dependency rules apply to both interfaces.
+Prefer the JSON interface for `df-scaffold`, `df-react` and `df-integration`. Initialization (`df-init`) remains a human task. The same plan, file creation and dependency rules apply to both interfaces.
 
 For the complete operation map, conditional integration fields and recipes, read [agent-operations.md](agent-operations.md) for the work at hand.
 
@@ -12,7 +12,7 @@ npx df-react --describe
 npx df-integration --describe
 ```
 
-Each command returns one JSON document with `schemaVersion: 1`, `requestSchema` and the project inventory. Use the schema from the installed version instead of guessing fields. Read `--describe` first; a valid JSON error is not a reason to fall back to the driver. Use the legacy driver only if that installed CLI does not support the flags or opens an interactive menu instead of returning JSON. Stop that discovery process before retrying with the driver; do not automatically upgrade the project package to change interfaces. Without a config it still describes the protocol; ask the owner to initialize missing sections.
+Each command returns one JSON document with `schemaVersion: 1`, `requestSchema` and the project inventory. Use the schema from the installed version instead of guessing fields. Read `--describe` first. If the installed CLI doesn't support these flags, ask the owner to upgrade the package; don't upgrade it yourself. Without a config it still describes the protocol; ask the owner to initialize missing sections.
 
 - `project.contexts[].name`: a bounded context or the reserved `shared-kernel` context.
 - `modules[].id`: qualified dependency ID, e.g. `shared-kernel:PrismaInfrastructureService` or `billing:InvoiceQuery`.

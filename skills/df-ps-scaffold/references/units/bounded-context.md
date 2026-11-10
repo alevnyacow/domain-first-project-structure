@@ -4,7 +4,7 @@ When: a concept with its own lifecycle and vocabulary, or a different business o
 
 ## Generate
 
-`"pick:Scaffold new bounded context" text:sales` → empty folder `<rootFolder>/bounded-contexts/sales/`. No error namespace until the first error ([errors](errors.md)).
+Creates an empty folder `<rootFolder>/bounded-contexts/sales/`. No error namespace until the first error ([errors](errors.md)).
 
 Name: a business area in kebab-case (`sales`, `reviews`), not a feature.
 

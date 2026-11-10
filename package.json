@@ -31,7 +31,8 @@
     "files": [
         "dist",
         "bin",
-        "skills"
+        "skills",
+        "principles"
     ],
     "publishConfig": {
         "access": "public"

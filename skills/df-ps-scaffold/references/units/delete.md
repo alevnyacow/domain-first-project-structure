@@ -6,8 +6,6 @@ When: a module is no longer needed. Never delete module files by hand: the CLI r
 
 Prompts: `Module to delete:` (select, grouped by kind as in Move or rename) → `Delete?` (default No).
 
-`… "pick:Delete" pick:orders yes`
-
 JSON: `{ "operation": "delete", "context": "sales", "module": "query:orders" }`.
 
 Deleted: the files of the unit, as Move or rename moves them (an aggregate with its whole folder, entities and value objects inside included). Cleaned up: an entity's or value object's `export *` in its aggregate's `index.ts`, and an aggregate's in-memory DB section with its import.

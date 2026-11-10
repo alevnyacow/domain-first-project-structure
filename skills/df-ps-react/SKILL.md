@@ -12,7 +12,7 @@ React modules live in `<rootFolder>/presentation/react/` (`…/react/` below) an
 1. Read `domain-first.project-structure.config.json`: source root is `project.rootFolder`; React is enabled by `frontend.react`; `frontend.react.framework` is `react` or `next`, and both use `df-react`. Stories use `frontend.react.storybookFramework` (initialization uses `@storybook/react-vite` for both React and Next.js via the shared Storybook integration). A config of an earlier major version (`CONFIG_OUTDATED`): ask the user to run `npx df-upgrade`; never run it yourself. Without the config, tell the user to run `npx df-init`; without React configured, tell them to run `npx df-init --section frontend`. Initialization and configuration belong to the human: do not run `df-init` or edit these settings yourself.
 2. A feature that also needs backend work → plan it with `df-ps-plan-feature`; React runs come last in the plan.
 3. Choose a module for each piece of UI ("Choosing the module").
-4. Show the work plan in the `df-ps-scaffold` rule 1 format (the React block) and **stop until it's approved**. Type is page, widget, ui-kit component, hook, page move or widget move; Details holds the widget type and, for a page move with Next.js, whether the route moves.
+4. Show the work plan in the format of `df-ps-scaffold/references/work-plan.md` (the React block) and **stop until it's approved**. Type is page, widget, ui-kit component, hook, page move or widget move; Details holds the widget type and, for a page move with Next.js, whether the route moves.
 5. Run the generators with `df-react --request` JSON in plan order (shared hooks → UI-kit → widgets → pages); check each output.
 6. Implement ("Implementing"), after the backend and the regenerated API client.
 7. Run `npx df-lint` and the project's tsc/lint/tests. Report against the plan.
@@ -49,14 +49,7 @@ npx df-react --request '{"operation":"widget","name":"cart","widgetType":"separa
 
 Read `df-ps-scaffold` [agent-mode.md](../df-ps-scaffold/references/agent-mode.md) for previews, overwrite control and JSON result checks; [agent-operations.md](../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) covers all React operations and naming conditions. Initialization remains a human task. For older CLI versions without JSON support, use the interactive driver with `--bin df-react`:
 
-```bash
-node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react [--cwd <dir>] [--delay <ms>] <step>...
-node <df-ps-scaffold-skill-dir>/scripts/drive.mjs --bin df-react "pick:New widget" text:cart "pick:with separated ui"
-```
-
-Steps and checks are the same as for `df-scaffold` ("Legacy interactive driver" in `df-ps-scaffold`). Its menu: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, `Move or rename widget`, `Move or rename page`, `Move or rename UI-kit component`, `Move or rename shared hook`, `Delete widget`, `Delete page`, `Delete UI-kit component`, `Delete shared hook`. Prompts and output of each: `references/generators.md`.
-
-If the CLI cannot run, report the failure and give the user the prepared JSON command (a menu path only for a legacy CLI). Never hand-write its output.
+If the CLI cannot run, report the failure and give the user the prepared JSON command. Never hand-write its output.
 
 ### Moving and renaming
 

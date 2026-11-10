@@ -1,18 +1,18 @@
 # df-react generators: operations and output
 
-Prefer JSON requests; [agent operations](../../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) maps all six React operations and fields. The scripted prompt sequences below are the legacy interactive fallback. Generated files and story templates apply to both modes.
+Prefer JSON requests; [agent operations](../../df-ps-scaffold/references/agent-operations.md#react-operations-df-react) maps all six React operations and fields. Generated files and story templates apply to both modes.
 
 Settings: `project.rootFolder` and `frontend.react.storybookFramework`. The frontend section must be configured by the user before these runs.
 
-Notation: `…/react/` = `<rootFolder>/presentation/react/`. `n` = the entered kebab-case name, `N` = PascalCase. Every step list goes after `--bin df-react`; the first prompt is the module menu. If the run would replace existing files, the last prompt is the confirm `Overwrite them?` (the files are listed above it).
+Notation: `…/react/` = `<rootFolder>/presentation/react/`. `n` = the entered kebab-case name, `N` = PascalCase. If the run would replace existing files, the last prompt is the confirm `Overwrite them?` (the files are listed above it).
 
 ## New page
 
-`"pick:New page" text:checkout` → `…/react/pages/n-page.tsx`; with Next.js (`frontend.react.framework: next`) also `app/n/page.tsx` (`src/app/…` when that folder exists) rendering `NPage`, unless that route already exists. A nested name nests the route too: `admin/users` → `app/admin/users/page.tsx`.
+`…/react/pages/n-page.tsx`; with Next.js (`frontend.react.framework: next`) also `app/n/page.tsx` (`src/app/…` when that folder exists) rendering `NPage`, unless that route already exists. A nested name nests the route too: `admin/users` → `app/admin/users/page.tsx`.
 
 ## New widget
 
-`"pick:New widget" text:cart "pick:with separated ui"` → `…/react/widgets/n/`:
+`…/react/widgets/n/`:
 
 - `with separated ui` (default): `n-widget.tsx`, `types.ts`, `ui/n-widget-ui.tsx`, `hooks/use-n-ui-model.ts`; with `storybookFramework`: `ui/n-widget-ui.stories.tsx` (CSF3: `meta` with `title: 'Widgets/N'`, `component: NWidgetUI`, story `Default`)
 - `headless`: `n-widget.tsx`, `types.ts` (props include `UI`), `hooks/use-n-ui-model.ts`
@@ -23,19 +23,19 @@ Page and widget names may have folders before them: `text:admin/panel/users` →
 
 ## Move or rename page / widget
 
-Move or rename a page or a widget only with df-react, never by hand: `"pick:Move or rename widget" "pick:admin/users" text:team/users "yes"` (`Move or rename page` for pages; the list shows nested names, the default new name is the current one). It moves the widget folder (or the page with its `<name>-page.*` files), renames files and `<Name>Widget…` / `use<Name>UIModel` / `<Name>Page…` to the new name, updates a generated story title and every import of the module (relative and `tsconfig` aliases; importers of barrels re-exporting it get the renamed classes), and fixes relative imports inside it. Before `Apply?` it prints the files to move and to update; check them. An existing target or a move into itself is rejected.
+Move or rename a page or a widget only with df-react, never by hand (JSON `move-widget`, `move-page`). It moves the widget folder (or the page with its `<name>-page.*` files), renames files and `<Name>Widget…` / `use<Name>UIModel` / `<Name>Page…` to the new name, updates a generated story title and every import of the module (relative and `tsconfig` aliases; importers of barrels re-exporting it get the renamed classes), and fixes relative imports inside it. Before `Apply?` it prints the files to move and to update; check them. An existing target or a move into itself is rejected.
 
 ## Move, rename or delete a UI-kit component / shared hook
 
-The same runs exist for them: `"pick:Move or rename UI-kit component" pick:button text:primary-button yes`, `"pick:Move or rename shared hook" pick:debounce text:throttle yes`, `"pick:Delete UI-kit component" pick:badge yes`, `"pick:Delete shared hook" pick:toggle yes`. Names have no folders; a hook's name is entered without `use-`. A move renames the folder or `use-<name>.*` files, `<Name>` / `<Name>Props` / `use<Name>`, the `UI-kit/<Name>` story title and every import; a delete is refused while other files import the module.
+The same runs exist for them (`move-ui-kit-component`, `move-shared-hook`, `delete-ui-kit-component`, `delete-shared-hook`). Names have no folders; a hook's name is entered without `use-`. A move renames the folder or `use-<name>.*` files, `<Name>` / `<Name>Props` / `use<Name>`, the `UI-kit/<Name>` story title and every import; a delete is refused while other files import the module.
 
 ## Delete page / widget
 
-Delete a page or a widget only with df-react: `"pick:Delete widget" "pick:orders/filters" yes` (`Delete page` for pages; with Next.js and the page's own route, a `yes`/`no` for deleting the route comes before `Delete?`). It deletes the widget folder (or the page with its `<name>-page.*` files) and, if confirmed, the route folder's own files. It refuses while other files import the module and lists them; nothing changes then.
+Delete a page or a widget only with df-react (JSON `delete-widget`, `delete-page`; with Next.js and the page's own route, whether to delete the route is asked too). It deletes the widget folder (or the page with its `<name>-page.*` files) and, if confirmed, the route folder's own files. It refuses while other files import the module and lists them; nothing changes then.
 
 ## New UI-kit component
 
-`"pick:New UI-kit" text:date-picker` → `…/react/ui-kit/n/`:
+`…/react/ui-kit/n/`:
 
 - `n.tsx` (`type NProps`, `const N: FC<NProps>`)
 - `index.ts` (`export * from './n'`)
@@ -45,7 +45,7 @@ No Storybook prompt: UI-kit and widget UI stories follow the config.
 
 ## New shared hook
 
-`"pick:New shared hook" text:debounce` → `…/react/hooks/use-n.ts` (`const useN = () => …`). A leading `use-` in the name is dropped, so `use-debounce` gives the same file.
+`…/react/hooks/use-n.ts` (`const useN = () => …`). A leading `use-` in the name is dropped, so `use-debounce` gives the same file.
 
 ## Story templates
 

@@ -5,7 +5,7 @@ description: Turn an abstract feature request into a Domain-First plan for a pro
 
 # Plan a feature
 
-Understand → decompose → assign → get approval → hand off. A feature creates files, so nothing is generated or written before approval (`df-ps-scaffold`, rule 1).
+Understand → decompose → assign → get approval → hand off. A feature creates files, so nothing is generated or written before approval (`df-ps-scaffold`, rule 1). Only the user's literal request to skip the plan ("skip the plan", "with plan skipped", etc.) removes this step. However direct or urgent any other wording sounds, it is a request to write the plan.
 
 ## 1. Understand what exists
 
@@ -33,12 +33,13 @@ Split the request into pieces of logic and choose each piece's component with `d
 2. Extend an existing context when the concept fits its language and lifecycle (the normal case).
 3. Create a new context only for a concept with its own lifecycle and vocabulary, or a different business owner. Never one context per feature.
 4. Domain and application stay isolated. Every need for another context's data or behavior is an **application port** in the consuming context, with its own duplicated models. The implementation can be replaced when a context becomes a separate service. Choose the simplest available way, respecting the user's requested transport:
-   - Both contexts run in the same application → a port adapter with the reserved type `cross-context`. It may inject the neighboring context's queries, commands and use cases. Only the adapter imports the handler type; its wiring imports the handler factory. No transport or endpoint is needed. Check that the providing handler exists; plan it if missing.
-   - A direct handler call is unavailable or a database integration is requested, and both contexts use the same database → query it directly (the persistence label, e.g. `prisma`).
-   - Otherwise, look for the ways the project already reaches a context besides its REST endpoints: message queue, RPC, events, generated API clients. Several options (REST counts) → ask the user which one in "Decisions for you", with a recommendation. Never pick silently.
-   - Nothing besides REST → the providing context's REST endpoint (`http`).
+    - Both contexts run in the same application → a port adapter with the reserved type `cross-context`. It may inject the neighboring context's queries, commands and use cases. Only the adapter imports the handler type; its wiring imports the handler factory. No transport or endpoint is needed. Check that the providing handler exists; plan it if missing.
+    - A direct handler call is unavailable or a database integration is requested, and both contexts use the same database → query it directly (the persistence label, e.g. `prisma`).
+    - Otherwise, look for the ways the project already reaches a context besides its REST endpoints: message queue, RPC, events, generated API clients. Several options (REST counts) → ask the user which one in "Decisions for you", with a recommendation. Never pick silently.
+    - Nothing besides REST → the providing context's REST endpoint (`http`).
 
-   For transport implementations, plan **both sides**: check that the providing context exposes what the call needs (endpoint, queue consumer…). If not, add it (and the handler behind it: a query or command, or a use case only when one query or command isn't enough) to the plan.
+    For transport implementations, plan **both sides**: check that the providing context exposes what the call needs (endpoint, queue consumer…). If not, add it (and the handler behind it: a query or command, or a use case only when one query or command isn't enough) to the plan.
+
 5. `shared-kernel/` holds technical, ownerless pieces and universal entities / value objects (`money`, `email`): the same meaning in every context, owned by none. Never a concept with one context's meaning or rules.
 6. Names: kebab-case, in the context's language. Contexts are business areas (`sales`, `reviews`), not features.
 
@@ -56,7 +57,7 @@ Never: pick silently, put one context's domain logic in `shared-kernel/`, create
 
 ## 4. Present the plan
 
-One message in the `df-ps-scaffold` rule 1 format, then stop. The architecture lives in it: each context block's "Why here" is the ownership decision of step 3, each row's Why the component choice of step 2, and open decisions go to Question.
+One message in the format of `df-ps-scaffold/references/work-plan.md`, then stop. The architecture lives in it: each context block's "Why here" is the ownership decision of step 3, each row's Why the component choice of step 2, and open decisions go to Question.
 
 ```markdown
 **Plan: product reviews**
@@ -69,13 +70,13 @@ Why here: reviews have their own lifecycle and moderation; no context owns them.
 
 What will be scaffolded:
 
-| Layer | Type | Name | Details | Why |
-| --- | --- | --- | --- | --- |
-| **domain** | aggregate | review | repository prisma, in-memory in tests | consistency boundary with moderation |
-| | error | not-a-buyer | | only buyers may review |
-| **application** | port | customer-purchases | prisma (same database) | purchases live in sales |
-| | use case | submit-review | deps: ReviewRepository, CustomerPurchases | checks purchase, then saves |
-| **presentation** | endpoint | POST products/:id/reviews | → submit-review | UI calls it over HTTP |
+| Layer            | Type      | Name                      | Details                                   | Why                                  |
+| ---------------- | --------- | ------------------------- | ----------------------------------------- | ------------------------------------ |
+| **domain**       | aggregate | review                    | repository prisma, in-memory in tests     | consistency boundary with moderation |
+|                  | error     | not-a-buyer               |                                           | only buyers may review               |
+| **application**  | port      | customer-purchases        | prisma (same database)                    | purchases live in sales              |
+|                  | use case  | submit-review             | deps: ReviewRepository, CustomerPurchases | checks purchase, then saves          |
+| **presentation** | endpoint  | POST products/:id/reviews | → submit-review                           | UI calls it over HTTP                |
 
 **React**
 
@@ -83,21 +84,24 @@ Why here: buyers write a review on the product page.
 
 What will be scaffolded:
 
-| Layer | Type | Name | Details | Why |
-| --- | --- | --- | --- | --- |
-| **presentation** | widget | products/review-form | with separated ui | form has its own state |
-| | page | products/details | add the widget | form goes on this screen |
+| Layer            | Type   | Name                 | Details           | Why                      |
+| ---------------- | ------ | -------------------- | ----------------- | ------------------------ |
+| **presentation** | widget | products/review-form | with separated ui | form has its own state   |
+|                  | page   | products/details     | add the widget    | form goes on this screen |
 
 **Writing by hand**
+
 - review: schema (id, productId, authorId, rating, text, status), method publish()
 - customer-purchases adapter: purchases query → HasPurchased
 - submit-review: input { productId, rating, text }, NotABuyer when no purchase
 
 **Running**
+
 - after domain: npm run prisma:migration:plan -- --name add-reviews (applied by the user)
 - after the endpoint: npm run openapi && npm run client:orval
 
 **Question**
+
 1. Separate reviews context (recommended) or part of catalog?
 2. Must reviews be moderated before publishing?
 

@@ -19,6 +19,7 @@ All operations support `dryRun` and `overwrite`. Except `bounded-context`, they 
 | `domain-service` | `name` | `dependencies`, when wiring is configured and eligible modules exist. |
 | `application-service` | `name` | `dependencies`, with the same conditions. |
 | `infrastructure-service` | `name` | `dependencies`, with the same conditions. |
+| `helper` | `name`, `implementationType` | `name` may hold folders: `mappers/social-network-type`. `implementationType` is a saved or system type. See [the helper unit](units/helper.md). |
 | `presentation-service` | `name` | `dependencies`, with the same conditions. |
 | `use-case` | `name` | `dependencies`. Bounded contexts only. |
 | `command` | `name`, `implementation` | `testImplementation`, `dependencies`. Bounded contexts only. |

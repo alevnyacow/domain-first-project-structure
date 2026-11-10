@@ -6,10 +6,6 @@ When (`../choosing-components.md`, steps 5–6): used only inside one aggregate 
 
 Prompts: name → aggregate (select: existing aggregate folders | `No aggregate`; asked only if `<C>/domain/aggregates/` has aggregates, so never in Shared Kernel).
 
-`… pick:Domain "pick:New Entity" text:order-line pick:order`
-`… pick:Domain "pick:New Value Object" text:money "pick:No aggregate"`
-`"pick:Shared Kernel" pick:Domain "pick:New Value Object" text:money`
-
 - In an aggregate: `<C>/domain/aggregates/a/entities/n.entity.ts` or `<C>/domain/aggregates/a/value-objects/n.value-object.ts` (`class N extends domainType()` {types}), spec; `export * from './entities/n.entity'` (or `./value-objects/n.value-object`) appended to the aggregate's `index.ts`
 - `No aggregate`: `<C>/domain/entities/n.entity.ts` or `<C>/domain/value-objects/n.value-object.ts`, spec; no barrel
 

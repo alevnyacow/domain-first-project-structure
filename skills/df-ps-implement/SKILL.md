@@ -43,13 +43,38 @@ Run it from the project root; `rootFolder` defaults to the config's. It resolves
 - module files importing kinds the project's dependency rules don't allow (a use case importing a use case, a query importing a command, …), and wired dependencies they don't allow ("Wiring" below, `df-ps-scaffold` rule 3); an implementation importing its own contract is fine;
 - a widget importing another widget (a widget = the nearest folder under `presentation/react/widgets/` with a `*-widget.tsx`, nested widgets included), UI-kit importing widgets, pages or contexts, shared hooks importing UI-kit, widgets, pages or contexts;
 - `new Date()` / `Date.now()` in domain or application (use the `clock` port);
-- `process.env` / `import.meta.env` in domain or application (use the `config` port).
+- `process.env` / `import.meta.env` in domain or application (use the `application-config` port).
 
 It exits with 1 when anything is found. Checks turned off in the config (`backend.rules.lint`) aren't reported; don't turn checks off yourself.
 
 ## Units
 
 How to fill in each unit (aggregate, entity, value object, errors, services, use case, command, query, port, endpoint) is in the "Implement" and "Test" sections of `df-ps-scaffold/references/units/<unit>.md`. Read the files of the units you implement; the rules below apply to all of them.
+
+## Application modules get a summary and a description
+
+Every scaffolded module of the application layer gets a JSDoc block on its class: application services, ports, commands, queries and use cases. For commands, queries and ports it goes on the abstract contract. The block is required even when the summary stays close to the name.
+
+Other layers don't need one. Domain modules, repository contracts included, document themselves through their names and schemas; infrastructure and presentation modules follow the contracts documented in the application layer. Anything non-standard there gets a regular comment.
+
+The block:
+
+- Summary: the first line, without a tag. Says **what** the module is for, not how it works. One sentence.
+- `@description`: its own section after the summary, only when there are extra details: edge cases, non-obvious decisions, errors with a special meaning. The tag stands on its own line, the text starts on the next one.
+
+```ts
+/**
+ * Obtains a whole post of the requesting author.
+ *
+ * @description
+ * Throws `ItemNotFoundSharedKernelError` both when the post doesn't exist and
+ * when its author isn't the requester: for security, posts of other users must
+ * not be revealed.
+ */
+export abstract class OwnPostQuery { … }
+```
+
+What the description says doesn't need to be repeated in a comment inside the class.
 
 ## Wiring ({wire})
 

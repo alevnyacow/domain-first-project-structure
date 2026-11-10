@@ -36,6 +36,7 @@ import {
     addIntegration,
     deleteBackendUnitUseCase,
     deleteReactModuleUseCase,
+    helperImplementationTypes,
     moveBackendUnitUseCase,
     moveReactModuleUseCase,
     scaffoldNewAggregateUseCase,
@@ -48,6 +49,7 @@ import {
     scaffoldNewErrorUseCase,
     scaffoldNewHandlersRestEndpoint,
     scaffoldNewImplementation,
+    scaffoldNewInfrastructureHelper,
     scaffoldNewInfrastructureService,
     scaffoldNewPresentationService,
     scaffoldNewQuery,
@@ -388,6 +390,11 @@ const executeScaffold = async (request: AgentRequest, owner: Folder) => {
             'TARGET_NOT_FOUND',
             'No modules in this context.'
         );
+    if (request.operation === 'helper' && !helperImplementationTypes().length)
+        throw new RequestError(
+            'TARGET_NOT_FOUND',
+            'No implementation types yet: add an implementation first.'
+        );
     if (
         request.operation === 'wire-dependency' &&
         (!ConfigFile.backend.domainFirstPackages.includes(
@@ -437,6 +444,7 @@ const executeScaffold = async (request: AgentRequest, owner: Folder) => {
         'domain-service': () => scaffoldNewDomainService(owner),
         'application-service': () => scaffoldNewApplicationService(owner),
         'infrastructure-service': () => scaffoldNewInfrastructureService(owner),
+        helper: () => scaffoldNewInfrastructureHelper(owner),
         'presentation-service': () => scaffoldNewPresentationService(owner),
         'use-case': () => scaffoldNewUseCase(owner),
         command: () => scaffoldNewCommand(owner),

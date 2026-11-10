@@ -356,6 +356,93 @@ export const wireInvoice = envBranchedWire({ development: wireImplementation })`
         ).toEqual([]);
     });
 
+    describe('infrastructure helpers', () => {
+        const prismaHelper = 'helpers/prisma/mappers/prisma-order';
+        const rulesOf = (files: Record<string, string>) =>
+            lint(files).map((x) => `${x.rule} ${x.file}`);
+
+        test('are used by implementations of their type and by services', () => {
+            expect(
+                rulesOf({
+                    [`${sales}/infrastructure/${prismaHelper}.ts`]:
+                        "import type { Order } from '../../../../domain/aggregates/order/order.aggregate-root'\nimport { prismaCursor } from '../prisma-cursor'\nimport type { OrdersQuery } from '../../../../application/queries/orders-query'\nimport type { Gateway } from '../../../../application/ports/gateway'",
+                    [`${sales}/infrastructure/helpers/prisma/prisma-cursor.ts`]:
+                        'export const prismaCursor = 1',
+                    [`${sales}/infrastructure/queries/prisma/prisma-orders-query.ts`]: `import { prismaOrder } from '../../${prismaHelper}'`,
+                    [`${sales}/infrastructure/services/db-infrastructure-service.ts`]: `import { prismaOrder } from '../${prismaHelper}'`
+                })
+            ).toEqual([]);
+        });
+
+        test('of another implementation are forbidden', () => {
+            const rule = '[sales] imports a helper of another implementation:';
+            expect(
+                rulesOf({
+                    [`${sales}/infrastructure/queries/in-memory/in-memory-orders-query.ts`]: `import { x } from '../../${prismaHelper}'`,
+                    [`${sales}/infrastructure/helpers/in-memory/in-memory-order.ts`]:
+                        "import { x } from '../prisma/mappers/prisma-order'"
+                })
+            ).toEqual([
+                `${rule} ${sales}/infrastructure/helpers/in-memory/in-memory-order.ts`,
+                `${rule} ${sales}/infrastructure/queries/in-memory/in-memory-orders-query.ts`
+            ]);
+        });
+
+        test('of the Shared Kernel keep their implementation', () => {
+            const shared = 'shared-kernel/infrastructure/helpers';
+            expect(
+                rulesOf({
+                    [`${sales}/infrastructure/repositories/prisma/prisma-order-repository.ts`]: `import { x } from '../../../../../${shared}/prisma/prisma-errors'`,
+                    [`${sales}/infrastructure/repositories/in-memory/in-memory-order-repository.ts`]: `import { x } from '../../../../../${shared}/prisma/prisma-errors'`
+                })
+            ).toEqual([
+                `[sales] imports a helper of another implementation: ${sales}/infrastructure/repositories/in-memory/in-memory-order-repository.ts`
+            ]);
+        });
+
+        test('cannot be used to get around the dependency rules', () => {
+            const rule =
+                '[sales] an infrastructure helper imports a module (only domain models, other helpers and `import type` of query, command and port contracts):';
+            const helper = `${sales}/infrastructure/helpers/prisma/prisma-a.ts`;
+            expect(
+                rulesOf({
+                    [helper]:
+                        "import { Q } from '../../queries/prisma/prisma-q-query'\nimport { S } from '../../services/s-infrastructure-service'\nimport type { R } from '../../../domain/aggregates/order/order-repository'\nimport { G } from '../../../application/ports/g'"
+                })
+            ).toEqual(Array(4).fill(`${rule} ${helper}`));
+        });
+
+        test('must be inside the folder of their implementation', () => {
+            expect(
+                rulesOf({
+                    [`${sales}/infrastructure/helpers/cursor.ts`]:
+                        'export const cursor = 1',
+                    'src/shared-kernel/infrastructure/helpers/retry.ts':
+                        'export const retry = 1'
+                }).sort()
+            ).toEqual(
+                [
+                    `[sales] a helper outside the folder of its implementation (code shared by implementations is an infrastructure service): ${sales}/infrastructure/helpers/cursor.ts`,
+                    '[shared-kernel] a helper outside the folder of its implementation (code shared by implementations is an infrastructure service): src/shared-kernel/infrastructure/helpers/retry.ts'
+                ].sort()
+            );
+        });
+
+        test('are not imported by wiring or other layers', () => {
+            expect(
+                rulesOf({
+                    [`${sales}/wiring/queries/wire-a.ts`]:
+                        "import { a } from '../../infrastructure/helpers/a'",
+                    [`${sales}/application/use-cases/b-use-case.ts`]:
+                        "import { a } from '../../infrastructure/helpers/a'"
+                })
+            ).toEqual([
+                `[sales] application imports outside domain and application: ${sales}/application/use-cases/b-use-case.ts`,
+                `[sales] wiring imports an infrastructure helper: ${sales}/wiring/queries/wire-a.ts`
+            ]);
+        });
+    });
+
     test('reports reading the current time in domain and application', () => {
         expect(
             lint({

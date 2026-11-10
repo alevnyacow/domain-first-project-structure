@@ -194,6 +194,65 @@ const isOwnContract = (file: string, target: string) =>
     baseName(file).endsWith(`-${baseName(target)}`);
 
 /**
+ * A file under `infrastructure/helpers/`: the first folder is its
+ * implementation, `helpers/prisma/mappers/prisma-order.ts`. A file right
+ * under `helpers/` has none, which is a violation of its own.
+ */
+const helperOf = ([layer, kind, ...rest]: string[]) =>
+    layer === 'infrastructure' && kind === 'helpers' && rest.length
+        ? { label: rest.length > 1 ? rest[0] : undefined }
+        : undefined;
+
+const implementationLabelOf = ([layer, kind, label, ...rest]: string[]) =>
+    layer === 'infrastructure' &&
+    ['repositories', 'commands', 'queries', 'application-adapters'].includes(
+        kind
+    ) &&
+    rest.length
+        ? label
+        : undefined;
+
+/**
+ * Helpers are not modules, so the dependency rules don't see them: without
+ * this they would be a way around those rules. The broken rule, if any.
+ */
+const helperImportRule = (
+    from: string[],
+    to: string[],
+    typeOnly: boolean
+): string | undefined => {
+    const fromHelper = helperOf(from);
+    const toHelper = helperOf(to);
+    if (toHelper && from[0] === 'wiring') {
+        return 'wiring imports an infrastructure helper:';
+    }
+    if (fromHelper && !toHelper) {
+        const toKind = fileModuleKind(to);
+        if (
+            to[0] === 'infrastructure' ||
+            (toKind &&
+                !(
+                    typeOnly &&
+                    ['queries', 'commands', 'application-ports'].includes(
+                        toKind
+                    )
+                ))
+        ) {
+            return 'an infrastructure helper imports a module (only domain models, other helpers and `import type` of query, command and port contracts):';
+        }
+    }
+    if (toHelper?.label) {
+        const label = fromHelper
+            ? fromHelper.label
+            : implementationLabelOf(from);
+        if ((fromHelper || label) && label !== toHelper.label) {
+            return 'imports a helper of another implementation:';
+        }
+    }
+    return undefined;
+};
+
+/**
  * Checks imports: bounded context isolation, layers, dependency rules
  * between module files, and React modules.
  */
@@ -274,6 +333,16 @@ const importViolations = (
     for (const file of files) {
         const source = fs.readFileSync(file, 'utf8');
         const from = locate(file);
+        const helper = from && helperOf(from.segments);
+        if (helper && !helper.label) {
+            violations.push({
+                check: 'layers',
+                rule: `[${from.owner}] a helper outside the folder of its implementation (code shared by implementations is an infrastructure service):`,
+                file,
+                line: 1,
+                text: path.basename(file)
+            });
+        }
         const ownContext = inside(contextsFolder, file)?.[0];
         const directWiring =
             ownContext &&
@@ -378,6 +447,14 @@ const importViolations = (
             }
             if (isSpec(file)) {
                 continue;
+            }
+            const helperRule = helperImportRule(
+                from.segments,
+                to.segments,
+                imported.typeOnly
+            );
+            if (helperRule) {
+                report('layers', `[${from.owner}] ${helperRule}`, imported);
             }
             /**
              * Between module files the dependency rules decide which kinds

@@ -305,17 +305,25 @@ export const implementationType = (
         : undefined;
 
 /**
- * An infrastructure module whose file name has the implementation label
- * as whole words: `in-memory-db-infrastructure-service` for `in-memory`.
+ * The services the CLI generates itself, by the implementation label
+ * they serve. Their names are fixed, so nothing is guessed from a name.
+ */
+const systemInfrastructureServices = new Map([
+    ['prisma', 'prisma-infrastructure-service'],
+    ['in-memory', 'in-memory-db-infrastructure-service']
+]);
+
+/**
+ * Only the system service of the implementation is suggested: any other
+ * service is chosen by hand, whatever its name says.
  */
 export const isSuggestedFor = (
     candidate: WiredModule,
     implementation: string
 ) =>
     candidate.layer === 'infrastructure' &&
-    `-${path.basename(candidate.typeFile, '.ts')}-`.includes(
-        `-${implementation}-`
-    );
+    path.basename(candidate.typeFile, '.ts') ===
+        systemInfrastructureServices.get(implementation);
 
 export const canDependOn = (
     consumer: WiredModule,
