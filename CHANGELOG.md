@@ -1,3 +1,10 @@
+# [8.7.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.6.1...v8.7.0) (2026-11-10)
+
+
+### Features
+
+* infrastructure helpers and agent programming principles ([bc97ab3](https://github.com/alevnyacow/domain-first-project-structure/commit/bc97ab3d42c8bd7f6ef4e9c981205dd84e744be1))
+
 ## [8.6.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.6.0...v8.6.1) (2026-11-04)
 
 
