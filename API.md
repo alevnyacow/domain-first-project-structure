@@ -34,6 +34,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [Move or rename](#move-or-rename)
     - [Dependency rules](#dependency-rules)
 - [Unit tests](#unit-tests)
+- [Integration tests](#integration-tests)
 - [React modules (`df-react`)](#react-modules-df-react)
     - [New page](#new-page)
     - [New widget](#new-widget)
@@ -132,12 +133,15 @@ The inventory includes contexts (`shared-kernel` is reserved for the Shared Kern
 
 Dependency availability follows the same context, layer and per-kind rules as the interactive menus. Already-wired dependencies are excluded from the available lists. Refresh inventory after changes; never use display labels or list indexes as IDs.
 
+With the Testcontainers integration and `wire`, each contract also lists `integrationSpecs`: per implementation, the path of its [integration spec](#integration-tests) and whether it `exists`.
+
 ### Operations and options
 
 The installed schema is authoritative and rejects unknown fields. Backend operations are `bounded-context`, `aggregate`, `entity`, `value-object`, `error`, `error-namespace`, `domain-service`, `application-service`, `infrastructure-service`, `presentation-service`, `use-case`, `command`, `query`, `port`, `implementation`, `endpoint`, `wire-dependency`, `move`, `delete`. React operations are `page`, `widget`, `ui-kit-component`, `shared-hook`, `move-page`, `move-widget`, `delete-page`, `delete-widget`, `move-ui-kit-component`, `move-shared-hook`, `delete-ui-kit-component`, `delete-shared-hook`. Integrations use `operation: "add"` and an `integrations` list.
 
 - `name` and `context` use lowercase kebab-case. React page/widget names allow nested paths. Shared Kernel restrictions match the menus.
-- `implementation` and optional `testImplementation` are `{ "type": "prisma", "save": false }`. The primary type is required for queries, commands, ports and new implementations. `save` defaults to false; true records an ordinary type by category and environment role. System labels are plain `cross-context` / `in-memory`, without the UI prefix. Their existing behavior and boundaries remain in force.
+- `implementation` and optional `testImplementation` are `{ "type": "prisma", "save": false }`. With the Testcontainers integration and `wire`, a newly entered primary type takes `integrationTests` (default `true`): whether its implementations get [integration specs](#integration-tests); it is refused anywhere else. The primary type is required for queries, commands, ports and new implementations. `save` defaults to false; true records an ordinary type by category and environment role. System labels are plain `cross-context` / `in-memory`, without the UI prefix. Their existing behavior and boundaries remain in force.
+- `infrastructure-service` takes `integrationSpec` (default `false`) with the Testcontainers integration and `wire`, and refuses it otherwise.
 - Aggregates use `withRepository: true` plus an implementation when a repository is wanted; absent means no repository. Entities/value objects may specify `aggregate`; errors may specify an existing `namespace`.
 - `dependencies` maps each implementation/class name to qualified dependency IDs. Omitted entries keep checked suggestions; an explicit `[]` disables suggestions. Every supplied group must apply to the operation, otherwise nothing is written.
 - New implementations select a `contract` and, with a branched wire, an explicit nonempty `environments` list. Their dependency groups refer to the new concrete class.
@@ -285,7 +289,7 @@ type Config = {
         implementations?: Partial<Record<
             'repositories' | 'commands' | 'queries' | 'ports',
             { primary?: string[]; test?: string[] }
-        >>;
+        >> & { integrationTests?: string[] };
         rules?: { dependencies?: DependencyRules; lint?: Partial<Record<LintCheck, boolean>> };
     };
     frontend?: {
@@ -322,7 +326,7 @@ type Config = {
 | `frontend.react` | Its presence enables `df-react`, OpenAPI's Swagger UI page and Orval's React Query hooks. An empty object enables React without stories. |
 | `frontend.react.framework` | `react` or `next`, selected by frontend setup and recorded by `df-upgrade`; both use React generators. Omitted: treated as React. Installed packages never switch on Next.js behavior; select Next.js with `df-init --section frontend`. |
 | `frontend.react.storybookFramework` | Package used for story imports. Omitted: no generated stories. |
-| `backend.implementations` | Saved implementation labels, separated by contract kind and primary/test role. |
+| `backend.implementations` | Saved implementation labels, separated by contract kind and primary/test role; `integrationTests` lists the types whose implementations get [integration specs](#integration-tests). |
 | `backend.rules.dependencies` | Explicit dependency lists for every module kind, scaffolded by backend setup. Entries can be edited or replaced with `add`/`remove` patches. Missing kinds use defaults. |
 | `backend.rules.lint` | Backend setup writes every check as `true`; set one to `false` to disable it. Missing checks run. |
 
@@ -339,9 +343,12 @@ Configs of an earlier major version (the flat 7.x config, without `project`) are
     "repositories": { "primary": ["prisma", "mongo"], "test": ["stub"] },
     "commands": { "primary": ["sql"], "test": [] },
     "queries": { "primary": ["elastic"], "test": ["fake"] },
-    "ports": { "primary": ["s3"], "test": [] }
+    "ports": { "primary": ["s3"], "test": [] },
+    "integrationTests": ["prisma", "mongo"]
 }
 ```
+
+`integrationTests` is one list for every category. A newly entered primary type asks `Generate integration tests for <type> implementations?` (default Yes) with the Testcontainers integration and `wire`; with the save action, a Yes adds the type to the list. The [Testcontainers integration](#integration-tests-testcontainers-postgresql) edits the whole list.
 
 - Categories are `repositories`, `commands`, `queries` and `ports`; absent categories or roles are empty. Values are arrays of lowercase kebab-case labels. Unknown categories or invalid labels make the configuration file invalid: the CLI stops without overwriting it.
 - **Enter implementation type and save for future use** remembers a new label only for that category and role (`primary` or `test`). Categories are project-wide, shared by all bounded contexts. Active system types need not be stored.
@@ -506,6 +513,8 @@ Available in every layer. **Prompts**: `Name:`.
 
 The class is empty. The factory is `wire<Class> = wireClass(<Class>, [])`. With tests, every layer but infrastructure gets a spec.
 
+In the infrastructure layer, with the Testcontainers integration and `wire`, the generator asks `Generate an integration spec?` (default No) after the name; Yes creates the service's [integration spec](#integration-tests).
+
 ### New Helper
 
 Infrastructure layer of a bounded context or the Shared Kernel. A helper is stateless technical code of one implementation type: a mapper, a query builder, an error translator. It has no class and no wire. Code shared by several implementation types, or code with a dependency, is an [infrastructure service](#new-service).
@@ -613,6 +622,8 @@ export const wireFileStorage = envBranchedWire({
 ```
 
 An implementation that no longer serves any environment stays in the file, and the CLI says so: `S3FileStorage is no longer used in any environment.` Specs are not changed.
+
+An implementation wired in a branch other than the test one gets an [integration spec](#integration-tests) when its type is listed in `backend.implementations.integrationTests` or, newly entered, the answer is Yes.
 
 ### New Handlers-REST Endpoint
 
@@ -752,13 +763,13 @@ Prints `No wired modules here yet.` when there are no modules, and `No dependenc
 
 | Unit                   | Moves with it                                                                                   |
 | ---------------------- | ----------------------------------------------------------------------------------------------- |
-| Aggregate              | Its folder (root, repository contract, barrel, entities and value objects inside, specs), repository implementations, wire |
+| Aggregate              | Its folder (root, repository contract, barrel, entities and value objects inside, specs), repository implementations, wire, [integration specs](#integration-tests) |
 | Entity, value object   | The file and its spec                                                                           |
-| Service                | The file, its spec and wire                                                                     |
+| Service                | The file, its spec, wire and [integration spec](#integration-tests)                             |
 | Use case               | The file, its spec and wire                                                                     |
-| Query, command, port   | The contract, its spec, every implementation and the wire                                       |
+| Query, command, port   | The contract, its spec, every implementation, the wire and [integration specs](#integration-tests) |
 
-Every import of the module in the project follows it, relative paths and tsconfig aliases. With a new name, the names derived from it change in the module and in every file that imports it, directly or through a barrel: the class (`OrderRepository`), its implementations (`PrismaOrderRepository`), its wire (`wireOrderRepository`) and constructor parameters of dependents (`orderRepository`). Inside the module, the variable form and the `describe` label of specs change too. Renaming an aggregate renames its [in-memory DB](#in-memory-db) section: `orders = this.section<Order>('ORDERS')` and accesses like `inMemoryDbInfrastructureService.orders`. An entity or value object leaving its aggregate is no longer re-exported by it, and files importing it from the aggregate's barrel import it from its new file; joining an aggregate adds the re-export.
+Every import of the module in the project follows it, relative paths and tsconfig aliases. With a new name, the names derived from it change in the module and in every file that imports it, directly or through a barrel: the class (`OrderRepository`), its implementations (`PrismaOrderRepository`), its wire (`wireOrderRepository`), the factory names integration specs import (`wirePrismaOrderRepository`) and constructor parameters of dependents (`orderRepository`). Inside the module, the variable form and the `describe` label of specs change too. Renaming an aggregate renames its [in-memory DB](#in-memory-db) section: `orders = this.section<Order>('ORDERS')` and accesses like `inMemoryDbInfrastructureService.orders`. An entity or value object leaving its aggregate is no longer re-exported by it, and files importing it from the aggregate's barrel import it from its new file; joining an aggregate adds the re-export.
 
 Before anything changes, the CLI checks bounded context isolation after the move, allowing cross-context port adapters and matching wiring dependencies described below. Other imports between contexts are forbidden; the Shared Kernel may import only a context's `domain/errors` (and the in-memory DB its domain models). When the move breaks it, the CLI prints `Nothing was moved: these imports would cross a bounded context boundary.`, every such import with paths after the move, and nothing is changed. Otherwise it lists the files to move and to update and asks `Apply?`.
 
@@ -770,7 +781,7 @@ Before anything changes, the CLI checks bounded context isolation after the move
 2. When other files still import the module, the CLI prints `Nothing was deleted: these files still use it.` with every `file → import`, and nothing changes. Uses through an aggregate's barrel count when the import names the entity or value object.
 3. Otherwise it lists the files to delete and to update, and asks `Delete?` (default: No).
 
-Deleted are the files that Move or rename would move: an aggregate with its whole folder (entities and value objects inside included), the repository implementations and wire; a query, command or port with its contract, spec, implementations and wire; a service or use case with its spec and wire. Folders left empty are removed. The generated references elsewhere are cleaned up instead of blocking: an entity's or value object's `export *` line in its aggregate's `index.ts`, and an aggregate's [in-memory DB](#in-memory-db) section with its import.
+Deleted are the files that Move or rename would move: an aggregate with its whole folder (entities and value objects inside included), the repository implementations, wire and integration specs; a query, command or port with its contract, spec, implementations, wire and integration specs; a service or use case with its spec, wire and integration spec. Folders left empty are removed. The generated references elsewhere are cleaned up instead of blocking: an entity's or value object's `export *` line in its aggregate's `index.ts`, and an aggregate's [in-memory DB](#in-memory-db) section with its import.
 
 In JSON mode, `{ "operation": "delete", "context": "sales", "module": "query:orders" }`; a module still in use returns `DELETE_NOT_ALLOWED` with `details.usedBy`.
 
@@ -842,6 +853,49 @@ The spec:
 - imports `describe`, `test`, `expect` and `beforeEach` from `testingLibrary`.
 - with `wire`, builds a service or use case through its factory (`can be wired`), otherwise calls its constructor (`can be created`). Aggregate roots, entities and value objects with `types` are created with `<Name>.of({})` (`can be instantiated via of`), the constructor otherwise;
 - only checks that the instance is defined. Business tests are yours to add.
+
+## Integration tests
+
+With the [Testcontainers integration](#integration-tests-testcontainers-postgresql) and `wire`, an integration spec is created under `specs/integration/`, mirroring the path of its subject without `infrastructure/`:
+
+| Subject | Integration spec |
+| --- | --- |
+| `<rootFolder>/bounded-contexts/sales/infrastructure/queries/prisma/prisma-orders-query.ts` | `specs/integration/sales/queries/prisma/prisma-orders-query.spec.ts` |
+| `<rootFolder>/bounded-contexts/sales/infrastructure/repositories/prisma/prisma-order-repository.ts` | `specs/integration/sales/repositories/prisma/prisma-order-repository.spec.ts` |
+| `<rootFolder>/shared-kernel/infrastructure/application-adapters/s3/s3-files.ts` | `specs/integration/shared-kernel/application-adapters/s3/s3-files.spec.ts` |
+| `<rootFolder>/bounded-contexts/sales/infrastructure/services/mailer-infrastructure-service.ts` | `specs/integration/sales/services/mailer-infrastructure-service.spec.ts` |
+
+Which subjects get one:
+
+- Implementations of repositories, commands, queries and ports, by type: a primary implementation (wired in a branch other than the test one) whose type is in `backend.implementations.integrationTests`. A newly entered primary type asks `Generate integration tests for <type> implementations?` (default Yes); see [Saved implementation choices](#saved-implementation-choices). Test implementations, `in-memory` and `cross-context` get none unless their type is listed by hand.
+- Infrastructure services, when `Generate an integration spec?` of [New Service](#new-service) is answered Yes.
+- Helpers never: the specs of the implementations that use them cover them.
+
+It is created by the generators of aggregates with a repository, commands, queries, ports and infrastructure services; by [New Implementation](#new-implementation); and by the Testcontainers integration, for the existing primary implementations of the listed types. An existing spec is never replaced.
+
+A spec builds its subject through its own factory, whatever the environment branches. An implementation's factory is the one in the contract's wire, which gets `export` when a spec is created; the spec gives it a readable name with `as`:
+
+```ts
+// <rootFolder>/bounded-contexts/sales/wiring/queries/wire-orders-query.ts
+export const wirePrismaImplementation = wireClass(PrismaOrdersQuery, [wirePrismaInfrastructureService])
+```
+
+```ts
+// specs/integration/sales/queries/prisma/prisma-orders-query.spec.ts
+import { describe, test, expect } from 'vitest'
+import { PrismaOrdersQuery } from '../../../../../src/bounded-contexts/sales/infrastructure/queries/prisma/prisma-orders-query'
+import { wirePrismaImplementation as wirePrismaOrdersQuery } from '../../../../../src/bounded-contexts/sales/wiring/queries/wire-orders-query'
+
+describe('orders query (prisma)', () => {
+    test('can be wired', () => {
+        expect(wirePrismaOrdersQuery()).toBeInstanceOf(PrismaOrdersQuery)
+    })
+
+    test.todo('works against the infrastructure')
+})
+```
+
+An infrastructure service's spec imports `wire<Name>InfrastructureService` as is. The spec moves, is renamed and is deleted with its module ([Move or rename](#move-or-rename), [Delete](#delete)). A spec you don't need can be deleted by hand; only rerunning the Testcontainers integration adds it again while its type is listed.
 
 ## React modules (`df-react`)
 
@@ -1047,6 +1101,8 @@ The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, scr
 | Changed files  | `vitest.config.ts`: `specs/integration/**` is added to the `test.exclude` array that spreads `configDefaults.exclude`, keeping its layout |
 | Scripts        | `test:integration`: `vitest run --config specs/integration/vitest.config.ts --reporter=dot --silent=passed-only`             |
 | Install        | `--save-dev vitest testcontainers dotenv`, each when missing                                                               |
+| Prompts        | With `wire` and saved primary types: `Integration tests for implementation types:` (checkbox of the saved primary types, `in-memory` and `cross-context` excluded; checked: those in `backend.implementations.integrationTests`). JSON: `integrationTestTypes`; omitted, the list stays |
+| Generated      | The missing [integration specs](#integration-tests) of existing primary implementations of the selected types |
 | Notes          | The database image and variable and where to change them; with no Prisma config, a reminder to apply migrations in `global-setup.ts`; when `specs/integration/**` can't be added to `test.exclude` of `vitest.config.ts`, a reminder to add it; Docker must be running |
 
 | File               | Content                                                                                                     |

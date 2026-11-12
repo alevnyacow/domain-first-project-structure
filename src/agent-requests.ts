@@ -16,6 +16,12 @@ const implementation = z.strictObject({
         .optional()
         .describe(
             'Remember this ordinary type for future runs. Default: false.'
+        ),
+    integrationTests: z
+        .boolean()
+        .optional()
+        .describe(
+            'For a newly entered primary type, with the Testcontainers integration and wire: whether its implementations get integration specs. Default: true. With save: true, remembered for the type. Not allowed otherwise.'
         )
 });
 const dependencies = z
@@ -63,7 +69,16 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
     operation('error-namespace', named),
     operation('domain-service', { ...named, ...wired }),
     operation('application-service', { ...named, ...wired }),
-    operation('infrastructure-service', { ...named, ...wired }),
+    operation('infrastructure-service', {
+        ...named,
+        integrationSpec: z
+            .boolean()
+            .optional()
+            .describe(
+                'With the Testcontainers integration and wire: whether the service gets an integration spec. Default: false. Not allowed otherwise.'
+            ),
+        ...wired
+    }),
     operation('helper', {
         ...common,
         ...owner,
@@ -190,6 +205,12 @@ export const integrationRequestSchema = operation('add', {
     nextAdapter: z.boolean().optional(),
     configureReact: z.boolean().optional(),
     replaceTestingLibrary: z.boolean().optional(),
+    integrationTestTypes: z
+        .array(name)
+        .optional()
+        .describe(
+            'testcontainers with wire: saved primary implementation types whose implementations get integration specs. Omitted: the configured list stays.'
+        ),
     withService: z.boolean().optional(),
     routePrefix: z
         .string()

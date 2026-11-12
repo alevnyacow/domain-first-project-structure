@@ -99,4 +99,5 @@ Pages, widgets, UI-kit components, shared hooks and stories, and how they reach 
 ## Tests
 
 - Generated specs only check construction. Extend them in the same file with behavior tests; what to test per unit: its unit file.
-- Missing spec: create it from "Spec templates" in `df-ps-scaffold/references/generators.md` (exception 1). Don't re-run the generator: it would overwrite the implementation. Never delete generated specs.
+- Integration specs in `specs/integration/` check that the factory builds the implementation. Replace `test.todo('works against the infrastructure')` with tests against the container (`DATABASE_URL`); run them with `npm run test:integration` (Docker).
+- Missing spec: create it from "Spec templates" or "Integration specs" in `df-ps-scaffold/references/generators.md` (exception 1). Don't re-run the generator: it would overwrite the implementation. Never delete generated specs.

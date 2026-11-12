@@ -4,6 +4,10 @@ import {
     createImplementation,
     inMemoryRepositoryWiring
 } from '../implementations';
+import {
+    scaffoldIntegrationSpec,
+    wantsIntegrationTests
+} from '../integration-tests';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
@@ -104,11 +108,15 @@ describe('${aggregateNaming.withSpaces}', () => {
         /**
          * Infrastructure prompts
          */
-        const { label: infrastructureImplementationType } =
-            await promptImplementationType(
-                'Repository infrastructure implementation type:',
-                'repositories'
-            );
+        const primary = await promptImplementationType(
+            'Repository infrastructure implementation type:',
+            'repositories'
+        );
+        const infrastructureImplementationType = primary.label;
+        const withIntegrationSpec = await wantsIntegrationTests(primary.label, {
+            entered: primary.entered,
+            save: primary.saveForFutureUse
+        });
 
         let addTestImplementation: boolean = false;
         let testImplementationType: string = '';
@@ -203,6 +211,18 @@ export const wire${aggregateNaming.ClassName}Repository = envBranchedWire(${envB
                     wireFile
                 )
             );
+
+            // After wiring: the spec builds the implementation through its factory.
+            if (withIntegrationSpec)
+                scaffoldIntegrationSpec(
+                    {
+                        kind: 'aggregate',
+                        name: aggregateNaming.fileName,
+                        ownerPath: boundedContextFolder.path
+                    },
+                    new UnknownFormatNaming(infrastructureImplementationType)
+                        .fileName
+                );
         }
     }
 };

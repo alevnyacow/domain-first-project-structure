@@ -9,10 +9,11 @@ When (`../choosing-components.md`, steps 12–15, "Port or service?"):
 
 ## Generate (context and Shared Kernel)
 
-Prompts: name → {wire} `Dependencies:` (`../generators.md`). `L` = `domain` | `application` | `infrastructure` | `presentation`.
+Prompts: name → infrastructure with {integration}: `Generate an integration spec?` (JSON `integrationSpec`, default false) → {wire} `Dependencies:` (`../generators.md`). `L` = `domain` | `application` | `infrastructure` | `presentation`.
 
 - `<C>/L/services/n-L-service.ts` (`class NLService`, e.g. `CheckoutApplicationService`), spec except for `infrastructure`
 - {wire} `<C>/wiring/L-services/wire-n-L-service.ts` (`wireClass(X, [])`)
+- {integration} if asked: `specs/integration/<context>/services/n-infrastructure-service.spec.ts`
 
 ## Implement
 
@@ -23,4 +24,4 @@ Prompts: name → {wire} `Dependencies:` (`../generators.md`). `L` = `domain` | 
 
 ## Test
 
-Test a domain, application or presentation service's logic with fake dependencies in its generated spec. Infrastructure services have no unit spec: integration tests cover them.
+Test a domain, application or presentation service's logic with fake dependencies in its generated spec. Infrastructure services have no unit spec: ask for an integration spec when the service talks to the database container, otherwise the specs of the implementations using it cover it.

@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import z from 'zod';
 import { moduleId, unitId } from './agent-identifiers';
 import { type AgentCommand, requestSchemaFor } from './agent-requests';
-import { findBackendUnits } from './backend-module-move';
+import { findBackendUnits, integrationSpecFile } from './backend-module-move';
 import { ConfigFile } from './config-file';
 import { hasNeighboringBoundedContext } from './context-dependencies';
 import {
@@ -18,6 +18,7 @@ import {
     savedImplementations
 } from './implementation-choices';
 import { findContracts } from './implementations';
+import { integrationSpecsAvailable } from './integration-tests';
 import {
     assertAnswersConsumed,
     RequestError,
@@ -165,6 +166,8 @@ export const describeAgentCommand = (command: AgentCommand) => {
     );
     const relative = (file: string) =>
         path.relative(root!, file).split(path.sep).join('/');
+    const withIntegrationSpecs =
+        Boolean(config?.backend) && integrationSpecsAvailable();
     return {
         schemaVersion: 1,
         command,
@@ -190,7 +193,33 @@ export const describeAgentCommand = (command: AgentCommand) => {
                           (unit) => ({
                               id: unitId(unit),
                               kind: unit.kind,
-                              implementations: unit.labels
+                              implementations: unit.labels,
+                              ...(withIntegrationSpecs
+                                  ? {
+                                        integrationSpecs: unit.labels.flatMap(
+                                            (implementation) => {
+                                                const file =
+                                                    integrationSpecFile(
+                                                        unit,
+                                                        implementation
+                                                    );
+                                                return file
+                                                    ? [
+                                                          {
+                                                              implementation,
+                                                              file: relative(
+                                                                  file
+                                                              ),
+                                                              exists: fs.existsSync(
+                                                                  file
+                                                              )
+                                                          }
+                                                      ]
+                                                    : [];
+                                            }
+                                        )
+                                    }
+                                  : {})
                           })
                       ),
                       modules: findWiredModules(owner.folder.path).map(

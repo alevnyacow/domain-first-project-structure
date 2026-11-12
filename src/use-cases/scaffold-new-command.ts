@@ -1,6 +1,10 @@
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
+import {
+    scaffoldIntegrationSpec,
+    wantsIntegrationTests
+} from '../integration-tests';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
@@ -18,10 +22,15 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
 
     const commandName = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(commandName);
-    const { label: implementationType } = await promptImplementationType(
+    const primary = await promptImplementationType(
         'Command infrastructure implementation type:',
         'commands'
     );
+    const implementationType = primary.label;
+    const withIntegrationSpec = await wantsIntegrationTests(primary.label, {
+        entered: primary.entered,
+        save: primary.saveForFutureUse
+    });
 
     let addTestImplementation: boolean = false;
     let testImplementationType: string = '';
@@ -127,5 +136,16 @@ export const wire${naming.ClassName}Command = envBranchedWire(${envBranchedWireA
             );
 
         await wireNewModuleDependencies(boundedContextFolder, wireFile);
+
+        // After wiring: the spec builds the implementation through its factory.
+        if (withIntegrationSpec)
+            scaffoldIntegrationSpec(
+                {
+                    kind: 'command',
+                    name: naming.fileName,
+                    ownerPath: boundedContextFolder.path
+                },
+                new UnknownFormatNaming(implementationType).fileName
+            );
     }
 };

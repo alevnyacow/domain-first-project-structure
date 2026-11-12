@@ -13,4 +13,4 @@ An implementation left without environments stays in the wire file; the CLI prin
 
 ## Implement and test
 
-As the implementations of the contract's unit file. Contracts have no unit spec; specs of the use cases that inject the contract wire what `NODE_ENV=test` uses: only a new `test` implementation changes what they test.
+As the implementations of the contract's unit file. A primary implementation (any environment but `test`) gets an integration spec by type, as in `../generators.md`, "Integration specs". Contracts have no unit spec; specs of the use cases that inject the contract wire what `NODE_ENV=test` uses: only a new `test` implementation changes what they test.

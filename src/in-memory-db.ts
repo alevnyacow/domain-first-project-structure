@@ -14,7 +14,7 @@ import {
 /**
  * Implementations of this type get the in-memory DB.
  */
-const inMemoryImplementationType = 'in-memory';
+export const inMemoryImplementationType = 'in-memory';
 
 const className = 'InMemoryDbInfrastructureService';
 const wireName = 'wireInMemoryDbInfrastructureService';

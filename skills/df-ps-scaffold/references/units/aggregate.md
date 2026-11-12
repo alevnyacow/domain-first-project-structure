@@ -10,6 +10,7 @@ Prompts: name → `With Repository` → primary implementation select → `Add a
 - `<C>/domain/aggregates/n/`: `n.aggregate-root.ts` (`class N extends domainType()` {types}), `index.ts`, spec; with repository: `n-repository.ts` (`abstract class NRepository`), no spec
 - `<C>/infrastructure/repositories/I/I-n-repository.ts` per implementation (`class INRepository implements NRepository`)
 - {wire} `<C>/wiring/repositories/wire-n-repository.ts` (env-branched)
+- {integration} `specs/integration/<context>/repositories/I/I-n-repository.spec.ts` for the primary implementation, by type (`../generators.md`, "Integration specs")
 - With `backend.withInMemoryDb` in the config, the `in-memory` implementation can keep its section of the DB: `private readonly data: InMemoryDbInfrastructureService['ns']`, set in the constructor from its `inMemoryDbInfrastructureService` parameter; `ns = this.section<N>('NS');` is added to `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` if missing (`N` needs an `id`). Without {wire} this always happens. {wire} `Dependencies for InMemoryNRepository:` lists the DB under `Suggested`, checked: kept, it gets the section and `wireInMemoryDbInfrastructureService` in its `wireClass`; unchecked, the implementation stays empty (`constructor() {}`) and no section is added.
 
 Its entities and value objects come after it: [entity-value-object](entity-value-object.md), picking this aggregate.
@@ -43,4 +44,4 @@ export class Order extends domainType(
 
 ## Test
 
-Extend the generated spec of the root with the aggregate rules. The repository has no unit spec: it is infrastructure, tested through integration tests and the use cases that inject its test implementation.
+Extend the generated spec of the root with the aggregate rules. The repository has no unit spec: it is infrastructure, tested through its integration spec (extend `test.todo` against the container) and the use cases that inject its test implementation.

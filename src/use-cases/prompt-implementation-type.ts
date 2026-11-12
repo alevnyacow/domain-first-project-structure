@@ -29,6 +29,8 @@ export const implementationTypeEntryChoices = [
 export type ImplementationTypeSelection = {
     label: string;
     saveForFutureUse: boolean;
+    /** Typed in rather than picked: not a saved or system type. */
+    entered: boolean;
 };
 
 /** Saved choices, active system implementations, and explicit manual entry. */
@@ -88,12 +90,18 @@ export const promptImplementationType = async (
         const key =
             purpose === 'test' ? 'testImplementation' : 'implementation';
         const implementation = answerFor(key) as
-            | { type: string; save?: boolean }
+            | { type: string; save?: boolean; integrationTests?: boolean }
             | undefined;
         if (!implementation)
             throw new RequestError('MISSING_PARAMETER', `Provide ${key}.`, {
                 field: key
             });
+        if (purpose === 'test' && implementation.integrationTests !== undefined)
+            throw new RequestError(
+                'UNUSED_PARAMETERS',
+                'Test implementations get no integration specs.',
+                { fields: [`${key}.integrationTests`] }
+            );
         const valid = validateLabel(implementation.type);
         if (valid !== true)
             throw new RequestError('INVALID_IMPLEMENTATION', valid, {
@@ -101,6 +109,7 @@ export const promptImplementationType = async (
             });
         const label = implementation.type.trim();
         const saveForFutureUse = implementation.save ?? false;
+        const entered = !choices.some((choice) => choice.value === label);
         if (
             remember &&
             saveForFutureUse &&
@@ -112,7 +121,7 @@ export const promptImplementationType = async (
                 label
             );
         }
-        return { label, saveForFutureUse };
+        return { label, saveForFutureUse, entered };
     }
     const type = await select<
         string | null | typeof enterImplementationTypeOnce
@@ -128,7 +137,7 @@ export const promptImplementationType = async (
         default: preferred?.value ?? null
     });
     if (typeof type === 'string')
-        return { label: type, saveForFutureUse: true };
+        return { label: type, saveForFutureUse: true, entered: false };
     const saveForFutureUse = type !== enterImplementationTypeOnce;
     const label = (
         await input({
@@ -147,5 +156,9 @@ export const promptImplementationType = async (
             purpose === 'all' ? 'primary' : purpose,
             label
         );
-    return { label, saveForFutureUse };
+    return {
+        label,
+        saveForFutureUse,
+        entered: !choices.some(({ value }) => value === label)
+    };
 };

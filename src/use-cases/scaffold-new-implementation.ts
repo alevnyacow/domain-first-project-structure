@@ -13,6 +13,10 @@ import {
     implementationWireName,
     inMemoryRepositoryWiring
 } from '../implementations';
+import {
+    scaffoldIntegrationSpec,
+    wantsIntegrationTests
+} from '../integration-tests';
 import { checkbox, report, Separator, select } from '../interaction';
 import { systemImplementationChoices } from '../system-implementations';
 import { envBranches } from '../wire-branches';
@@ -87,7 +91,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
               : unit.kind === 'query'
                 ? 'queries'
                 : 'ports';
-    const { label, saveForFutureUse } = await promptImplementationType(
+    const { label, saveForFutureUse, entered } = await promptImplementationType(
         'Implementation type:',
         kind,
         {
@@ -122,6 +126,8 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         !ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
     ) {
         rememberFor(branches.primary);
+        // Without wiring there are no integration specs: only refuse the answer.
+        await wantsIntegrationTests(label, { entered: false, save: false });
         return;
     }
 
@@ -132,6 +138,7 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
     const wired = branchesOf(wireFile, wireName);
     if (!wired) {
         rememberFor(branches.primary);
+        await wantsIntegrationTests(label, { entered: false, save: false });
         report(
             `${wireFile.path} has no ${wireName} = envBranchedWire({...}): wire ${className} there yourself.`
         );
@@ -162,6 +169,14 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         required: true
     });
     rememberFor(chosenEnvironments);
+    const primaryRole = chosenEnvironments.some(
+        (environment) => environment !== branches.test
+    );
+    const withIntegrationSpec =
+        (await wantsIntegrationTests(label, {
+            entered: primaryRole && entered,
+            save: saveForFutureUse
+        })) && primaryRole;
 
     const before = readWiredModule(wireFile.path, ownerFolder.path);
     wireFile.update(
@@ -173,6 +188,8 @@ export const scaffoldNewImplementation = async (ownerFolder: Folder) => {
         })
     );
     const after = readWiredModule(wireFile.path, ownerFolder.path);
+    // After wiring: the spec builds the implementation through its factory.
+    if (withIntegrationSpec) scaffoldIntegrationSpec(unit, label);
     const unused = (before?.implementations ?? []).filter(
         (x) => !after?.implementations.some((y) => y.className === x.className)
     );

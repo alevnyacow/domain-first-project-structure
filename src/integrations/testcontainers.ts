@@ -1,8 +1,26 @@
 import path from 'node:path';
 import { ConfigFile } from '../config-file';
-import { File } from '../file-system';
+import { File, Folder } from '../file-system';
+import {
+    implementationKinds,
+    savedImplementations
+} from '../implementation-choices';
+import {
+    contractClassName,
+    contractWireFile,
+    findContracts,
+    implementationWireName
+} from '../implementations';
+import {
+    integrationTestTypes,
+    scaffoldIntegrationSpec,
+    setIntegrationTestTypes,
+    systemImplementationTypes
+} from '../integration-tests';
+import { checkbox } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { envBranches } from '../wire-branches';
+import { wireBranches } from '../wiring';
 import { addPackageScripts, describeScripts } from './package-scripts';
 import { prismaScripts } from './prisma';
 
@@ -158,6 +176,83 @@ const stageFile = (filePath: string, content: string) => {
     if (!file.exists || file.data !== content) file.data = content;
 };
 
+/**
+ * Asks which saved primary types get integration specs, and stages the
+ * missing specs of their existing primary implementations: those wired
+ * in a branch other than the test one.
+ */
+const configureIntegrationTests = async (root: string) => {
+    if (!ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire'))
+        return;
+    const kindsOf = new Map<string, string[]>();
+    for (const kind of implementationKinds)
+        for (const label of savedImplementations(kind, 'primary'))
+            if (!systemImplementationTypes.has(label))
+                kindsOf.set(label, [...(kindsOf.get(label) ?? []), kind]);
+    const current = integrationTestTypes();
+    if (kindsOf.size) {
+        const selected = await checkbox<string>({
+            key: 'integrationTestTypes',
+            message: 'Integration tests for implementation types:',
+            choices: [...kindsOf].map(([value, kinds]) => ({
+                name: `${value} (${kinds.join(', ')})`,
+                value,
+                checked: current.includes(value)
+            }))
+        });
+        // Types the menu doesn't offer, e.g. cross-context, stay as listed.
+        const kept = current.filter((label) => !kindsOf.has(label));
+        const next = [...selected, ...kept];
+        if (
+            next.length !== current.length ||
+            next.some((label) => !current.includes(label))
+        )
+            setIntegrationTestTypes(next);
+    }
+    const types = integrationTestTypes();
+    if (!types.length) return;
+    const testBranch = envBranches().test;
+
+    const source = new Folder(root).subitem([
+        ConfigFile.Instance.data.project.rootFolder
+    ]);
+    const owners = [
+        source.subitem(['shared-kernel']),
+        ...source
+            .subitem(['bounded-contexts'])
+            .content.subfolderNames.sort()
+            .map((name) => source.subitem(['bounded-contexts', name]))
+    ];
+    for (const owner of owners) {
+        for (const unit of findContracts(owner.path)) {
+            const wireFile = new File(
+                path.join(owner.path, contractWireFile(unit))
+            );
+            if (!wireFile.exists) continue;
+            let wired: Map<string, string>;
+            try {
+                wired = wireBranches(
+                    wireFile.data,
+                    `wire${contractClassName(unit)}`
+                );
+            } catch {
+                continue;
+            }
+            const primaryWires = new Set(
+                [...wired]
+                    .filter(([branch]) => branch !== testBranch)
+                    .map(([, wire]) => wire)
+            );
+            for (const label of unit.labels)
+                if (
+                    types.includes(label) &&
+                    primaryWires.has(implementationWireName(label))
+                )
+                    scaffoldIntegrationSpec(unit, label);
+        }
+    }
+};
+
 export const addTestcontainers = async (): Promise<string[]> => {
     const config = ConfigFile.Instance.data;
     const root = new ProjectRoot().path;
@@ -212,6 +307,8 @@ export const addTestcontainers = async (): Promise<string[]> => {
             excludedFromUnitTests = true;
         }
     }
+
+    await configureIntegrationTests(root);
 
     const missing = ['vitest', 'testcontainers', 'dotenv'].filter(
         (name) => !dependencies[name]

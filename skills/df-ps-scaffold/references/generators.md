@@ -2,7 +2,7 @@
 
 Use the JSON interface described in [agent-mode.md](agent-mode.md), with the complete operation map in [agent-operations.md](agent-operations.md). Prompts below are what a generator asks interactively; JSON requests carry the same answers as fields. Generated files and implementation rules are the same.
 
-What every generator shares: notation, the `Dependencies:` step, env-branched wiring and spec templates. Prompts and output of each generator are in `units/<unit>.md`.
+What every generator shares: notation, the `Dependencies:` step, env-branched wiring, spec templates and integration specs. Prompts and output of each generator are in `units/<unit>.md`.
 
 Config paths: `project.rootFolder`, `backend.domainFirstPackages`, `backend.testingLibrary`, `backend.withInMemoryDb`, and `frontend.react.storybookFramework`. Initialization/reconfiguration is performed by the user, not the agent.
 
@@ -96,3 +96,28 @@ Only modules without infrastructure have specs. Repositories, commands, queries,
 | Use case             | `n-use-case.ts`              | `NUseCase` / `vUseCase`       | `../../wiring/use-cases/wire-n-use-case`         | `n words use case`   | `NUseCase` `./n-use-case`, `can be created`                                                              |
 
 Entities and value objects (`n.entity.ts`, `n.value-object.ts`) follow the aggregate root row. `n words` = the name with spaces instead of hyphens.
+
+## Integration specs {integration}
+
+{integration} = the Testcontainers integration (`specs/integration/vitest.config.ts`) and {wire}. Then an integration spec goes to `specs/integration/<context>/<path without infrastructure/>.spec.ts`, e.g. `specs/integration/sales/queries/prisma/prisma-orders-query.spec.ts`, for:
+
+- each primary implementation of a repository, command, query or port whose type is in `backend.implementations.integrationTests`. A newly entered primary type asks `Generate integration tests for <type> implementations?` (JSON `implementation.integrationTests`, default true; with `save: true`, a yes lists the type). Test implementations, `in-memory` and `cross-context` get none;
+- an infrastructure service, when `Generate an integration spec?` is answered yes (JSON `integrationSpec`, default false). Helpers never get one.
+
+The spec imports the implementation's factory from the contract's wire, which the CLI exports (`export const wireIImplementation = …`), and names it with `as`; a service's spec imports `wireNInfrastructureService`:
+
+```ts
+import { describe, test, expect } from 'vitest'
+import { INContract } from '<implementation file>'
+import { wireIImplementation as wireINContract } from '<contract wire file>'
+
+describe('n words <kind> (I)', () => {
+    test('can be wired', () => {
+        expect(wireINContract()).toBeInstanceOf(INContract)
+    })
+
+    test.todo('works against the infrastructure')
+})
+```
+
+Specs follow their module on move, rename and delete. Recreate a missing one only from this template (rule 2, exception 1), exporting the factory in the wire.

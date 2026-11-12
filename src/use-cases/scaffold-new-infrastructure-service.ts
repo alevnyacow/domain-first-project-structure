@@ -1,5 +1,9 @@
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
+import {
+    scaffoldIntegrationSpec,
+    wantsServiceIntegrationSpec
+} from '../integration-tests';
 import { input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import { wireNewModuleDependencies } from './wire-dependency';
@@ -9,6 +13,7 @@ export const scaffoldNewInfrastructureService = async (
 ) => {
     const name = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
+    const withIntegrationSpec = await wantsServiceIntegrationSpec();
 
     const withWiring =
         ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
@@ -46,5 +51,12 @@ export const wire${naming.ClassName}InfrastructureService = wireClass(
         );
 
         await wireNewModuleDependencies(boundedContextFolder, wireFile);
+
+        if (withIntegrationSpec)
+            scaffoldIntegrationSpec({
+                kind: 'infrastructure-service',
+                name: naming.fileName,
+                ownerPath: boundedContextFolder.path
+            });
     }
 };

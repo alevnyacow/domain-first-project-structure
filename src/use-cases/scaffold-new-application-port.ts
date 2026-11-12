@@ -2,6 +2,10 @@ import { ConfigFile } from '../config-file';
 import { hasNeighboringBoundedContext } from '../context-dependencies';
 import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
+import {
+    scaffoldIntegrationSpec,
+    wantsIntegrationTests
+} from '../integration-tests';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
@@ -38,13 +42,18 @@ export abstract class ${naming.ClassName} {
     const crossContext = hasNeighboringBoundedContext(
         boundedContextFolder.path
     );
-    const { label: implementationType } = await promptImplementationType(
+    const primary = await promptImplementationType(
         'Adapter implementation type:',
         'ports',
         {
             crossContext
         }
     );
+    const implementationType = primary.label;
+    const withIntegrationSpec = await wantsIntegrationTests(primary.label, {
+        entered: primary.entered,
+        save: primary.saveForFutureUse
+    });
 
     const addTestImplementation =
         offersTestImplementation() &&
@@ -125,5 +134,16 @@ export const wire${naming.ClassName} = envBranchedWire(${envBranchedWireArgument
         );
 
         await wireNewModuleDependencies(boundedContextFolder, wireFile);
+
+        // After wiring: the spec builds the implementation through its factory.
+        if (withIntegrationSpec)
+            scaffoldIntegrationSpec(
+                {
+                    kind: 'port',
+                    name: naming.fileName,
+                    ownerPath: boundedContextFolder.path
+                },
+                new UnknownFormatNaming(implementationType).fileName
+            );
     }
 };

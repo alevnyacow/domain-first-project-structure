@@ -69,7 +69,7 @@ test('repository custom labels persist only when the run is saved and appear in 
             'Repository implementation:',
             'repositories'
         )
-    ).toEqual({ label: 'mongo', saveForFutureUse: true });
+    ).toEqual({ label: 'mongo', saveForFutureUse: true, entered: true });
     expect(rstest.mocked(select).mock.calls[0][0].choices).toEqual([
         {
             name: 'Enter implementation type and save for future use',
@@ -99,7 +99,7 @@ test('repository custom labels persist only when the run is saved and appear in 
             'Repository implementation:',
             'repositories'
         )
-    ).toEqual({ label: 'mongo', saveForFutureUse: true });
+    ).toEqual({ label: 'mongo', saveForFutureUse: true, entered: false });
     expect(rstest.mocked(select).mock.calls[1][0].default).toBe('mongo');
     expect(input).toHaveBeenCalledTimes(1);
 });
@@ -276,7 +276,11 @@ for (const kind of implementationKinds) {
                 await promptImplementationType('Implementation:', kind, {
                     purpose
                 })
-            ).toEqual({ label: 'temporary', saveForFutureUse: false });
+            ).toEqual({
+                label: 'temporary',
+                saveForFutureUse: false,
+                entered: true
+            });
             writePendingChanges();
             expect(
                 ConfigFile.Instance.data.backend?.implementations

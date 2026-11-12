@@ -12,6 +12,7 @@ Prompts: name → primary implementation select → `Add a test implementation` 
 - `<C>/application/commands/n-command.ts`: abstract `NCommand` ({handlers} schemas + abstract `handle: Handler<…>`), no spec
 - `<C>/infrastructure/commands/I/I-n-command.ts` per implementation (`extends NCommand`, implements `handle`)
 - {wire} `<C>/wiring/commands/wire-n-command.ts` (env-branched)
+- {integration} `specs/integration/<context>/commands/I/I-n-command.spec.ts` for the primary implementation, by type (`../generators.md`, "Integration specs")
 - With `backend.withInMemoryDb` in the config, the `in-memory` implementation can get the whole DB: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`. No section is added. Without {wire} this always happens; {wire} it is the checked `Suggested` choice of `Dependencies for InMemoryN<Suffix>:`, and unchecking it leaves the implementation empty.
 
 Queries: the same with `query` / `queries`.
@@ -27,4 +28,4 @@ Queries: the same with `query` / `queries`.
 
 ## Test
 
-No unit spec: a command or query is infrastructure, tested through integration tests and the use cases that inject its test implementation.
+No unit spec: a command or query is infrastructure, tested through its integration spec (extend `test.todo` against the container) and the use cases that inject its test implementation.

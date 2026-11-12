@@ -173,6 +173,69 @@ export const kindLayouts: Record<BackendUnitKind, KindLayout> = {
     }
 };
 
+/** Where the Testcontainers integration keeps integration specs. */
+export const integrationSpecsFolder = 'specs/integration';
+
+/** The nearest folder above with `package.json`, as `ProjectRoot` finds it. */
+const projectRootOf = (folder: string): string | undefined => {
+    let current = folder;
+    while (true) {
+        if (fs.existsSync(path.join(current, 'package.json'))) return current;
+        const parent = path.dirname(current);
+        if (parent === current) return undefined;
+        current = parent;
+    }
+};
+
+type ContractUnit = Pick<BackendUnit, 'kind' | 'name' | 'ownerPath'>;
+
+/**
+ * The integration spec of an implementation, or of an infrastructure
+ * service without `label`, mirroring its path in the owner without
+ * `infrastructure/`:
+ * `specs/integration/sales/queries/prisma/prisma-orders-query.spec.ts`,
+ * `specs/integration/sales/services/mailer-infrastructure-service.spec.ts`.
+ * Undefined for other units or outside a project.
+ */
+export const integrationSpecFile = (unit: ContractUnit, label?: string) => {
+    const layout = kindLayouts[unit.kind];
+    const place = { ownerPath: unit.ownerPath, name: unit.name };
+    const source =
+        label === undefined
+            ? unit.kind === 'infrastructure-service'
+                ? layout.files(place, [])[0]
+                : undefined
+            : layout.implementations
+              ? layout
+                    .files(place, [label])
+                    .find((file) =>
+                        file.startsWith(`${layout.implementations}/${label}/`)
+                    )
+              : undefined;
+    const projectRoot = projectRootOf(unit.ownerPath);
+    if (!source || !projectRoot) return undefined;
+    return path.join(
+        projectRoot,
+        integrationSpecsFolder,
+        path.basename(unit.ownerPath),
+        source.slice('infrastructure/'.length).replace(/\.ts$/, '.spec.ts')
+    );
+};
+
+/** What a unit's integration specs are of: its implementations or itself. */
+export const integrationSpecSubjects = (
+    unit: Pick<BackendUnit, 'kind' | 'labels'>
+): (string | undefined)[] =>
+    unit.kind === 'infrastructure-service' ? [undefined] : unit.labels;
+
+/** Where emptied folders of integration specs stop being removed. */
+export const integrationSpecsStop = (file: string) => {
+    const projectRoot = projectRootOf(path.dirname(file));
+    if (!projectRoot) return undefined;
+    const folder = path.join(projectRoot, integrationSpecsFolder);
+    return file.startsWith(`${folder}${path.sep}`) ? folder : undefined;
+};
+
 const subfolders = (folder: string) =>
     fs.existsSync(folder)
         ? fs
@@ -302,6 +365,17 @@ const unitMoves = (unit: BackendUnit, target: UnitPlace) => {
             moves.set(oldPath, path.join(target.ownerPath, to[index]));
         }
     });
+    // Integration specs, outside the owner folder.
+    for (const label of integrationSpecSubjects(unit)) {
+        const oldSpec = integrationSpecFile(unit, label);
+        const newSpec = integrationSpecFile(
+            { kind: unit.kind, name: target.name, ownerPath: target.ownerPath },
+            label
+        );
+        if (oldSpec && newSpec && fs.existsSync(oldSpec)) {
+            moves.set(oldSpec, newSpec);
+        }
+    }
     if (unit.kind === 'aggregate') {
         const oldFolder = path.join(
             unit.ownerPath,
@@ -514,9 +588,16 @@ export const moveBackendUnit = (
     const word = (form: string) => `(?<![\\w$])${escapeRegExp(form)}(?![\\w$])`;
     const oldCore = layout.core(oldNaming.ClassName);
     const newCore = layout.core(newNaming.ClassName);
+    const labelNames = unit.labels.map(
+        (label) => new UnknownFormatNaming(label).ClassName
+    );
     const prefixes = [
-        ...unit.labels.map((label) => new UnknownFormatNaming(label).ClassName),
-        ...(layout.wired ? ['wire'] : [])
+        ...labelNames,
+        // `wirePrismaOrdersQuery`: an implementation factory as integration
+        // specs import it.
+        ...(layout.wired
+            ? ['wire', ...labelNames.map((label) => `wire${label}`)]
+            : [])
     ];
     const renames: { pattern: RegExp; to: string; movedOnly?: boolean }[] = [
         {
@@ -594,6 +675,7 @@ export const moveBackendUnit = (
     const plan = stageModuleMove({
         projectRoot,
         stopAt: rootFolderPath,
+        stopAtFor: integrationSpecsStop,
         moves,
         movedPath,
         rename: (content, { moved }) =>
@@ -805,7 +887,8 @@ export const deleteBackendUnit = (
     }
     if (usedBy.length) return { usedBy };
 
-    for (const file of files) new File(file).delete(rootFolderPath);
+    for (const file of files)
+        new File(file).delete(integrationSpecsStop(file) ?? rootFolderPath);
     for (const [file, content] of cleaned) new File(file).update(content);
     return { deleted: files, updated: [...cleaned.keys()] };
 };

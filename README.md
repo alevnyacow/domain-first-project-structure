@@ -280,6 +280,8 @@ Run `npx df-integration` to configure one or several of the REST endpoint genera
 
 The endpoint generator and the in-memory DB are what `df-init` scaffolds; as integrations they add them later or restore missing files, and never overwrite existing ones.
 
+With Testcontainers, the CLI asks which implementation types get integration tests (`prisma` yes, `stripe` probably not). From then on, each new implementation of such a type, like `PrismaOrdersQuery`, gets a spec in `specs/integration/` that builds it through its wire and runs against PostgreSQL in a container; an infrastructure service gets one when you ask. Unit specs stay with the domain model, services and use cases.
+
 ### How to check the rules
 
 ```

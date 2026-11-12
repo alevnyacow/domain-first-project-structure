@@ -9,6 +9,7 @@ Prompts: name → primary adapter select → `With test implementation` → test
 - `<C>/application/ports/n.ts` (abstract `N`; name it after the capability), no spec
 - `<C>/infrastructure/application-adapters/I/I-n.ts` per implementation (`class IN extends N`)
 - {wire} `<C>/wiring/application-ports/wire-n.ts` (env-branched)
+- {integration} `specs/integration/<context>/application-adapters/I/I-n.spec.ts` for the primary adapter, by type (`../generators.md`, "Integration specs"); answer `integrationTests: false` for a type the database container can't exercise (an external API)
 
 ## Implement
 
