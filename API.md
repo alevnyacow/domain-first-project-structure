@@ -212,7 +212,7 @@ When backend is deferred, frontend does not create or configure backend settings
 | ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------- |
 | `domain-first.project-structure.config.json`          | Always       | The [configuration](#configuration-file), four-space-indented                          |
 | `<rootFolder>/shared-kernel/wiring/env-branched-wire.ts`     | With `wire`   | [`envBranchedWire`](#envbranchedwire)                                          |
-| `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its spec and wire as for [New Service](#new-service) |
+| `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its wire as for [New Service](#new-service); no spec |
 | `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
 | `app/api/[...path]/route.ts`                          | With the Next adapter | The [catch-all route](#rest-endpoint-generator); `src/app/…` when `src/app` exists and `app` doesn't |
 | `<rootFolder>/presentation/react/.storybook/{main,preview}.ts` | With Storybook | The [React + Vite integration](#storybook-react--vite), including package scripts and `.gitignore` |
@@ -403,7 +403,7 @@ An empty name or a `.` / `..` segment is rejected.
 
 Every generator below writes into `<context>`. Unless stated otherwise:
 
-- With tests, a `.spec.ts` file is created next to the class. See [Unit tests](#unit-tests).
+- With tests, a `.spec.ts` file is created next to the class of a module without infrastructure. Repositories, commands, queries, ports, infrastructure services and helpers get none. See [Unit tests](#unit-tests).
 - With `wire`, a factory `wire<Type>` is created under `<context>/wiring/<kind>/`, followed by [dependency selection](#dependency-selection).
 
 ### New bounded context
@@ -439,7 +439,6 @@ Bounded contexts only.
 | `domain/aggregates/<name>/<name>.aggregate-root.spec.ts`               | With tests      | Creation test: `<Name>.of({})` with `types`, the constructor otherwise                  |
 | `domain/aggregates/<name>/<name>-repository.ts`                        | With repository | `abstract class <Name>Repository`                                                       |
 | `infrastructure/repositories/<impl>/<impl>-<name>-repository.ts`       | With repository, per implementation | `class <Impl><Name>Repository implements <Name>Repository`          |
-| `domain/aggregates/<name>/<name>-repository.spec.ts`                   | With repository and tests | Wiring test with `wire`, construction test of the primary implementation otherwise |
 | `wiring/repositories/wire-<name>-repository.ts`                        | With repository and `wire` | `wire<Name>Repository` built with [`envBranchedWire`](#envbranchedwire) |
 
 With the [in-memory DB](#in-memory-db), an `in-memory` implementation keeps the aggregate's section of it:
@@ -505,13 +504,13 @@ Available in every layer. **Prompts**: `Name:`.
 | Infrastructure | `infrastructure/services/<name>-infrastructure-service.ts`  | `<Name>InfrastructureService` | `wiring/infrastructure-services/wire-<name>-infrastructure-service.ts`  |
 | Presentation   | `presentation/services/<name>-presentation-service.ts`      | `<Name>PresentationService`   | `wiring/presentation-services/wire-<name>-presentation-service.ts`      |
 
-The class is empty. The factory is `wire<Class> = wireClass(<Class>, [])`.
+The class is empty. The factory is `wire<Class> = wireClass(<Class>, [])`. With tests, every layer but infrastructure gets a spec.
 
 ### New Helper
 
 Infrastructure layer of a bounded context or the Shared Kernel. A helper is stateless technical code of one implementation type: a mapper, a query builder, an error translator. It has no class and no wire. Code shared by several implementation types, or code with a dependency, is an [infrastructure service](#new-service).
 
-**Prompts**: `Name:`, with folders split by `/` (`mappers/social-network-type`), then `Implementation:`, an implementation type the project already has (saved in any category, or a system one). Types can't be entered here. Without any known type the generator stops and asks to add an implementation first. With a testing library, a spec is created next to the file.
+**Prompts**: `Name:`, with folders split by `/` (`mappers/social-network-type`), then `Implementation:`, an implementation type the project already has (saved in any category, or a system one). Types can't be entered here. Without any known type the generator stops and asks to add an implementation first. No spec is created.
 
 With `prisma` the name above gives `infrastructure/helpers/prisma/mappers/prisma-social-network-type.ts` exporting `prismaSocialNetworkType`. A name that already starts with the type (`prisma-errors`) doesn't get the prefix twice.
 
@@ -555,7 +554,6 @@ Both implementation prompts use the [saved implementation choices](#saved-implem
 | -------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------- |
 | `application/<kind>/<name>-<suffix>.ts`                  | Always             | `abstract class <Name><Suffix>`; with `handlers`, static schemas and an abstract `handle: Handler<...>` |
 | `infrastructure/<kind>/<impl>/<impl>-<name>-<suffix>.ts` | Per implementation | `class <Impl><Name><Suffix> extends <Name><Suffix>`; with `handlers`, `handle = defineHandler(...)` |
-| `application/<kind>/<name>-<suffix>.spec.ts`             | With tests         | Wiring test with `wire`, construction test of the primary implementation otherwise      |
 | `wiring/<kind>/wire-<name>-<suffix>.ts`                  | With `wire`        | `wire<Name><Suffix>` built with [`envBranchedWire`](#envbranchedwire)                   |
 
 With the [in-memory DB](#in-memory-db), an `in-memory` implementation gets the whole DB, with no section added: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`, wired with `wireInMemoryDbInfrastructureService`. With `wire`, this is the checked **Suggested** choice of its dependency question; unchecked, the implementation stays empty.
@@ -581,7 +579,6 @@ A `cross-context` adapter can inject queries, commands and use cases from any ne
 | ------------------------------------------------------------------ | ------------------ | ------------------------------------------------------------------ |
 | `application/ports/<name>.ts`                                      | Always             | `abstract class <Name>`                                            |
 | `infrastructure/application-adapters/<impl>/<impl>-<name>.ts`      | Per implementation | `class <Impl><Name> extends <Name>`                                |
-| `application/ports/<name>.spec.ts`                                 | With tests         | Wiring test with `wire`, construction test of the adapter otherwise |
 | `wiring/application-ports/wire-<name>.ts`                          | With `wire`        | `wire<Name>` built with [`envBranchedWire`](#envbranchedwire)      |
 
 ### New Implementation
@@ -836,13 +833,15 @@ REST endpoints are never offered as dependencies.
 
 ## Unit tests
 
-With tests, the generators create one `.spec.ts` per class:
+With tests, the generators create one `.spec.ts` next to the class of every module without infrastructure: aggregate roots, entities, value objects, domain, application and presentation services, use cases. They run in process and need no infrastructure.
 
-- It imports `describe`, `test`, `expect` and `beforeEach` from `testingLibrary`.
-- With `wire`, it builds the module through its factory (`can be wired`). Otherwise it calls the constructor; for modules with implementations, the primary implementation's constructor (`can be created via constructor`). Aggregate roots, entities and value objects with `types` are created with `<Name>.of({})` (`can be instantiated via of`).
-- It only checks that the instance is defined. Business tests are yours to add.
+Repositories, commands, queries, ports, infrastructure services, helpers and the [in-memory DB](#in-memory-db) only do I/O, so they get no unit spec: test them through integration or end-to-end tests. Specs that exist from earlier versions are kept, moved and deleted with their module.
 
-Repository, command, query and port tests reference wiring factories with `wire`. Without it, they reference the primary implementation directly.
+The spec:
+
+- imports `describe`, `test`, `expect` and `beforeEach` from `testingLibrary`.
+- with `wire`, builds a service or use case through its factory (`can be wired`), otherwise calls its constructor (`can be created`). Aggregate roots, entities and value objects with `types` are created with `<Name>.of({})` (`can be instantiated via of`), the constructor otherwise;
+- only checks that the instance is defined. Business tests are yours to add.
 
 ## React modules (`df-react`)
 
@@ -967,7 +966,7 @@ Existing files are kept. With the Next adapter, it prints `npm i @domain-first/h
 
 ### In-memory DB
 
-Sets `backend.withInMemoryDb` to `true` and writes the missing files of the shared [in-memory DB](#in-memory-db): the service, its spec with tests and its wire with `wire`, as during [`df-init`](#df-init). Existing files are kept, so it also restores the wire when `wire` was enabled after the DB was created. No install command.
+Sets `backend.withInMemoryDb` to `true` and writes the missing files of the shared [in-memory DB](#in-memory-db): the service and its wire with `wire`, as during [`df-init`](#df-init). Existing files are kept, so it also restores the wire when `wire` was enabled after the DB was created. No install command.
 
 ### Storybook (React + Vite)
 

@@ -10,8 +10,6 @@ export const scaffoldNewInfrastructureService = async (
     const name = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
-
     const withWiring =
         ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
@@ -32,33 +30,6 @@ export class ${naming.ClassName}InfrastructureService {
 }
             `.trim()
     );
-
-    if (scaffoldUnitTests) {
-        infrastructureServicesFolder.createFile(
-            `${naming.fileName}-infrastructure-service.spec.ts`,
-            `
-import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
-${
-    withWiring
-        ? `import { type ${naming.ClassName}InfrastructureService } from './${naming.fileName}-infrastructure-service'
-import { wire${naming.ClassName}InfrastructureService } from '../../wiring/infrastructure-services/wire-${naming.fileName}-infrastructure-service'`
-        : `import { ${naming.ClassName}InfrastructureService } from './${naming.fileName}-infrastructure-service'`
-}
-
-let ${naming.variableName}InfrastructureService: ${naming.ClassName}InfrastructureService
-
-beforeEach(() => {
-    ${naming.variableName}InfrastructureService = ${withWiring ? `wire${naming.ClassName}InfrastructureService()` : `new ${naming.ClassName}InfrastructureService()`}
-})
-
-describe('${naming.withSpaces}', () => {
-    test('can be ${withWiring ? 'wired' : 'created'}', () => {
-        expect(${naming.variableName}InfrastructureService).toBeDefined()
-    })
-})
-    `.trim()
-        );
-    }
 
     if (withWiring) {
         const wireFile = wiringFolder.createFile(

@@ -1,7 +1,6 @@
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
-import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
@@ -18,11 +17,7 @@ export const scaffoldNewQuery = async (boundedContextFolder: Folder) => {
     ]);
 
     const queryName = await input({ key: 'name', message: 'Name: ' });
-    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
     const naming = new UnknownFormatNaming(queryName);
-    const withWiring =
-        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
-
     const { label: implementationType } = await promptImplementationType(
         'Query infrastructure implementation type:',
         'queries'
@@ -92,45 +87,6 @@ export abstract class ${naming.ClassName}Query {
 
 }`.trim()
         );
-    }
-
-    if (scaffoldUnitTests) {
-        const implementationNaming = new UnknownFormatNaming(
-            implementationType
-        );
-        const specFile = queriesFolder.createFile(
-            `${naming.fileName}-query.spec.ts`,
-            `
-import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
-${
-    withWiring
-        ? `import { type ${naming.ClassName}Query } from './${naming.fileName}-query'
-import { wire${naming.ClassName}Query } from '../../wiring/queries/wire-${naming.fileName}-query'`
-        : `import { ${implementationNaming.ClassName}${naming.ClassName}Query } from '../../infrastructure/queries/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}-query'
-
-type ${naming.ClassName}Query = ${implementationNaming.ClassName}${naming.ClassName}Query`
-}
-
-let ${naming.variableName}Query: ${naming.ClassName}Query
-
-beforeEach(() => {
-    ${naming.variableName}Query = ${withWiring ? `wire${naming.ClassName}Query()` : `new ${implementationNaming.ClassName}${naming.ClassName}Query()`}
-})
-
-describe('${naming.withSpaces} query', () => {
-    test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
-        expect(${naming.variableName}Query).toBeDefined()
-    })
-})
-                `.trim()
-        );
-
-        if (!withWiring && usesInMemoryDb(implementationType)) {
-            passInMemoryDb(
-                specFile,
-                `${implementationNaming.ClassName}${naming.ClassName}Query`
-            );
-        }
     }
 
     if (ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')) {

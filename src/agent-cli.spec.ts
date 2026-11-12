@@ -1152,16 +1152,13 @@ test('a helper accepts a relative path inside its implementation', async () => {
         name: 'mappers/social-network-type',
         implementationType: 'prisma'
     });
-    expect(labelled.files.created.sort()).toEqual([
-        `${helpers}/prisma/mappers/prisma-social-network-type.spec.ts`,
+    // Helpers are infrastructure: no unit spec, even with a testing library.
+    expect(labelled.files.created).toEqual([
         `${helpers}/prisma/mappers/prisma-social-network-type.ts`
     ]);
     expect(
         read(`${helpers}/prisma/mappers/prisma-social-network-type.ts`)
     ).toBe('export const prismaSocialNetworkType = () => {}');
-    expect(
-        read(`${helpers}/prisma/mappers/prisma-social-network-type.spec.ts`)
-    ).toContain("from './prisma-social-network-type'");
 
     await executeAgentRequest('df-scaffold', {
         operation: 'helper',
@@ -1241,4 +1238,68 @@ test('the helper menu has known implementation types and no manual entry', async
         'stripe'
     ]);
     expect(exists(`${helpers}/stripe/mappers/stripe-order.ts`)).toBe(true);
+});
+
+test('only modules without infrastructure get unit specs', async () => {
+    ConfigFile.write({
+        ...ConfigFile.Instance.data,
+        backend: { ...ConfigFile.backend, testingLibrary: 'vitest' }
+    });
+    writePendingChanges();
+    const requests = [
+        {
+            operation: 'aggregate',
+            context: 'sales',
+            name: 'order',
+            withRepository: true,
+            implementation: { type: 'prisma' }
+        },
+        { operation: 'value-object', context: 'sales', name: 'money' },
+        { operation: 'domain-service', context: 'sales', name: 'pricing' },
+        {
+            operation: 'application-service',
+            context: 'sales',
+            name: 'checkout'
+        },
+        {
+            operation: 'presentation-service',
+            context: 'sales',
+            name: 'formatting'
+        },
+        {
+            operation: 'infrastructure-service',
+            context: 'sales',
+            name: 'mailer'
+        },
+        query,
+        {
+            operation: 'command',
+            context: 'sales',
+            name: 'cancel-order',
+            implementation: { type: 'prisma' }
+        },
+        {
+            operation: 'port',
+            context: 'sales',
+            name: 'payments',
+            implementation: { type: 'stripe' }
+        },
+        { operation: 'use-case', context: 'sales', name: 'place-order' }
+    ];
+    const specs: string[] = [];
+    for (const request of requests) {
+        const result = await executeAgentRequest('df-scaffold', request);
+        specs.push(
+            ...result.files.created.filter((file) => file.endsWith('.spec.ts'))
+        );
+    }
+    const sales = 'src/bounded-contexts/sales';
+    expect(specs.sort()).toEqual([
+        `${sales}/application/services/checkout-application-service.spec.ts`,
+        `${sales}/application/use-cases/place-order-use-case.spec.ts`,
+        `${sales}/domain/aggregates/order/order.aggregate-root.spec.ts`,
+        `${sales}/domain/services/pricing-domain-service.spec.ts`,
+        `${sales}/domain/value-objects/money.value-object.spec.ts`,
+        `${sales}/presentation/services/formatting-presentation-service.spec.ts`
+    ]);
 });

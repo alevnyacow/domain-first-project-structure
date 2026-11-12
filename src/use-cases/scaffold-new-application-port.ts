@@ -17,8 +17,6 @@ export const scaffoldNewApplicationPort = async (
     const name = await input({ key: 'name', message: 'Name: ' });
     const naming = new UnknownFormatNaming(name);
 
-    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
-
     const wiringFolder = boundedContextFolder.subitem([
         'wiring',
         'application-ports'
@@ -83,38 +81,6 @@ export abstract class ${naming.ClassName} {
                 labels: []
             },
             implementation
-        );
-    }
-
-    if (scaffoldUnitTests) {
-        const implementationNaming = new UnknownFormatNaming(
-            implementationType
-        );
-        applicationPortsFolder.createFile(
-            `${naming.fileName}.spec.ts`,
-            `
-import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
-${
-    ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
-        ? `import { type ${naming.ClassName} } from './${naming.fileName}'
-import { wire${naming.ClassName} } from '../../wiring/application-ports/wire-${naming.fileName}'`
-        : `import { ${implementationNaming.ClassName}${naming.ClassName} } from '../../infrastructure/application-adapters/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}'
-
-type ${naming.ClassName} = ${implementationNaming.ClassName}${naming.ClassName}`
-}
-
-let ${naming.variableName}: ${naming.ClassName}
-
-beforeEach(() => {
-    ${naming.variableName} = ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? `wire${naming.ClassName}()` : `new ${implementationNaming.ClassName}${naming.ClassName}()`}
-})
-
-describe('${naming.withSpaces}', () => {
-    test('can be ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
-        expect(${naming.variableName}).toBeDefined()
-    })
-})
-            `.trim()
         );
     }
 

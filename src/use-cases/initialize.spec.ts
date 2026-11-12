@@ -210,7 +210,7 @@ test('frontend-only setup can be followed by backend setup, preserving frontend 
                 'app/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.spec.ts'
             )
         )
-    ).toBe(true);
+    ).toBe(false);
 });
 
 test('existing config prompts for one section, pre-fills its settings and keeps edited support files', async () => {

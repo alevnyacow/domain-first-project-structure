@@ -85,15 +85,14 @@ describe('<label>', () => {
 })
 ```
 
-Without wire: import `<Class>` from `<noWire>`, use `new <Class>()` and the test name `<noWireTest>`. If `<noWire>` is an implementation, add `type <Type> = <Class>`.
+Without wire: import `<Class>` from `<noWire>`, use `new <Class>()` and the test name `<noWireTest>`.
+
+Only modules without infrastructure have specs. Repositories, commands, queries, ports, infrastructure services and helpers get none: don't create one for them.
 
 | Component            | Spec next to                 | `<Type>` / `<var>`            | `<wirePath>`                                     | `<label>`            | `<Class>` from `<noWire>`, `<noWireTest>`                                                                |
 | -------------------- | ---------------------------- | ----------------------------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------- |
 | Aggregate root       | `n.aggregate-root.ts`        | `N` / `v`                     | none: `N.of({})` {types} (`can be instantiated via of`), `new N()` otherwise | `n words`            | `N` `./n.aggregate-root`, `can be instantiated via constructor`                                          |
-| Repository*          | `n-repository.ts`            | `NRepository` / `vRepository` | `../../../wiring/repositories/wire-n-repository` | `n words repository` | `INRepository` `../../../infrastructure/repositories/I/I-n-repository`, `can be created via constructor` |
-| Service              | `n-L-service.ts`             | `NLService` / `vLService`     | `../../wiring/L-services/wire-n-L-service`       | `n words`            | `NLService` `./n-L-service`, `can be created`                                                            |
+| Service (not infrastructure) | `n-L-service.ts`             | `NLService` / `vLService`     | `../../wiring/L-services/wire-n-L-service`       | `n words`            | `NLService` `./n-L-service`, `can be created`                                                            |
 | Use case             | `n-use-case.ts`              | `NUseCase` / `vUseCase`       | `../../wiring/use-cases/wire-n-use-case`         | `n words use case`   | `NUseCase` `./n-use-case`, `can be created`                                                              |
-| Command              | `n-command.ts`               | `NCommand` / `vCommand`       | `../../wiring/commands/wire-n-command`           | `n words command`    | `INCommand` `../../infrastructure/commands/I/I-n-command`, `can be created via constructor`              |
-| Port                 | `n.ts`                       | `N` / `v`                     | `../../wiring/application-ports/wire-n`          | `n words`            | `IN` `../../infrastructure/application-adapters/I/I-n`, `can be created via constructor`                 |
 
-Entities and value objects (`n.entity.ts`, `n.value-object.ts`) follow the aggregate root row. `n words` = the name with spaces instead of hyphens. Queries are the same as commands. \*The repository spec imports the wire first, then `import type { NRepository } from './n-repository'`.
+Entities and value objects (`n.entity.ts`, `n.value-object.ts`) follow the aggregate root row. `n words` = the name with spaces instead of hyphens.

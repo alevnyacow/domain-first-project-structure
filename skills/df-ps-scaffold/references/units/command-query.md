@@ -9,7 +9,7 @@ When (`../choosing-components.md`, step 11): one atomic read/write on this conte
 
 Prompts: name → primary implementation select → `Add a test implementation` → test implementation select if yes → {wire} dependencies per implementation. Menus contain saved types from `commands` or `queries` for the selected role, active system types and both manual-entry actions (`../generators.md`). Only `System: in-memory (uses the shared in-memory database)` can be automatic here, when its integration is ready. `api` and `mock` must be saved or entered manually. The first saved/system choice is the default, otherwise manual entry without a suggested name. Saving stages the new ordinary label for that category/role; run-only input leaves the catalog unchanged.
 
-- `<C>/application/commands/n-command.ts`: abstract `NCommand` ({handlers} schemas + abstract `handle: Handler<…>`), spec
+- `<C>/application/commands/n-command.ts`: abstract `NCommand` ({handlers} schemas + abstract `handle: Handler<…>`), no spec
 - `<C>/infrastructure/commands/I/I-n-command.ts` per implementation (`extends NCommand`, implements `handle`)
 - {wire} `<C>/wiring/commands/wire-n-command.ts` (env-branched)
 - With `backend.withInMemoryDb` in the config, the `in-memory` implementation can get the whole DB: `constructor(private readonly inMemoryDbInfrastructureService: InMemoryDbInfrastructureService)`. No section is added. Without {wire} this always happens; {wire} it is the checked `Suggested` choice of `Dependencies for InMemoryN<Suffix>:`, and unchecking it leaves the implementation empty.
@@ -27,4 +27,4 @@ Queries: the same with `query` / `queries`.
 
 ## Test
 
-Extend the generated spec: the handler against the test implementation via `handle(...)`.
+No unit spec: a command or query is infrastructure, tested through integration tests and the use cases that inject its test implementation.

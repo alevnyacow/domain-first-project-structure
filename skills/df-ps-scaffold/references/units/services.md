@@ -11,7 +11,7 @@ When (`../choosing-components.md`, steps 12–15, "Port or service?"):
 
 Prompts: name → {wire} `Dependencies:` (`../generators.md`). `L` = `domain` | `application` | `infrastructure` | `presentation`.
 
-- `<C>/L/services/n-L-service.ts` (`class NLService`, e.g. `CheckoutApplicationService`), spec
+- `<C>/L/services/n-L-service.ts` (`class NLService`, e.g. `CheckoutApplicationService`), spec except for `infrastructure`
 - {wire} `<C>/wiring/L-services/wire-n-L-service.ts` (`wireClass(X, [])`)
 
 ## Implement
@@ -23,4 +23,4 @@ Prompts: name → {wire} `Dependencies:` (`../generators.md`). `L` = `domain` | 
 
 ## Test
 
-Test a service's logic with fake dependencies in its generated spec.
+Test a domain, application or presentation service's logic with fake dependencies in its generated spec. Infrastructure services have no unit spec: integration tests cover them.

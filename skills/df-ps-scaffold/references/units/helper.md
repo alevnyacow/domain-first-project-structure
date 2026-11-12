@@ -8,7 +8,7 @@ Prompts: `Name (folders split by "/"):` → `Implementation:` (a type the projec
 
 JSON: `{ "operation": "helper", "context": "sales", "name": "mappers/social-network-type", "implementationType": "prisma" }`.
 
-- `<C>/infrastructure/helpers/I/<folders>/I-n.ts` (`export const iN = () => {}`), spec
+- `<C>/infrastructure/helpers/I/<folders>/I-n.ts` (`export const iN = () => {}`), no spec
 
 A name that already starts with the type (`prisma-errors`) doesn't get the prefix twice. A helper of a type that isn't saved yet can't be generated: add an implementation of that type first, saving the type.
 

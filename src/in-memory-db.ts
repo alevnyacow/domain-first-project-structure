@@ -137,29 +137,6 @@ export const wireInMemoryDbInfrastructureService = wireClass(
 );
 `;
 
-const inMemoryDbSpec = (testingLibrary: string, withWiring: boolean) =>
-    `
-import { describe, test, expect, beforeEach } from '${testingLibrary}'
-${
-    withWiring
-        ? `import { type InMemoryDbInfrastructureService } from './in-memory-db-infrastructure-service'
-import { wireInMemoryDbInfrastructureService } from '../../wiring/infrastructure-services/wire-in-memory-db-infrastructure-service'`
-        : `import { InMemoryDbInfrastructureService } from './in-memory-db-infrastructure-service'`
-}
-
-let inMemoryDbInfrastructureService: InMemoryDbInfrastructureService
-
-beforeEach(() => {
-    inMemoryDbInfrastructureService = ${withWiring ? 'wireInMemoryDbInfrastructureService()' : 'new InMemoryDbInfrastructureService()'}
-})
-
-describe('in memory db', () => {
-    test('can be ${withWiring ? 'wired' : 'created'}', () => {
-        expect(inMemoryDbInfrastructureService).toBeDefined()
-    })
-})
-`.trim();
-
 const withWiring = () =>
     ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
 
@@ -184,23 +161,15 @@ const wireFile = () =>
     ]);
 
 /**
- * The shared in-memory DB with its spec and wire, as the config says.
+ * The shared in-memory DB with its wire, as the config says.
  */
 export const scaffoldInMemoryDb = (shared: Folder) => {
-    const { testingLibrary } = ConfigFile.backend;
     const servicesFolder = shared.subitem(['infrastructure', 'services']);
 
     servicesFolder.createFile(
         'in-memory-db-infrastructure-service.ts',
         inMemoryDbService
     );
-
-    if (testingLibrary) {
-        servicesFolder.createFile(
-            'in-memory-db-infrastructure-service.spec.ts',
-            inMemoryDbSpec(testingLibrary, withWiring())
-        );
-    }
 
     if (withWiring()) {
         shared
@@ -362,22 +331,6 @@ export const wireInMemoryDb = (
             ),
             implementationName,
             [wireName]
-        )
-    );
-};
-
-/**
- * A spec without wiring builds the implementation itself, so it has to
- * pass the in-memory DB.
- */
-export const passInMemoryDb = (specFile: File, implementationName: string) => {
-    specFile.update(
-        addImport(
-            specFile.data,
-            `import { ${className} } from '${relativeImport(specFile.path, serviceFile().path)}'`
-        ).replace(
-            `new ${implementationName}()`,
-            `new ${implementationName}(new ${className}())`
         )
     );
 };

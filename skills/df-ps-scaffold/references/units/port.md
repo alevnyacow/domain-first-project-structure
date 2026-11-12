@@ -6,7 +6,7 @@ When: a capability across this context's boundary: another bounded context, an e
 
 Prompts: name → primary adapter select → `With test implementation` → test adapter select if yes → {wire} dependencies per adapter. Both selects show saved port types for their role, active system types and both manual-entry actions (`../generators.md`). The only automatic system choice is `System: cross-context (calls handlers in another bounded context)`, conditional on a neighboring context and unavailable in the Shared Kernel. No `api`, `mock` or `in-memory` presets are inserted for ports. The first saved/system choice is the default; manual input is empty without saved choices. Existing labels are disabled. Saved ordinary port types are isolated from other categories. Save-entry updates `ports` history; run-only entry generates the adapter without updating the catalog.
 
-- `<C>/application/ports/n.ts` (abstract `N`; name it after the capability), spec
+- `<C>/application/ports/n.ts` (abstract `N`; name it after the capability), no spec
 - `<C>/infrastructure/application-adapters/I/I-n.ts` per implementation (`class IN extends N`)
 - {wire} `<C>/wiring/application-ports/wire-n.ts` (env-branched)
 

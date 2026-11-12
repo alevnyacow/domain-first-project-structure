@@ -1,7 +1,6 @@
 import { ConfigFile } from '../config-file';
 import type { Folder } from '../file-system';
 import { createImplementation } from '../implementations';
-import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
@@ -18,11 +17,7 @@ export const scaffoldNewCommand = async (boundedContextFolder: Folder) => {
     ]);
 
     const commandName = await input({ key: 'name', message: 'Name: ' });
-    const scaffoldUnitTests = Boolean(ConfigFile.backend.testingLibrary);
     const naming = new UnknownFormatNaming(commandName);
-    const withWiring =
-        ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire');
-
     const { label: implementationType } = await promptImplementationType(
         'Command infrastructure implementation type:',
         'commands'
@@ -92,45 +87,6 @@ export abstract class ${naming.ClassName}Command {
 
 }`.trim()
         );
-    }
-
-    if (scaffoldUnitTests) {
-        const implementationNaming = new UnknownFormatNaming(
-            implementationType
-        );
-        const specFile = commandsFolder.createFile(
-            `${naming.fileName}-command.spec.ts`,
-            `
-import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
-${
-    withWiring
-        ? `import { type ${naming.ClassName}Command } from './${naming.fileName}-command'
-import { wire${naming.ClassName}Command } from '../../wiring/commands/wire-${naming.fileName}-command'`
-        : `import { ${implementationNaming.ClassName}${naming.ClassName}Command } from '../../infrastructure/commands/${implementationNaming.fileName}/${implementationNaming.fileName}-${naming.fileName}-command'
-
-type ${naming.ClassName}Command = ${implementationNaming.ClassName}${naming.ClassName}Command`
-}
-
-let ${naming.variableName}Command: ${naming.ClassName}Command
-
-beforeEach(() => {
-    ${naming.variableName}Command = ${withWiring ? `wire${naming.ClassName}Command()` : `new ${implementationNaming.ClassName}${naming.ClassName}Command()`}
-})
-
-describe('${naming.withSpaces} command', () => {
-    test('can be ${withWiring ? 'wired' : 'created via constructor'}', () => {
-        expect(${naming.variableName}Command).toBeDefined()
-    })
-})
-                `.trim()
-        );
-
-        if (!withWiring && usesInMemoryDb(implementationType)) {
-            passInMemoryDb(
-                specFile,
-                `${implementationNaming.ClassName}${naming.ClassName}Command`
-            );
-        }
     }
 
     if (ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')) {

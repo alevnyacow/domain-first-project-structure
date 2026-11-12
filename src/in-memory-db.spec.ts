@@ -129,11 +129,15 @@ test('initialization saves the flag and scaffolds the shared in-memory DB', () =
             'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts'
         )
     ).toContain('export class InMemoryDbInfrastructureService');
+    // Infrastructure: no unit spec, even with a testing library.
     expect(
-        wired.read(
-            'shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.spec.ts'
+        fs.existsSync(
+            path.join(
+                wired.root,
+                'src/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.spec.ts'
+            )
         )
-    ).toContain('wireInMemoryDbInfrastructureService()');
+    ).toBe(false);
     expect(
         wired.read(
             'shared-kernel/wiring/infrastructure-services/wire-in-memory-db-infrastructure-service.ts'
@@ -239,7 +243,7 @@ for (const [kind, scaffold, Kind] of [
     });
 }
 
-test('without wiring, the spec of an in-memory repository passes the DB', async () => {
+test('without wiring, an in-memory repository gets no unit spec, its aggregate root does', async () => {
     const plain = await createProject([]);
     answer({
         'Aggregate name:': 'user',
@@ -250,15 +254,16 @@ test('without wiring, the spec of an in-memory repository passes the DB', async 
     await scaffoldNewAggregateUseCase(plain.context);
     writePendingChanges();
 
-    const spec = plain.read(
-        'bounded-contexts/users/domain/aggregates/user/user-repository.spec.ts'
+    const aggregate = path.join(
+        plain.root,
+        'src/bounded-contexts/users/domain/aggregates/user'
     );
-    expect(spec).toContain(
-        "import { InMemoryDbInfrastructureService } from '../../../../../shared-kernel/infrastructure/services/in-memory-db-infrastructure-service'"
+    expect(fs.existsSync(path.join(aggregate, 'user-repository.spec.ts'))).toBe(
+        false
     );
-    expect(spec).toContain(
-        'new InMemoryUserRepository(new InMemoryDbInfrastructureService())'
-    );
+    expect(
+        fs.existsSync(path.join(aggregate, 'user.aggregate-root.spec.ts'))
+    ).toBe(true);
 });
 
 test('without the flag, in-memory implementations stay empty', async () => {

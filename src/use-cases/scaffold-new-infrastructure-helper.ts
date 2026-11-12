@@ -1,5 +1,4 @@
 import { kebabName } from '../backend-module-move';
-import { ConfigFile } from '../config-file';
 import { crossContextImplementation } from '../context-dependencies';
 import type { Folder } from '../file-system';
 import {
@@ -71,20 +70,4 @@ export const scaffoldNewInfrastructureHelper = async (ownerFolder: Folder) => {
         `${fileName}.ts`,
         `export const ${naming.variableName} = () => {}`
     );
-
-    if (ConfigFile.backend.testingLibrary) {
-        folder.createFile(
-            `${fileName}.spec.ts`,
-            `
-import { describe, test, expect } from '${ConfigFile.backend.testingLibrary}'
-import { ${naming.variableName} } from './${fileName}'
-
-describe('${naming.withSpaces}', () => {
-    test('is defined', () => {
-        expect(${naming.variableName}).toBeDefined()
-    })
-})
-            `.trim()
-        );
-    }
 };

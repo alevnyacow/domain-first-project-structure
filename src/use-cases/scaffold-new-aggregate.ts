@@ -4,7 +4,6 @@ import {
     createImplementation,
     inMemoryRepositoryWiring
 } from '../implementations';
-import { passInMemoryDb, usesInMemoryDb } from '../in-memory-db';
 import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
@@ -152,50 +151,6 @@ describe('${aggregateNaming.withSpaces}', () => {
                 repository,
                 new UnknownFormatNaming(implementation).fileName
             );
-        }
-
-        if (scaffoldUnitTests) {
-            const implementationNaming = new UnknownFormatNaming(
-                infrastructureImplementationType
-            );
-            const specFile = aggregatesFolder.createFile(
-                `${aggregateNaming.fileName}-repository.spec.ts`,
-                `
-import { describe, test, expect, beforeEach } from '${ConfigFile.backend.testingLibrary}'
-${
-    ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire')
-        ? `import { wire${aggregateNaming.ClassName}Repository } from '../../../wiring/repositories/wire-${aggregateNaming.fileName}-repository'
-import type { ${aggregateNaming.ClassName}Repository } from './${aggregateNaming.fileName}-repository'`
-        : `import { ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository } from '../../../infrastructure/repositories/${implementationNaming.fileName}/${implementationNaming.fileName}-${aggregateNaming.fileName}-repository'
-
-type ${aggregateNaming.ClassName}Repository = ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository`
-}
-
-let ${aggregateNaming.variableName}Repository: ${aggregateNaming.ClassName}Repository
-
-beforeEach(() => {
-    ${aggregateNaming.variableName}Repository = ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? `wire${aggregateNaming.ClassName}Repository()` : `new ${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository()`}
-})
-
-describe('${aggregateNaming.withSpaces} repository', () => {
-    test('can be ${ConfigFile.backend.domainFirstPackages.includes('@domain-first/wire') ? 'wired' : 'created via constructor'}', () => {
-        expect(${aggregateNaming.variableName}Repository).toBeDefined()
-    })
-})
-                `.trim()
-            );
-
-            if (
-                !ConfigFile.backend.domainFirstPackages.includes(
-                    '@domain-first/wire'
-                ) &&
-                usesInMemoryDb(infrastructureImplementationType)
-            ) {
-                passInMemoryDb(
-                    specFile,
-                    `${implementationNaming.ClassName}${aggregateNaming.ClassName}Repository`
-                );
-            }
         }
 
         if (
