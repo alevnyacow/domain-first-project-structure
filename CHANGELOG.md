@@ -1,3 +1,10 @@
+## [8.7.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.7.0...v8.7.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* unit specs only for modules without infrastructure ([b89a4c1](https://github.com/alevnyacow/domain-first-project-structure/commit/b89a4c16e436ec7ea405abd50e5f2151d2a8c593))
+
 # [8.7.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.6.1...v8.7.0) (2026-11-10)
 
 
