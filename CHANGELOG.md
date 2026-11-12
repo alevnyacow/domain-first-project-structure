@@ -1,3 +1,10 @@
+# [8.8.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.7.1...v8.8.0) (2026-11-12)
+
+
+### Features
+
+* integration specs for infrastructure with Testcontainers ([3fd0e61](https://github.com/alevnyacow/domain-first-project-structure/commit/3fd0e611d3f2c961b50f7563c83bb35d35657c15))
+
 ## [8.7.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.7.0...v8.7.1) (2026-11-12)
 
 
