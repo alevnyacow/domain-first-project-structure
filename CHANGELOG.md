@@ -1,3 +1,10 @@
+# [8.9.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.8.0...v8.9.0) (2026-11-15)
+
+
+### Features
+
+* drizzle migration ([dee3e3a](https://github.com/alevnyacow/domain-first-project-structure/commit/dee3e3a8bda1bcc05736c77abc4facbbac37e1f6))
+
 # [8.8.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.7.1...v8.8.0) (2026-11-12)
 
 
