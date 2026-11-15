@@ -1296,6 +1296,7 @@ Runtime routes and types don't change; only files move.
 | Move context-root REST endpoints to `(root)` | optional | In every context, `presentation/rest/<METHOD>.ts` and `_param_/` move to `presentation/rest/(root)/`, the wires in `wiring/presentation/rest/` to its `(root)/` with an `index.ts`. `wiring/presentation/rest/index.ts` and `<rootFolder>/presentation/rest/wires.ts` re-export `(root)` once instead of every endpoint, also when they missed its endpoints. Imports of and in the moved files are rewritten. An existing target file stops the upgrade |
 | Let the OpenAPI extractor find `(root)` | optional | The 8.5.1 lookup in `scripts/extract-open-api-data-from-endpoint.ts` is replaced by the current one |
 | Update the OpenAPI extractor by hand | manual | An extractor changed by hand, when context-root endpoints exist |
+| Let `withId` of the in-memory DB find `[id, item]` | optional | In `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts`, the `withId` of 8.9.0 and earlier, which compared the items' own `id` and missed items saved as an `[id, item]` tuple, now looks up the id saved with the item, like `save` and `deleteById`. Its unused `hasId` helper is removed. A `withId` changed by hand is left as it is |
 
 ## `df-graph`
 

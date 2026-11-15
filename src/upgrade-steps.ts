@@ -8,6 +8,7 @@ import {
 } from './config-file';
 import { implementationLabelSchema } from './implementation-options-schema';
 import { hasDependency } from './integrations/missing-domain-first-packages';
+import { inMemoryDbWithIdStep } from './upgrade-in-memory-db';
 import {
     openapiExtractorManualStep,
     openapiExtractorRootStep,
@@ -190,7 +191,8 @@ export const upgradeSteps: UpgradeStep[] = [
     persistenceStep,
     restRootControllerStep,
     openapiExtractorRootStep,
-    openapiExtractorManualStep
+    openapiExtractorManualStep,
+    inMemoryDbWithIdStep
 ];
 
 /** Shown after any change: skills of an earlier version describe the old CLI. */

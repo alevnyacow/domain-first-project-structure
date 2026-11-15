@@ -20,7 +20,29 @@ const className = 'InMemoryDbInfrastructureService';
 const wireName = 'wireInMemoryDbInfrastructureService';
 const parameterName = 'inMemoryDbInfrastructureService';
 
-const inMemoryDbService = `type Entry = {
+/**
+ * `withId` of 8.9.0 and earlier: it compared the stored items' `id`,
+ * so items saved as an `[id, item]` tuple were never found.
+ */
+export const legacyWithIdLookup = `            withId: (id: TId): T | null =>
+                items().find(
+                    (x: T) => hasId(x) && idsAreEqual(x.id as TId, id)
+                ) ?? null,
+`;
+
+export const legacyHasId = `const hasId = (x: unknown): x is { id: unknown } =>
+    typeof x === 'object' && x !== null && 'id' in x;
+
+`;
+
+/** Looks up the id saved with the item, as `save` and `deleteById` do. */
+export const withIdLookup = `            withId: (id: TId): T | null =>
+                globalThis.___SHARED_IN_MEMORY_DB___![key].find((entry) =>
+                    idsAreEqual(entry.id as TId, id)
+                )?.item ?? null,
+`;
+
+export const inMemoryDbService = `type Entry = {
     id: unknown;
     item: any;
 };
@@ -58,9 +80,6 @@ const defaultIdsAreEqual = (a: unknown, b: unknown): boolean => {
     return Object.is(a, b);
 };
 
-const hasId = (x: unknown): x is { id: unknown } =>
-    typeof x === 'object' && x !== null && 'id' in x;
-
 export class InMemoryDbInfrastructureService {
     protected section<T extends { id: unknown }>(
         key: string,
@@ -92,11 +111,7 @@ export class InMemoryDbInfrastructureService {
                 items().filter(predicate),
             first: (predicate: (x: T) => boolean): T | null =>
                 items().find(predicate) ?? null,
-            withId: (id: TId): T | null =>
-                items().find(
-                    (x: T) => hasId(x) && idsAreEqual(x.id as TId, id)
-                ) ?? null,
-            lastAddedItem: (): T | null =>
+${withIdLookup}            lastAddedItem: (): T | null =>
                 globalThis.___SHARED_IN_MEMORY_DB___![key].at(-1)?.item ?? null,
             save: (payload: T extends { id: TId } ? T : [TId, T]) => {
                 const id = Array.isArray(payload) ? payload[0] : payload.id;
