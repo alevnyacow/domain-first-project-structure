@@ -2,6 +2,7 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import {
+    addDrizzle,
     addInMemoryDb,
     addOpenapi,
     addOrval,
@@ -11,6 +12,7 @@ import {
     addStorybook,
     addTestcontainers,
     addVitest,
+    drizzleConfigPath,
     inMemoryDbApplied,
     openapiScriptPath,
     restEndpointGeneratorApplied
@@ -34,7 +36,7 @@ const createdInRoot = (...segments: string[]) =>
 /**
  * Integrations are shown by group, but selected ones run in this order, each one seeing the changes of
  * the previous ones: Storybook configures `frontend.react` for the Swagger UI page
- * of OpenAPI, integration tests read the Prisma config and the Vitest
+ * of OpenAPI, integration tests read the Prisma and Drizzle configs and the Vitest
  * config, Orval reads the OpenAPI document path.
  */
 export const integrationIds = [
@@ -42,6 +44,7 @@ export const integrationIds = [
     'rest-endpoint-generator',
     'in-memory-db',
     'prisma',
+    'drizzle',
     'vitest',
     'playwright',
     'testcontainers',
@@ -87,6 +90,16 @@ const integrations: {
         applied: () =>
             createdInRoot(
                 'shared-kernel/infrastructure/prisma/prisma.config.ts'
+            )
+    },
+    {
+        id: 'drizzle',
+        name: 'Drizzle (PostgreSQL)',
+        group: 'backend',
+        run: addDrizzle,
+        applied: () =>
+            created(
+                drizzleConfigPath(ConfigFile.Instance.data.project.rootFolder)
             )
     },
     {

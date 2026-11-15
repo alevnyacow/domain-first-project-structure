@@ -19,6 +19,9 @@ rstest.mock('@inquirer/prompts', () => ({
 rstest.mock('../integrations', () => ({
     addStorybook: rstest.fn(),
     addPrisma: rstest.fn(),
+    addDrizzle: rstest.fn(),
+    drizzleConfigPath: (rootFolder: string) =>
+        `${rootFolder}/shared-kernel/infrastructure/drizzle/drizzle.config.ts`,
     addRestEndpointGenerator: rstest.fn(),
     addInMemoryDb: rstest.fn(),
     restEndpointGeneratorApplied: rstest.fn(() => false),
@@ -200,6 +203,7 @@ test('lists new and applied integrations apart, each labeled with its group', as
             'REST endpoint generator · backend',
             'In-memory DB · backend',
             'Prisma 8 (PostgreSQL, RC) · backend',
+            'Drizzle (PostgreSQL) · backend',
             'Vitest · backend',
             'Integration tests (Testcontainers, PostgreSQL) · backend',
             'OpenAPI · backend',

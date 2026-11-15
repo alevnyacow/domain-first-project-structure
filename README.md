@@ -116,7 +116,7 @@ System implementations are marked explicitly:
 
 The first available saved type is selected by default, then an available system type; otherwise the save-entry action is selected and its name input is empty. Adding an implementation to an existing contract shows both primary and test choices. With the save action, ordinary types are remembered according to their selected environments; the run-only action never registers them.
 
-Updates to `backend.implementations` preserve all other config sections and are saved together with generated files; cancellation discards both. Prisma integration adds `prisma` to repository, command and query choices. There is no global persistence-default setting.
+Updates to `backend.implementations` preserve all other config sections and are saved together with generated files; cancellation discards both. The Prisma and Drizzle integrations add `prisma` and `drizzle` to repository, command and query choices. There is no global persistence-default setting.
 
 ### How to create a bounded context
 
@@ -276,11 +276,11 @@ With Next.js, a new page also gets its App Router route, `app/admin/panel/users/
 
 ### How to add tooling
 
-Run `npx df-integration` to configure one or several of the REST endpoint generator, the shared in-memory DB, Storybook, Prisma 8, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval API client (typed client and React Query hooks). Integrations add config files, package scripts and `.gitignore` entries, then print one install command to copy. Nothing is installed or run for you.
+Run `npx df-integration` to configure one or several of the REST endpoint generator, the shared in-memory DB, Storybook, Prisma 8, Drizzle, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval API client (typed client and React Query hooks). Integrations add config files, package scripts and `.gitignore` entries, then print one install command to copy. Nothing is installed or run for you.
 
 The endpoint generator and the in-memory DB are what `df-init` scaffolds; as integrations they add them later or restore missing files, and never overwrite existing ones.
 
-With Testcontainers, the CLI asks which implementation types get integration tests (`prisma` yes, `stripe` probably not). From then on, each new implementation of such a type, like `PrismaOrdersQuery`, gets a spec in `specs/integration/` that builds it through its wire and runs against PostgreSQL in a container; an infrastructure service gets one when you ask. Unit specs stay with the domain model, services and use cases.
+With Testcontainers, the CLI asks which implementation types get integration tests (`prisma` or `drizzle` yes, `stripe` probably not). From then on, each new implementation of such a type, like `PrismaOrdersQuery`, gets a spec in `specs/integration/` that builds it through its wire and runs against PostgreSQL in a container; an infrastructure service gets one when you ask. Unit specs stay with the domain model, services and use cases.
 
 ### How to check the rules
 

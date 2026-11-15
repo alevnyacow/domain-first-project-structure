@@ -310,6 +310,7 @@ export const implementationType = (
  */
 const systemInfrastructureServices = new Map([
     ['prisma', 'prisma-infrastructure-service'],
+    ['drizzle', 'drizzle-infrastructure-service'],
     ['in-memory', 'in-memory-db-infrastructure-service']
 ]);
 

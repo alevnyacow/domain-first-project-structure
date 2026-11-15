@@ -370,6 +370,9 @@ describe('isSuggestedFor', () => {
         expect(
             isSuggestedFor(service('prisma-infrastructure-service'), 'prisma')
         ).toBe(true);
+        expect(
+            isSuggestedFor(service('drizzle-infrastructure-service'), 'drizzle')
+        ).toBe(true);
     });
 
     test('does not guess from a name', () => {

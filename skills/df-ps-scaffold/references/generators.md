@@ -35,7 +35,7 @@ Each chosen module goes into the wire (`wireClass(X, [wireUserRepository])`) and
 
 An env-branched wire (repository, command/query, port) wires each implementation in isolation: it asks `Dependencies for <Implementation>:` once per implementation, in the order of the wire (main, then test). Each list leaves out only what that implementation already has, and a list with nothing to choose is skipped.
 
-It may start with a `Suggested` group, which holds only the system service of the implementation: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. It is listed there only and is **checked**: omitting the implementation's group in JSON keeps it, `[]` selects none. Any other service is an ordinary unchecked item in `Infrastructure services`, whatever its name, so select it explicitly.
+It may start with a `Suggested` group, which holds only the system service of the implementation: `prisma-infrastructure-service` for `prisma`, `drizzle-infrastructure-service` for `drizzle`, `in-memory-db-infrastructure-service` for `in-memory`. It is listed there only and is **checked**: omitting the implementation's group in JSON keeps it, `[]` selects none. Any other service is an ordinary unchecked item in `Infrastructure services`, whatever its name, so select it explicitly.
 
 ## Remembered and system implementation types
 

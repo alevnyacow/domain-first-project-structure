@@ -47,6 +47,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [In-memory DB](#in-memory-db-1)
     - [Storybook (React + Vite)](#storybook-react--vite)
     - [Prisma 8 (PostgreSQL, RC)](#prisma-8-postgresql-rc)
+    - [Drizzle (PostgreSQL)](#drizzle-postgresql)
     - [Vitest](#vitest)
     - [Playwright](#playwright)
     - [Integration tests (Testcontainers, PostgreSQL)](#integration-tests-testcontainers-postgresql)
@@ -87,7 +88,7 @@ Notation used below:
 | `df-init`        | Initializes a project: the configuration file and Shared Kernel files | [`df-init`](#df-init)         |
 | `df-scaffold`    | Scaffolds bounded contexts and their components                      | [`df-scaffold`](#df-scaffold) |
 | `df-react`       | Scaffolds, moves and renames React modules                           | [React modules](#react-modules-df-react) |
-| `df-integration` | Adds integrations: Storybook, Prisma, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
+| `df-integration` | Adds integrations: Storybook, Prisma, Drizzle, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
 | `df-upgrade`     | Brings the project up to date after a package upgrade                 | [`df-upgrade`](#df-upgrade)   |
@@ -147,7 +148,7 @@ The installed schema is authoritative and rejects unknown fields. Backend operat
 - New implementations select a `contract` and, with a branched wire, an explicit nonempty `environments` list. Their dependency groups refer to the new concrete class.
 - Backend moves select a unit ID in `module`, with optional `name`, `targetContext` and `aggregate`. React moves use `module` and a new nested `name`. Moves use the same validation/import rewriting as the menus.
 - Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created; without `controller`, the endpoint belongs to the context-root controller `(root)` (`/<context>/<path>`). REST tooling must already be configured.
-- Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
+- Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `drizzle`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
 - `dryRun: true` computes the full proposed operation without writing anything.
 - `overwrite: true` allows replacing changed existing generated files. Without it the command returns `OVERWRITE_REQUIRED` and the affected paths. Identical generated contents do not require this flag. Metadata edits such as implementation choices and normal wiring updates retain their existing behavior.
 
@@ -336,7 +337,7 @@ Configs of an earlier major version (the flat 7.x config, without `project`) are
 
 ### Saved implementation choices
 
-`backend.implementations` is an optional section inside `backend` in the shared config. It is populated when a custom implementation type is entered with the save action or Prisma integration registers `prisma`. Its contents are:
+`backend.implementations` is an optional section inside `backend` in the shared config. It is populated when a custom implementation type is entered with the save action or the Prisma or Drizzle integration registers `prisma` or `drizzle`. Its contents are:
 
 ```json
 {
@@ -357,7 +358,7 @@ Configs of an earlier major version (the flat 7.x config, without `project`) are
 - The first available saved label is the default, falling back to an available system implementation, then the save-entry action. Manual input has no suggested name without an available saved label. There are no ordinary presets or implicit `api`/`mock` defaults.
 - **New Implementation** shows both primary and test choices plus available system implementations. It adds no ordinary presets. A new custom label entered with the save action is saved as `test` when used in that environment and as `primary` for other environments; without usable wiring it is saved as primary.
 - Updates are staged with source files. Cancellation or declined overwrites discard both. Updating this section preserves the other sections and does not request a config overwrite confirmation. The config can be committed and edited by hand; reordering saved arrays changes defaults for later runs.
-- Prisma integration registers `prisma` in `repositories.primary`, `commands.primary` and `queries.primary`, preserving existing choices. `df-init` no longer asks for a global persistence default. [`df-upgrade`](#df-upgrade) moves the 7.x `defaultPersistenceLayerImplementation` to the first primary type of `repositories`, `commands` and `queries`.
+- The Prisma and Drizzle integrations register `prisma` and `drizzle` in `repositories.primary`, `commands.primary` and `queries.primary`, preserving existing choices. `df-init` no longer asks for a global persistence default. [`df-upgrade`](#df-upgrade) moves the 7.x `defaultPersistenceLayerImplementation` to the first primary type of `repositories`, `commands` and `queries`.
 
 ### System implementation types
 
@@ -733,7 +734,7 @@ The last step of every generator that creates a factory, except REST endpoints, 
 - Candidates are the wired modules of the context and of the Shared Kernel, the latter labelled `(shared-kernel)`. Only `cross-context` port adapters also see the application handlers of neighboring bounded contexts, labelled `(<context>)`. A module is any `wire*` factory found under `wiring/`.
 - Candidates are filtered by the [dependency rules](#dependency-rules), excluding the module itself and modules it already depends on.
 - Choices are grouped by kind: Repositories, Domain services, Ports, Application services, Queries, Commands, Use cases, Infrastructure services, Presentation services.
-- An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). The system service of the implementation is listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck it to leave it out. Any other service is an ordinary choice, whatever its name.
+- An env-branched factory asks once per implementation (`Dependencies for PrismaOrderRepository:`). The system service of the implementation is listed first under **Suggested**, already checked: `prisma-infrastructure-service` for `prisma`, `drizzle-infrastructure-service` for `drizzle`, `in-memory-db-infrastructure-service` for `in-memory`. Uncheck it to leave it out. Any other service is an ordinary choice, whatever its name.
 - When there are no candidates, nothing is asked.
 
 Each selected module is added, in order:
@@ -979,7 +980,7 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 `npx df-integration` changes project files and prints next steps. It needs the configuration file: without it, it prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. The [project root](#project-root), staging and overwrite confirmation work as in `df-scaffold`. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints one install command under `Run this command to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
 
-Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma config and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook configures `frontend.react`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them. The parts are joined with `&&` into one line to copy, which runs in bash, zsh, cmd.exe and PowerShell 7+, but not in Windows PowerShell 5.1. `df-init` prints its command the same way.
+Several integrations can be selected at once (`a` selects all). Whatever the display order, they run in the order of the table below, so an integration sees what the previous ones changed: integration tests pick up the Prisma and Drizzle configs and the Vitest config, Orval picks up the OpenAPI document path, OpenAPI offers the Swagger UI page after Storybook configures `frontend.react`. Install commands are merged into one `npm install` for dependencies and one `npm install --save-dev` for dev dependencies; a package needed both ways is installed as a dependency. `npx playwright install` follows them. The parts are joined with `&&` into one line to copy, which runs in bash, zsh, cmd.exe and PowerShell 7+, but not in Windows PowerShell 5.1. `df-init` prints its command the same way.
 
 The list has two sections: `New integrations`, then `Already applied (select to reapply)`. Each item ends with its group, e.g. `Vitest · backend`; inside a section backend integrations come first. An integration counts as applied when the file in the table exists; selecting it again regenerates its files. The REST endpoint generator and the in-memory DB only add missing files and never overwrite existing ones.
 
@@ -989,6 +990,7 @@ The list has two sections: `New integrations`, then `Already applied (select to 
 | `REST endpoint generator`                        | Backend  | With `handlers-rest` | `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts`                           |
 | `In-memory DB`                                   | Backend  | Backend configured   | `backend.withInMemoryDb` is `true`, `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` and, with `wire`, its wire |
 | `Prisma 8 (PostgreSQL, RC)`                      | Backend  | Backend configured   | `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts`                                                           |
+| `Drizzle (PostgreSQL)`                           | Backend  | Backend configured   | `<rootFolder>/shared-kernel/infrastructure/drizzle/drizzle.config.ts`                                                         |
 | `Vitest`                                         | Backend  | Backend configured   | `vitest.config.ts`                                                                                                     |
 | `Playwright`                                     | Frontend | Always               | `playwright.config.ts`                                                                                                 |
 | `Integration tests (Testcontainers, PostgreSQL)` | Backend  | Backend configured   | `specs/integration/vitest.config.ts`                                                                                   |
@@ -1062,6 +1064,25 @@ Sets `backend.withInMemoryDb` to `true` and writes the missing files of the shar
 
 `PrismaInfrastructureService` exposes `orm`, uses the Temporal polyfill and reuses the client across development hot reloads. An existing `contract.prisma` is never replaced. Requirements: `DATABASE_URL`, Node.js 22.18+, TypeScript 5.9+, ESM and JSON imports. Run `prisma:emit` before compiling the service. This is a preset for Prisma 8 RC, not a Prisma 7 migration tool.
 
+### Drizzle (PostgreSQL)
+
+| Item           | Value                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| Prompts        | `Create the Drizzle infrastructure service in the Shared Kernel?` (default: Yes) |
+| Files          | `<rootFolder>/shared-kernel/infrastructure/drizzle/drizzle.config.ts`; `schema.ts` if missing                |
+| Optional files | `<rootFolder>/shared-kernel/infrastructure/services/drizzle-infrastructure-service.ts`; with `wire`, its factory  |
+| Saved choices | Adds `drizzle` to primary repository, command and query choices in the config’s `backend.implementations` section |
+| Scripts        | `drizzle:generate`, `drizzle:migrate`                                                                     |
+| Install        | `drizzle-orm`, `pg`, `dotenv`, `--save-dev drizzle-kit @types/pg` when missing                            |
+| Notes          | Add `!<rootFolder>/shared-kernel/infrastructure/drizzle/migrations` to linter ignores                            |
+
+| Script             | Action                                                         |
+| ------------------ | -------------------------------------------------------------- |
+| `drizzle:generate` | Generate a SQL migration in `migrations/` from changes in `schema.ts` |
+| `drizzle:migrate`  | Apply generated migrations to the database in `DATABASE_URL`   |
+
+The config uses the `postgresql` dialect and reads `DATABASE_URL` through `dotenv`. Its `schema` and `out` paths are relative to the project root, where package scripts run. `DrizzleInfrastructureService` exposes `db`, a `drizzle-orm/node-postgres` database over a `pg` pool, and reuses the pool across development hot reloads. Import tables from `schema.ts` in implementations: `this.drizzleInfrastructureService.db.select().from(orders)`. An existing `schema.ts` is never replaced. A `drizzle.config.ts` (`.js`, `.json`) in the project root is an existing setup: the integration stops without changes, move it separately.
+
 ### Vitest
 
 | Item           | Value                                                                                                            |
@@ -1103,15 +1124,15 @@ The config sets `testDir: './specs/e2e'`, an HTML reporter, traces on retry, scr
 | Install        | `--save-dev vitest testcontainers dotenv`, each when missing                                                               |
 | Prompts        | With `wire` and saved primary types: `Integration tests for implementation types:` (checkbox of the saved primary types, `in-memory` and `cross-context` excluded; checked: those in `backend.implementations.integrationTests`). JSON: `integrationTestTypes`; omitted, the list stays |
 | Generated      | The missing [integration specs](#integration-tests) of existing primary implementations of the selected types |
-| Notes          | The database image and variable and where to change them; with no Prisma config, a reminder to apply migrations in `global-setup.ts`; when `specs/integration/**` can't be added to `test.exclude` of `vitest.config.ts`, a reminder to add it; Docker must be running |
+| Notes          | The database image and variable and where to change them; with neither a Prisma nor a Drizzle config, a reminder to apply migrations in `global-setup.ts`; when `specs/integration/**` can't be added to `test.exclude` of `vitest.config.ts`, a reminder to add it; Docker must be running |
 
 | File               | Content                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------- |
 | `vitest.config.ts` | Runs `specs/integration/**/*.spec.ts` with `NODE_ENV=development`, so `envBranchedWire` picks development implementations. Paths are relative to the project root. When `@domain-first/handlers-next` is declared, it is inlined |
-| `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container, without `--advance-ref`, so the `db` ref of the development database stays as is |
+| `global-setup.ts`  | Starts `postgres:15` with `testcontainers` once per run, waits for `pg_isready` over TCP, passes the connection string to specs as `databaseUrl` and stops the container afterwards. When `<rootFolder>/shared-kernel/infrastructure/prisma/prisma.config.ts` exists, applies migrations with `prisma db migrate` against the container, without `--advance-ref`, so the `db` ref of the development database stays as is. When `<rootFolder>/shared-kernel/infrastructure/drizzle/drizzle.config.ts` exists, applies migrations with `drizzle-kit migrate`, after Prisma ones when both are set up |
 | `setup-env.ts`     | Runs before each spec: loads `.env`, fails unless `NODE_ENV` is `development`, and sets `DATABASE_URL` to the container. With custom [branches](#envbranchedwire), the CLI notes that `currentBranch` must return the branch for integration specs and `setup-env.ts` may need adjusting |
 
-Specs get the container's address in `DATABASE_URL`, so the Prisma infrastructure service connects to it. Change the image, credentials and connection string in `global-setup.ts`, and the variable name in `setup-env.ts`. All specs of a run share one database: give each spec its own data.
+Specs get the container's address in `DATABASE_URL`, so the Prisma and Drizzle infrastructure services connect to it. Change the image, credentials and connection string in `global-setup.ts`, and the variable name in `setup-env.ts`. All specs of a run share one database: give each spec its own data.
 
 ### OpenAPI
 

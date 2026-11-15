@@ -21,6 +21,7 @@ import { checkbox } from '../interaction';
 import { ProjectRoot } from '../project-root';
 import { envBranches } from '../wire-branches';
 import { wireBranches } from '../wiring';
+import { drizzleConfigPath, drizzleScripts } from './drizzle';
 import { addPackageScripts, describeScripts } from './package-scripts';
 import { prismaScripts } from './prisma';
 
@@ -63,21 +64,25 @@ export default defineConfig({
 `;
 };
 
-export const testcontainersGlobalSetup = (migrationCommand?: string) => {
-    const migrations = migrationCommand
+export const testcontainersGlobalSetup = (migrationCommands: string[] = []) => {
+    const migrations = migrationCommands.length
         ? `
-    // dotenv in the Prisma config does not override an already set variable
-    execSync(${JSON.stringify(migrationCommand)}, {
+    // dotenv in the ORM config does not override an already set variable
+${migrationCommands
+    .map(
+        (command) => `    execSync(${JSON.stringify(command)}, {
         cwd: project.config.root,
         env: { ...process.env, DATABASE_URL: databaseUrl },
         // On failure the error carries the command's output
         stdio: 'pipe'
     });
 `
+    )
+    .join('')}`
         : `
     // Apply your migrations to databaseUrl here.
 `;
-    return `${migrationCommand ? "import { execSync } from 'node:child_process';\n" : ''}import { GenericContainer, Wait } from 'testcontainers';
+    return `${migrationCommands.length ? "import { execSync } from 'node:child_process';\n" : ''}import { GenericContainer, Wait } from 'testcontainers';
 import type { TestProject } from 'vitest/node';
 
 declare module 'vitest' {
@@ -267,19 +272,28 @@ export const addTestcontainers = async (): Promise<string[]> => {
         testcontainersScripts
     );
 
-    // Migrations run only for the Prisma preset; other setups add their own.
-    const withPrisma = new File(
-        path.resolve(
-            root,
-            config.project.rootFolder,
-            'shared-kernel/infrastructure/prisma/prisma.config.ts'
+    // Migrations run only for the Prisma and Drizzle presets; other setups add their own.
+    const presetExists = (relativePath: string) =>
+        new File(path.resolve(root, relativePath)).exists;
+    const migrationCommands = [
+        // Without --advance-ref: the db ref in migrations/app/refs/db.json tracks
+        // the development database and must not move to the container's state.
+        ...(presetExists(
+            path.join(
+                config.project.rootFolder,
+                'shared-kernel/infrastructure/prisma/prisma.config.ts'
+            )
         )
-    ).exists;
-    // Without --advance-ref: the db ref in migrations/app/refs/db.json tracks
-    // the development database and must not move to the container's state.
-    const migrationCommand = withPrisma
-        ? `npx ${prismaScripts(config.project.rootFolder)['prisma:migration:apply'].replace(' --advance-ref db', '')}`
-        : undefined;
+            ? [
+                  `npx ${prismaScripts(config.project.rootFolder)['prisma:migration:apply'].replace(' --advance-ref db', '')}`
+              ]
+            : []),
+        ...(presetExists(drizzleConfigPath(config.project.rootFolder))
+            ? [
+                  `npx ${drizzleScripts(config.project.rootFolder)['drizzle:migrate']}`
+              ]
+            : [])
+    ];
 
     const folder = path.join(root, integrationFolder);
     stageFile(
@@ -290,7 +304,7 @@ export const addTestcontainers = async (): Promise<string[]> => {
     );
     stageFile(
         path.join(folder, 'global-setup.ts'),
-        testcontainersGlobalSetup(migrationCommand)
+        testcontainersGlobalSetup(migrationCommands)
     );
     stageFile(path.join(folder, 'setup-env.ts'), testcontainersSetupEnv);
     // The example is a starting point; edits to it are never overwritten.
@@ -318,7 +332,7 @@ export const addTestcontainers = async (): Promise<string[]> => {
             ? [`npm install --save-dev ${missing.join(' ')}`]
             : []),
         `Integration specs run against postgres:15 and get its address in DATABASE_URL. Change the image, credentials and connection string in ${integrationFolder}/global-setup.ts, and the variable name in ${integrationFolder}/setup-env.ts.`,
-        ...(migrationCommand
+        ...(migrationCommands.length
             ? []
             : [
                   `Apply your migrations in ${integrationFolder}/global-setup.ts.`

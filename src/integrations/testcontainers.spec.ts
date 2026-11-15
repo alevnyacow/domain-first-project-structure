@@ -240,3 +240,38 @@ test('with default wire branches, the NODE_ENV setup needs no note', async () =>
     const steps = await addTestcontainers();
     expect(steps.some((step) => step.includes('currentBranch'))).toBe(false);
 });
+
+test('applies Drizzle migrations, after Prisma ones when both are set up', async () => {
+    const { project, globalSetupPath } = setup({});
+    const drizzleFolder = path.join(
+        project,
+        'src/shared-kernel/infrastructure/drizzle'
+    );
+    fs.mkdirSync(drizzleFolder, { recursive: true });
+    fs.writeFileSync(path.join(drizzleFolder, 'drizzle.config.ts'), '');
+    const steps = await addTestcontainers();
+    writePendingChanges();
+    const drizzleMigrate =
+        'npx drizzle-kit migrate --config \\"src/shared-kernel/infrastructure/drizzle/drizzle.config.ts\\"';
+    const globalSetup = fs.readFileSync(globalSetupPath, 'utf8');
+    expect(globalSetup).toContain(
+        "import { execSync } from 'node:child_process';"
+    );
+    expect(globalSetup).toContain(drizzleMigrate);
+    expect(globalSetup).not.toContain('prisma');
+    expect(steps.join('\n')).not.toContain('Apply your migrations');
+
+    const prismaFolder = path.join(
+        project,
+        'src/shared-kernel/infrastructure/prisma'
+    );
+    fs.mkdirSync(prismaFolder, { recursive: true });
+    fs.writeFileSync(path.join(prismaFolder, 'prisma.config.ts'), '');
+    await addTestcontainers();
+    writePendingChanges();
+    const both = fs.readFileSync(globalSetupPath, 'utf8');
+    expect(both.match(/execSync\(/g)).toHaveLength(2);
+    expect(both.indexOf('prisma db migrate')).toBeLessThan(
+        both.indexOf(drizzleMigrate)
+    );
+});

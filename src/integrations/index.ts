@@ -1,3 +1,4 @@
+export * from './drizzle';
 export * from './in-memory-db';
 export * from './missing-domain-first-packages';
 export * from './openapi';
