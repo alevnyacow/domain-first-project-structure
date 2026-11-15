@@ -1,3 +1,10 @@
+## [8.9.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.9.0...v8.9.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* in-memory DB withId finds items saved as [id, item] ([0af40ae](https://github.com/alevnyacow/domain-first-project-structure/commit/0af40ae9ced63118bbf1be481522e330cb485093))
+
 # [8.9.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.8.0...v8.9.0) (2026-11-15)
 
 
