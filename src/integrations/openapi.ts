@@ -2,10 +2,14 @@ import path from 'node:path';
 import { ConfigFile } from '../config-file';
 import { File } from '../file-system';
 import { confirm, input } from '../interaction';
-import { usesNext } from '../next-app';
+import { NestedName } from '../nested-name';
+import { nextAppFolder, usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
 import { compilerOption } from '../tsconfig';
-import { reactPageContent } from '../use-cases/scaffold-react-page';
+import {
+    reactPageContent,
+    scaffoldNextRoute
+} from '../use-cases/scaffold-react-page';
 import { openapiExtractor, openapiExtractorPath } from './openapi-extractor';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
@@ -23,14 +27,20 @@ export const swaggerPagePath = (rootFolder: string) =>
     );
 
 /**
- * A React page rendering the OpenAPI document with Swagger UI.
+ * A React page rendering the OpenAPI document with Swagger UI. With
+ * Next.js it is a client component: Swagger UI keeps state and its App
+ * Router route is a server component.
  */
-export const swaggerPage = (rootFolder: string, outputPath: string) => {
+export const swaggerPage = (
+    rootFolder: string,
+    outputPath: string,
+    withNext = false
+) => {
     const specImport = path.posix.relative(
         path.posix.dirname(swaggerPagePath(rootFolder)),
         outputPath
     );
-    return reactPageContent('Swagger', {
+    const page = reactPageContent('Swagger', {
         imports: [
             "import 'swagger-ui-react/swagger-ui.css'",
             "import SwaggerUI from 'swagger-ui-react'",
@@ -38,6 +48,7 @@ export const swaggerPage = (rootFolder: string, outputPath: string) => {
         ],
         body: '<SwaggerUI displayOperationId spec={spec} />'
     });
+    return withNext ? `'use client'\n\n${page}` : page;
 };
 
 export const openapiScripts = {
@@ -170,11 +181,25 @@ export const addOpenapi = async (): Promise<string[]> => {
         generatorFile.data = content;
     }
 
+    const withNextRoute = withSwaggerPage && usesNext();
+    let nextRouteHint: string | undefined;
     if (withSwaggerPage) {
-        const pageFile = new File(path.join(root, swaggerPagePath(rootFolder)));
-        const page = swaggerPage(rootFolder, splitPath(outputPath).join('/'));
+        const pagePath = path.join(root, swaggerPagePath(rootFolder));
+        const pageFile = new File(pagePath);
+        const page = swaggerPage(
+            rootFolder,
+            splitPath(outputPath).join('/'),
+            withNextRoute
+        );
         if (!pageFile.exists || pageFile.data !== page) {
             pageFile.data = page;
+        }
+        // Like a scaffolded page, it gets its App Router route at /swagger
+        if (withNextRoute) {
+            nextRouteHint = scaffoldNextRoute(
+                new NestedName('swagger'),
+                pagePath
+            );
         }
     }
 
@@ -214,9 +239,15 @@ export const addOpenapi = async (): Promise<string[]> => {
         ...describeScripts(selected, {
             openapi: `generate the OpenAPI document from restHandlers in ${splitPath(outputPath).join('/')}`
         }),
-        ...(withSwaggerPage
+        ...(withSwaggerPage && !withNextRoute
             ? [
                   `SwaggerPage from ${swaggerPagePath(rootFolder)} shows ${splitPath(outputPath).join('/')} once it is generated — render it on a route of your app`
+              ]
+            : []),
+        ...(withNextRoute
+            ? [
+                  nextRouteHint ??
+                      `/swagger shows ${splitPath(outputPath).join('/')} once it is generated — the route is ${nextAppFolder(root)}/swagger/page.tsx`
               ]
             : []),
         ...(hasRestHandlers

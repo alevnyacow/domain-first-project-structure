@@ -37,9 +37,12 @@ export default function Page() {
 /**
  * With Next.js, the page also gets its App Router route at the same path,
  * e.g. `admin/users` → `app/admin/users/page.tsx`. An existing route is
- * kept: it may hold the user's code.
+ * kept: it may hold the user's code, and the returned hint says so.
  */
-const scaffoldNextRoute = (name: NestedName, pageFile: File) => {
+export const scaffoldNextRoute = (
+    name: NestedName,
+    pagePath: string
+): string | undefined => {
     const root = new ProjectRoot().path;
     const route = path.join(
         root,
@@ -50,16 +53,16 @@ const scaffoldNextRoute = (name: NestedName, pageFile: File) => {
     );
     const relativeRoute = path.relative(root, route).split(path.sep).join('/');
     const routeFile = new File(route);
-    if (routeFile.exists) {
-        report(
-            `${relativeRoute} already exists: render ${name.ClassName}Page there yourself.`
-        );
-        return;
-    }
-    routeFile.data = nextRouteContent(
+    const content = nextRouteContent(
         name.ClassName,
-        relativeImport(route, pageFile.path.replace(/\.tsx$/, ''))
+        relativeImport(route, pagePath.replace(/\.tsx$/, ''))
     );
+    if (routeFile.exists) {
+        return routeFile.data === content
+            ? undefined
+            : `${relativeRoute} already exists: render ${name.ClassName}Page there yourself.`;
+    }
+    routeFile.data = content;
 };
 
 export const scaffoldReactPage = async (presentationReactFolder: Folder) => {
@@ -75,5 +78,8 @@ export const scaffoldReactPage = async (presentationReactFolder: Folder) => {
         .subitem(['pages', ...folders])
         .createFile(`${fileName}-page.tsx`, reactPageContent(ClassName));
 
-    if (usesNext()) scaffoldNextRoute(nestedName, pageFile);
+    if (usesNext()) {
+        const hint = scaffoldNextRoute(nestedName, pageFile.path);
+        if (hint) report(hint);
+    }
 };

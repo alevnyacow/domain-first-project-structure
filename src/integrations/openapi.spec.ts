@@ -253,6 +253,58 @@ export const SwaggerPage: FC<SwaggerPageProps> = (props) => {
     );
 });
 
+test('with Next.js, the Swagger UI page gets its App Router route', async () => {
+    const { project } = setup(
+        'src',
+        {
+            name: 'demo',
+            dependencies: {
+                '@domain-first/handlers-rest': '*',
+                'swagger-ui-react': '*'
+            },
+            devDependencies: { tsx: '*', '@types/swagger-ui-react': '*' }
+        },
+        ['/api', 'public/openapi.json'],
+        true,
+        'next'
+    );
+    rstest.mocked(confirm).mockResolvedValueOnce(false);
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
+    const steps = await addOpenapi();
+    writePendingChanges();
+
+    expect(
+        fs.readFileSync(
+            path.join(project, 'src/presentation/react/pages/swagger-page.tsx'),
+            'utf8'
+        )
+    ).toMatch(/^'use client'\n\nimport 'swagger-ui-react\/swagger-ui.css'\n/);
+    expect(
+        fs.readFileSync(path.join(project, 'app/swagger/page.tsx'), 'utf8')
+    ).toBe(
+        `import { SwaggerPage } from '../../src/presentation/react/pages/swagger-page'
+
+export default function Page() {
+    return <SwaggerPage />
+}`
+    );
+    expect(steps).toContain(
+        '/swagger shows public/openapi.json once it is generated — the route is app/swagger/page.tsx'
+    );
+    expect(steps.some((step) => step.includes('render it on a route'))).toBe(
+        false
+    );
+
+    rstest.mocked(input).mockResolvedValueOnce('/api');
+    rstest.mocked(input).mockResolvedValueOnce('public/openapi.json');
+    rstest.mocked(confirm).mockResolvedValueOnce(false);
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
+    expect(
+        (await addOpenapi()).some((step) => step.includes('already exists'))
+    ).toBe(false);
+    expect(filesToOverwrite()).toEqual([]);
+});
+
 test('the Swagger UI page asks for resolveJsonModule unless it is set', async () => {
     const hint =
         'set "resolveJsonModule": true in compilerOptions of tsconfig.json — the Swagger UI page imports the OpenAPI document as JSON';
