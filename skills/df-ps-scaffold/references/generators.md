@@ -4,7 +4,7 @@ Use the JSON interface described in [agent-mode.md](agent-mode.md), with the com
 
 What every generator shares: notation, the `Dependencies:` step, env-branched wiring, spec templates and integration specs. Prompts and output of each generator are in `units/<unit>.md`.
 
-Config paths: `project.rootFolder`, `backend.domainFirstPackages`, `backend.testingLibrary`, `backend.withInMemoryDb`, and `frontend.react.storybookFramework`. Initialization/reconfiguration is performed by the user, not the agent.
+Config paths: `project.rootFolder`, `backend.domainFirstPackages`, `backend.testingLibrary`, `backend.withInMemoryDb`, and `frontend.react.storybookFramework` (`frontend.svelte.storybookFramework` for Svelte). Initialization/reconfiguration is performed by the user, not the agent.
 
 Notation: `<C>` = `<rootFolder>/bounded-contexts/<context>` or `<rootFolder>/shared-kernel`. `n` = the entered kebab-case name, `N` = PascalCase, `v` = camelCase. `I` = implementation label (`prisma` → `Prisma`). Specs are generated without a prompt **only if `backend.testingLibrary` is set**. `{pkg}` = output depends on that `@domain-first/*` package.
 

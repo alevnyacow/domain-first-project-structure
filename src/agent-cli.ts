@@ -14,6 +14,7 @@ import {
     filesToOverwrite,
     pendingChanges
 } from './file-system';
+import { frontendOperations } from './frontend-modules';
 import {
     implementationKinds,
     savedImplementations
@@ -25,8 +26,10 @@ import {
     RequestError,
     runWithAnswers
 } from './interaction';
+import { frameworkTitles } from './page-router';
 import { ProjectRoot } from './project-root';
 import {
+    type FrontendFramework,
     findReactModules,
     type ReactModuleKind,
     reactKindTitles
@@ -37,10 +40,8 @@ import { systemImplementationChoices } from './system-implementations';
 import {
     addIntegration,
     deleteBackendUnitUseCase,
-    deleteReactModuleUseCase,
     helperImplementationTypes,
     moveBackendUnitUseCase,
-    moveReactModuleUseCase,
     scaffoldNewAggregateUseCase,
     scaffoldNewApplicationPort,
     scaffoldNewApplicationService,
@@ -56,10 +57,6 @@ import {
     scaffoldNewPresentationService,
     scaffoldNewQuery,
     scaffoldNewUseCase,
-    scaffoldReactPage,
-    scaffoldReactSharedHook,
-    scaffoldReactUIKitComponent,
-    scaffoldReactWidget,
     wireDependency
 } from './use-cases';
 import { integrationDescriptions } from './use-cases/add-integration';
@@ -120,6 +117,30 @@ const ownerFor = (context: string) => {
         );
     return owner.folder;
 };
+const frontendFrameworkOf = (
+    command: AgentCommand
+): FrontendFramework | undefined =>
+    command === 'df-react'
+        ? 'react'
+        : command === 'df-svelte'
+          ? 'svelte'
+          : undefined;
+const frontendModules = (
+    root: string,
+    rootFolder: string,
+    framework: FrontendFramework
+) =>
+    (['page', 'widget', 'ui-kit', 'hook'] as const).flatMap((kind) =>
+        findReactModules(
+            path.join(root, rootFolder, 'presentation', framework),
+            kind,
+            framework
+        ).map((module) => ({
+            kind,
+            name: module.name,
+            file: path.relative(root, module.path).split(path.sep).join('/')
+        }))
+    );
 const precondition = (command: AgentCommand) => {
     requireProject();
     if (!ConfigFile.exists)
@@ -137,7 +158,8 @@ const precondition = (command: AgentCommand) => {
             'BACKEND_NOT_CONFIGURED',
             'Ask the project owner to run df-init --section backend.'
         );
-    if (command === 'df-react' && !ConfigFile.Instance.data.frontend?.react)
+    const framework = frontendFrameworkOf(command);
+    if (framework && !ConfigFile.Instance.data.frontend?.[framework])
         throw new RequestError(
             'FRONTEND_NOT_CONFIGURED',
             'Ask the project owner to run df-init --section frontend.'
@@ -273,20 +295,17 @@ export const describeAgentCommand = (command: AgentCommand) => {
                   })),
                   integrations: integrationDescriptionsSafe(configured),
                   reactModules: config?.frontend?.react
-                      ? (['page', 'widget', 'ui-kit', 'hook'] as const).flatMap(
-                            (kind) =>
-                                findReactModules(
-                                    path.join(
-                                        root!,
-                                        config.project.rootFolder,
-                                        'presentation/react'
-                                    ),
-                                    kind
-                                ).map((module) => ({
-                                    kind,
-                                    name: module.name,
-                                    file: relative(module.path)
-                                }))
+                      ? frontendModules(
+                            root,
+                            config.project.rootFolder,
+                            'react'
+                        )
+                      : [],
+                  svelteModules: config?.frontend?.svelte
+                      ? frontendModules(
+                            root,
+                            config.project.rootFolder,
+                            'svelte'
                         )
                       : []
               }
@@ -487,10 +506,14 @@ const executeScaffold = async (request: AgentRequest, owner: Folder) => {
     };
     return actions[request.operation]();
 };
-const executeReact = async (request: AgentRequest) => {
+const executeFrontend = async (
+    request: AgentRequest,
+    framework: FrontendFramework
+) => {
     const folder = new Folder(requireProject()).subitem([
         ConfigFile.Instance.data.project.rootFolder,
-        'presentation/react'
+        'presentation',
+        framework
     ]);
     const kindOf = (operation: string): ReactModuleKind | undefined =>
         operation.endsWith('-page')
@@ -505,27 +528,12 @@ const executeReact = async (request: AgentRequest) => {
     const kind = /^(move|delete)-/.test(request.operation)
         ? kindOf(request.operation)
         : undefined;
-    if (kind && !findReactModules(folder.path, kind).length)
+    if (kind && !findReactModules(folder.path, kind, framework).length)
         throw new RequestError(
             'TARGET_NOT_FOUND',
-            `No React ${reactKindTitles[kind][1]} here.`
+            `No ${frameworkTitles[framework].title} ${reactKindTitles[kind][1]} here.`
         );
-    const actions: Record<string, () => Promise<unknown>> = {
-        page: () => scaffoldReactPage(folder),
-        widget: () => scaffoldReactWidget(folder),
-        'ui-kit-component': () => scaffoldReactUIKitComponent(folder),
-        'shared-hook': () => scaffoldReactSharedHook(folder),
-        'move-page': () => moveReactModuleUseCase(folder, 'page'),
-        'move-widget': () => moveReactModuleUseCase(folder, 'widget'),
-        'delete-page': () => deleteReactModuleUseCase(folder, 'page'),
-        'delete-widget': () => deleteReactModuleUseCase(folder, 'widget'),
-        'move-ui-kit-component': () => moveReactModuleUseCase(folder, 'ui-kit'),
-        'move-shared-hook': () => moveReactModuleUseCase(folder, 'hook'),
-        'delete-ui-kit-component': () =>
-            deleteReactModuleUseCase(folder, 'ui-kit'),
-        'delete-shared-hook': () => deleteReactModuleUseCase(folder, 'hook')
-    };
-    return actions[request.operation]();
+    return frontendOperations(folder, framework)[request.operation]();
 };
 
 export const executeAgentRequest = async (
@@ -560,7 +568,11 @@ export const executeAgentRequest = async (
                 if (request.operation === 'bounded-context')
                     await scaffoldNewBoundedContextUseCase();
                 else await executeScaffold(request, owner!);
-            } else if (command === 'df-react') await executeReact(request);
+            } else if (frontendFrameworkOf(command))
+                await executeFrontend(
+                    request,
+                    frontendFrameworkOf(command) as FrontendFramework
+                );
             else nextSteps = await addIntegration({ save: false });
             assertAnswersConsumed();
             const relative = (file: string) =>

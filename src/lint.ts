@@ -13,7 +13,7 @@ const help = `Usage: df-lint [rootFolder]
 
 Reports what breaks the Domain-First rules in the project:
 bounded context isolation, layers, dependency rules (imports and wiring),
-React modules, and reading the time or environment variables without
+React and Svelte modules, and reading the time or environment variables without
 the clock and config ports.
 rootFolder defaults to the one in domain-first.project-structure.config.json,
 whose optional \`backend.rules\` change the dependency rules and turn checks off.

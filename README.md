@@ -29,7 +29,7 @@ The full technical specification lives in [API.md](./API.md).
 
 ### Non-interactive mode for agents
 
-`df-scaffold`, `df-react` and `df-integration` accept JSON requests. Humans can keep using the interactive menus. Agents can discover schemas and project IDs first:
+`df-scaffold`, `df-react`, `df-svelte` and `df-integration` accept JSON requests. Humans can keep using the interactive menus. Agents can discover schemas and project IDs first:
 
 ```bash
 npx df-scaffold --describe
@@ -53,7 +53,7 @@ npx df-init --section backend
 npx df-init --section frontend
 ```
 
-Project asks for the source folder. Backend asks for the `@domain-first` packages, the [`envBranchedWire` branches](#how-to-switch-implementations) with `wire`, shared in-memory DB and testing library, then adds the required Shared Kernel files. With `@domain-first/handlers-rest`, it adds the [endpoint generator](#how-to-add-a-rest-endpoint). Frontend offers **React** or **Next.js**, then Storybook. Enabling Storybook runs the existing React + Vite integration: it creates `.storybook` configs, package scripts and the build-output `.gitignore` entry. Selecting Next.js with a configured backend asks **Use @domain-first/handlers-next for REST endpoints** once. Yes adds `handlers-rest` to the backend packages if needed, connects `nextAdapter` and creates the catch-all route. This works before `next` is installed. With backend deferred, REST setup waits until backend configuration. Missing packages are printed as an install command; nothing is installed automatically.
+Project asks for the source folder. Backend asks for the `@domain-first` packages, the [`envBranchedWire` branches](#how-to-switch-implementations) with `wire`, shared in-memory DB and testing library, then adds the required Shared Kernel files. With `@domain-first/handlers-rest`, it adds the [endpoint generator](#how-to-add-a-rest-endpoint). Frontend offers **React**, **Next.js**, **Svelte** or **SvelteKit**, then Storybook. Enabling Storybook runs the existing React + Vite integration: it creates `.storybook` configs, package scripts and the build-output `.gitignore` entry. Selecting Next.js with a configured backend asks **Use @domain-first/handlers-next for REST endpoints** once. Yes adds `handlers-rest` to the backend packages if needed, connects `nextAdapter` and creates the catch-all route. SvelteKit asks **Use @domain-first/handlers-svelte for REST endpoints** the same way: `svelteAdapter` and `src/routes/api/[...path]/+server.ts` with `svelteEndpoints`. This works before `next` is installed. With backend deferred, REST setup waits until backend configuration. Missing packages are printed as an install command; nothing is installed automatically.
 
 All settings and saved implementation types live in `domain-first.project-structure.config.json`:
 
@@ -99,7 +99,7 @@ All settings and saved implementation types live in `domain-first.project-struct
 }
 ```
 
-Commit the config to share it with your team. Rerunning `df-init` offers **Project**, **Backend**, **Frontend** and **All sections**, using current values as defaults. A single-section update keeps the other sections and saved choices. Backend setup writes all standard dependency lists and enabled lint checks into `backend.rules`, so they can be edited directly. On reconfiguration, only missing rules are filled; existing lists, `add`/`remove` patches and disabled checks are preserved. Backend setup preserves existing support files and restores missing ones. Changing the source folder affects future generation; existing source is not moved. React is enabled by the presence of `frontend.react`; its `framework` is `react` or `next`, so Next.js uses the same React generators. Frontend selection is prefilled from the saved value, falling back to Next.js when `next` is declared in `package.json`. Both choices use `@storybook/react-vite` from the Storybook integration; there is no separate Storybook framework prompt. Framework settings remain grouped under `frontend.<framework>`.
+Commit the config to share it with your team. Rerunning `df-init` offers **Project**, **Backend**, **Frontend** and **All sections**, using current values as defaults. A single-section update keeps the other sections and saved choices. Backend setup writes all standard dependency lists and enabled lint checks into `backend.rules`, so they can be edited directly. On reconfiguration, only missing rules are filled; existing lists, `add`/`remove` patches and disabled checks are preserved. Backend setup preserves existing support files and restores missing ones. Changing the source folder affects future generation; existing source is not moved. React is enabled by the presence of `frontend.react`; its `framework` is `react` or `next`, so Next.js uses the same React generators. Frontend selection is prefilled from the saved value, falling back to Next.js when `next` is declared in `package.json`. Both choices use `@storybook/react-vite` from the Storybook integration; there is no separate Storybook framework prompt. Svelte is enabled by `frontend.svelte` the same way: its `framework` is `svelte` or `sveltekit`, both use `df-svelte`, and stories use `@storybook/svelte-vite` or `@storybook/sveltekit`. A project has one of the two sections; selecting the other framework replaces it. Framework settings remain grouped under `frontend.<framework>`.
 
 A config of an earlier major version is not read: commands stop and ask you to run [`df-upgrade`](#how-to-upgrade-to-a-new-major-version). An absent backend or React section produces a message pointing to the corresponding `df-init --section` command. Initialization and configuration are performed by the project owner; agent skills only read these settings and ask the owner to configure missing sections.
 
@@ -274,9 +274,19 @@ With Next.js, a new page also gets its App Router route, `app/admin/panel/users/
 
 **Move or rename page** and **Move or rename widget** move the files and update every import in the project. **Delete page** and **Delete widget** remove them once nothing imports them, a Next.js page's own route included if you say so. UI-kit components and shared hooks can be moved, renamed and deleted the same way. With Next.js, moving a page also offers to move its route, `app/admin/users/` → `app/backoffice/users/`, since its URL changes with it.
 
+### How to scaffold Svelte modules
+
+With `frontend.svelte` configured (Svelte or SvelteKit), run `npx df-svelte`: the same pages, widgets, UI-kit components and shared hooks as `df-react`, written as Svelte 5 components with runes into `presentation/svelte`. Shared hooks and widget UI models are `.svelte.ts` modules, components export their props types from `<script lang="ts" module>`, and stories follow `@storybook/svelte-vite` or `@storybook/sveltekit`.
+
+```text
+admin/panel/users  →  pages/admin/panel/admin-panel-users-page.svelte  (AdminPanelUsersPage)
+```
+
+With SvelteKit, a new page also gets its route, `src/routes/admin/panel/users/+page.svelte`, which renders `AdminPanelUsersPage`. Moving and deleting work as in `df-react`, and a SvelteKit page's route folder can follow the page.
+
 ### How to add tooling
 
-Run `npx df-integration` to configure one or several of the REST endpoint generator, the shared in-memory DB, Storybook, Prisma 8, Drizzle, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval API client (typed client and React Query hooks). Integrations add config files, package scripts and `.gitignore` entries, then print one install command to copy. Nothing is installed or run for you.
+Run `npx df-integration` to configure one or several of the REST endpoint generator, the shared in-memory DB, Storybook, Prisma 8, Drizzle, Vitest, Playwright, integration tests on PostgreSQL in Testcontainers, OpenAPI generation or an Orval API client (typed client and React Query or Svelte Query hooks). Integrations add config files, package scripts and `.gitignore` entries, then print one install command to copy. Nothing is installed or run for you.
 
 The endpoint generator and the in-memory DB are what `df-init` scaffolds; as integrations they add them later or restore missing files, and never overwrite existing ones.
 
@@ -288,13 +298,13 @@ With Testcontainers, the CLI asks which implementation types get integration tes
 npx df-lint
 ```
 
-It reports what breaks the Domain-First rules: forbidden imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React modules importing what they shouldn't, and reading the time or environment variables without the clock and config ports. It exits with 1 when something is found, so you can run it in CI.
+It reports what breaks the Domain-First rules: forbidden imports between bounded contexts, imports against the layers, modules using kinds the dependency rules don't allow (in imports and in wiring), React and Svelte modules importing what they shouldn't, and reading the time or environment variables without the clock and config ports. It exits with 1 when something is found, so you can run it in CI.
 
 `df-init` scaffolds all standard rules into `backend.rules` during backend setup. Teams can edit these entries directly: what each kind of module may depend on (`backend.rules.dependencies`) and which checks run (`backend.rules.lint`). `df-scaffold` offers dependencies by the same rules. For older or manually shortened configs without `backend.rules`, the defaults apply and every check runs; kinds and checks you don't mention keep their defaults.
 
 - Kinds in `backend.rules.dependencies` (as keys and in lists): `repositories`, `domain-services`, `application-ports`, `application-services`, `use-cases`, `commands`, `queries`, `infrastructure-services`, `presentation-services`.
 - A kind's value: a list that replaces its defaults, or `{ "add": [...], "remove": [...] }`.
-- Checks in `backend.rules.lint`: `context-isolation`, `shared-kernel`, `layers`, `dependencies`, `react`, `clock`, `config`.
+- Checks in `backend.rules.lint`: `context-isolation`, `shared-kernel`, `layers`, `dependencies`, `react`, `svelte`, `clock`, `config`.
 
 Defaults and details: [Dependency rules](API.md#dependency-rules), [`df-lint`](API.md#df-lint).
 
@@ -343,7 +353,7 @@ From 7.x it splits the config into `project`, `backend` and `frontend`, records 
 
 ### How to teach your coding agent
 
-The package ships skills that teach coding agents to plan features, scaffold with `df-scaffold`, build the React part with `df-react` and implement the generated code.
+The package ships skills that teach coding agents to plan features, scaffold with `df-scaffold`, build the React part with `df-react` or the Svelte part with `df-svelte` and implement the generated code.
 
 ```
 npx df-skills --claude

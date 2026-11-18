@@ -42,6 +42,7 @@ Technical specification of the command-line interface of `@domain-first/project-
     - [New shared hook](#new-shared-hook)
     - [Move or rename page / widget](#move-or-rename-page--widget)
     - [Delete page / widget](#delete-page--widget)
+- [Svelte modules (`df-svelte`)](#svelte-modules-df-svelte)
 - [Integrations](#integrations)
     - [REST endpoint generator](#rest-endpoint-generator)
     - [In-memory DB](#in-memory-db-1)
@@ -74,12 +75,12 @@ Notation used below:
 | Property       | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Name           | `@domain-first/project-structure`                        |
-| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-integration`, `df-skills`, `df-lint`, `df-upgrade`, `df-graph` |
+| Binaries       | `df-init`, `df-scaffold`, `df-react`, `df-svelte`, `df-integration`, `df-skills`, `df-lint`, `df-upgrade`, `df-graph` |
 | Programmatic   | None: the package is a CLI and exports no public API     |
 | Shipped files  | `dist`, `bin`, `skills`                                  |
 | Dependencies   | `@inquirer/prompts`, `zod`                               |
 | Runtime        | Node.js 22.13+ within the Node 22 release line, or 24+   |
-| Interaction    | `df-scaffold`, `df-react`, `df-integration`: interactive by default, or `--describe` / `--request <json|->`; `df-init` stays interactive with `--section` and `--help` |
+| Interaction    | `df-scaffold`, `df-react`, `df-svelte`, `df-integration`: interactive by default, or `--describe` / `--request <json|->`; `df-init` stays interactive with `--section` and `--help` |
 
 ## Commands overview
 
@@ -88,6 +89,7 @@ Notation used below:
 | `df-init`        | Initializes a project: the configuration file and Shared Kernel files | [`df-init`](#df-init)         |
 | `df-scaffold`    | Scaffolds bounded contexts and their components                      | [`df-scaffold`](#df-scaffold) |
 | `df-react`       | Scaffolds, moves and renames React modules                           | [React modules](#react-modules-df-react) |
+| `df-svelte`      | Scaffolds, moves and renames Svelte modules                          | [Svelte modules](#svelte-modules-df-svelte) |
 | `df-integration` | Adds integrations: Storybook, Prisma, Drizzle, Vitest, Playwright, OpenAPI, … | [Integrations](#integrations) |
 | `df-skills`      | Copies the bundled agent skills into a project or the home directory | [`df-skills`](#df-skills)     |
 | `df-lint`        | Reports code that breaks the Domain-First rules                      | [`df-lint`](#df-lint)         |
@@ -98,6 +100,7 @@ Notation used below:
 npx df-init
 npx df-scaffold
 npx df-react
+npx df-svelte
 npx df-integration
 npx df-skills [--claude] [--codex] [--global] [--principles]
 npx df-lint [rootFolder]
@@ -107,7 +110,7 @@ npx df-graph [--context <name>] [--json | --markdown | --html] [--out <file>]
 
 ## Non-interactive JSON mode
 
-`df-scaffold`, `df-react` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` and `df-upgrade` remain human commands; `df-lint`, `df-skills` and `df-graph` already run without interactive generation menus.
+`df-scaffold`, `df-react`, `df-svelte` and `df-integration` support a machine-readable interface for agents. Their ordinary invocation keeps the interactive workflow. `df-init` and `df-upgrade` remain human commands; `df-lint`, `df-skills` and `df-graph` already run without interactive generation menus.
 
 ```bash
 npx df-scaffold --describe
@@ -148,7 +151,7 @@ The installed schema is authoritative and rejects unknown fields. Backend operat
 - New implementations select a `contract` and, with a branched wire, an explicit nonempty `environments` list. Their dependency groups refer to the new concrete class.
 - Backend moves select a unit ID in `module`, with optional `name`, `targetContext` and `aggregate`. React moves use `module` and a new nested `name`. Moves use the same validation/import rewriting as the menus.
 - Endpoints use `controller`, `method`, `path` and a qualified `handler` when a wired handler is available. A missing controller is created; without `controller`, the endpoint belongs to the context-root controller `(root)` (`/<context>/<path>`). REST tooling must already be configured.
-- Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `drizzle`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
+- Integration IDs are `storybook`, `rest-endpoint-generator`, `in-memory-db`, `prisma`, `drizzle`, `vitest`, `playwright`, `testcontainers`, `openapi`, `orval`. Optional integration-specific fields include `nextAdapter`, `svelteAdapter`, `withService`, `configureReact`, `replaceTestingLibrary`, `openapiPath`, `routePrefix`, `withExtractor`, `swaggerPage`, `targets`. Conditional configuration changes require their explicit boolean field. Script conflicts require `scriptConflicts: { "storybook": "keep" }` (`keep`, `replace`, `rename`); renames also use `scriptNames`.
 - `dryRun: true` computes the full proposed operation without writing anything.
 - `overwrite: true` allows replacing changed existing generated files. Without it the command returns `OVERWRITE_REQUIRED` and the affected paths. Identical generated contents do not require this flag. Metadata edits such as implementation choices and normal wiring updates retain their existing behavior.
 
@@ -203,11 +206,12 @@ Current settings prefill the prompts. Only the chosen sections change; opting in
 | Backend | `Scaffold in-memory DB for test implementations` | confirm | `backend.withInMemoryDb` |
 | Backend | `Scaffold unit tests` | confirm | Whether to ask for the testing library |
 | Backend | `Unit testing library:` | input, default `vitest` | `backend.testingLibrary` |
-| Frontend | `Frontend framework:` | select: `React` / `Next.js` | `frontend.react.framework`: `react` / `next` |
+| Frontend | `Frontend framework:` | select: `React` / `Next.js` / `Svelte` / `SvelteKit` | `frontend.react.framework`: `react` / `next`, or `frontend.svelte.framework`: `svelte` / `sveltekit`; the other section is removed |
 | Frontend | `Use @domain-first/handlers-next for REST endpoints` (Next.js, with backend configured) | confirm | Next REST support files; enables `handlers-rest` if needed |
-| Frontend | `Use Storybook` (both frameworks) | confirm | Runs the Storybook (React + Vite) integration; sets `frontend.react.storybookFramework` to `@storybook/react-vite` |
+| Frontend | `Use @domain-first/handlers-svelte for REST endpoints` (SvelteKit, with backend configured) | confirm | SvelteKit REST support files; enables `handlers-rest` if needed |
+| Frontend | `Use Storybook` | confirm | Runs the [Storybook](#storybook-react--vite) integration; sets `storybookFramework` to `@storybook/react-vite` (React, Next.js), `@storybook/svelte-vite` (Svelte) or `@storybook/sveltekit` (SvelteKit) |
 
-React and Next.js both enable `df-react` and use the same `@storybook/react-vite` integration. Enabling Storybook scaffolds its configs, scripts and `.gitignore` entry during initialization. The Storybook framework package is fixed; no package input is shown. Existing custom framework settings are aligned with the shared preset when Storybook is enabled. The framework select uses the saved value first, otherwise Next.js if `next` is declared, otherwise React. The Next adapter question follows the Next.js selection once, even if `next` has not been installed yet. Declining it keeps the frontend choice without adding REST support. Selecting React skips it even when `next` is installed.
+React and Next.js both enable `df-react` and use the same `@storybook/react-vite` integration. Enabling Storybook scaffolds its configs, scripts and `.gitignore` entry during initialization. The Storybook framework package is fixed; no package input is shown. Existing custom framework settings are aligned with the shared preset when Storybook is enabled. The framework select uses the saved value first, otherwise Next.js if `next` is declared, SvelteKit if `@sveltejs/kit` is, Svelte if `svelte` is, otherwise React. Svelte and SvelteKit enable `df-svelte` the same way; SvelteKit asks about `@domain-first/handlers-svelte` as Next.js asks about `handlers-next`. The Next adapter question follows the Next.js selection once, even if `next` has not been installed yet. Declining it keeps the frontend choice without adding REST support. Selecting React skips it even when `next` is installed.
 
 When backend is deferred, frontend does not create or configure backend settings. Later backend setup sees the saved Next.js choice and offers the adapter. REST support is generated after frontend selection, so a new full setup generates the chosen adapter directly. Existing generators/routes are kept as in the integration, with a manual connection note if necessary.
 
@@ -220,16 +224,17 @@ When backend is deferred, frontend does not create or configure backend settings
 | `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts` | With in-memory DB | The [in-memory DB](#in-memory-db), with its wire as for [New Service](#new-service); no spec |
 | `<rootFolder>/shared-kernel/presentation/services/rest-endpoint-generator-presentation-service.ts` | With `handlers-rest` | The [endpoint generator](#endpoint-generator), with its spec and wire as for [New Service](#new-service) |
 | `app/api/[...path]/route.ts`                          | With the Next adapter | The [catch-all route](#rest-endpoint-generator); `src/app/…` when `src/app` exists and `app` doesn't |
-| `<rootFolder>/presentation/react/.storybook/{main,preview}.ts` | With Storybook | The [React + Vite integration](#storybook-react--vite), including package scripts and `.gitignore` |
+| `src/routes/api/[...path]/+server.ts`                 | With the SvelteKit adapter | The [catch-all route](#rest-endpoint-generator) with `svelteEndpoints` |
+| `<rootFolder>/presentation/react/.storybook/{main,preview}.ts` | With Storybook | The [React + Vite integration](#storybook-react--vite), including package scripts and `.gitignore`; `presentation/svelte/.storybook` for Svelte |
 
-The endpoint generator and the route are written as by the [REST endpoint generator](#rest-endpoint-generator) integration. After writing the files, `df-init` prints one install command for the packages of `domainFirstPackages` missing from `package.json` (`dependencies`, `devDependencies` and `optionalDependencies`; `node_modules` is not checked), plus `@domain-first/handlers-next` with the Next adapter. Frontend setup also reports missing `react`/`react-dom`, and `next` for Next.js; packages are never installed automatically.
+The endpoint generator and the route are written as by the [REST endpoint generator](#rest-endpoint-generator) integration. After writing the files, `df-init` prints one install command for the packages of `domainFirstPackages` missing from `package.json` (`dependencies`, `devDependencies` and `optionalDependencies`; `node_modules` is not checked), plus `@domain-first/handlers-next` with the Next adapter or `@domain-first/handlers-svelte` with the SvelteKit adapter. Frontend setup also reports missing `react`/`react-dom`, and `next` for Next.js, `svelte` for Svelte, `@sveltejs/kit` and `svelte` for SvelteKit; packages are never installed automatically.
 
 ## `df-scaffold`
 
 ### Run lifecycle
 
 1. The [project root](#project-root) is located.
-2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. If it has the format of an earlier major version, it prints `domain-first.project-structure.config.json uses the format of an earlier major version: run npx df-upgrade.` and exits with 1; `df-init` and `df-lint` do the same. If the backend section is absent, it prints `Backend is not configured: run df-init --section backend.` and exits with 1. `df-react` and `df-integration` check the configuration file in the same way; `df-react` also needs `frontend.react` ([React modules](#react-modules-df-react)), and `df-integration` hides backend integrations until backend is configured.
+2. If the configuration file does not exist, the CLI prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. If it has the format of an earlier major version, it prints `domain-first.project-structure.config.json uses the format of an earlier major version: run npx df-upgrade.` and exits with 1; `df-init` and `df-lint` do the same. If the backend section is absent, it prints `Backend is not configured: run df-init --section backend.` and exits with 1. `df-react` and `df-integration` check the configuration file in the same way; `df-react` also needs `frontend.react` ([React modules](#react-modules-df-react)), `df-svelte` needs `frontend.svelte` ([Svelte modules](#svelte-modules-df-svelte)), and `df-integration` hides backend integrations until backend is configured.
 3. Otherwise the [main menu](#main-menu) is shown, and exactly one operation runs.
 4. Every file change of the operation is staged in memory. At the end, the staged changes are written in one step. See [Runtime semantics](#runtime-semantics).
 
@@ -295,6 +300,7 @@ type Config = {
     };
     frontend?: {
         react?: { framework?: 'react' | 'next'; storybookFramework?: string };
+        svelte?: { framework?: 'svelte' | 'sveltekit'; storybookFramework?: string };
     };
 };
 ```
@@ -327,6 +333,9 @@ type Config = {
 | `frontend.react` | Its presence enables `df-react`, OpenAPI's Swagger UI page and Orval's React Query hooks. An empty object enables React without stories. |
 | `frontend.react.framework` | `react` or `next`, selected by frontend setup and recorded by `df-upgrade`; both use React generators. Omitted: treated as React. Installed packages never switch on Next.js behavior; select Next.js with `df-init --section frontend`. |
 | `frontend.react.storybookFramework` | Package used for story imports. Omitted: no generated stories. |
+| `frontend.svelte` | Its presence enables `df-svelte`, OpenAPI's Svelte Swagger UI page and Orval's Svelte Query hooks. `df-init` keeps one of `frontend.react` and `frontend.svelte`. |
+| `frontend.svelte.framework` | `svelte` or `sveltekit`; both use Svelte generators, SvelteKit adds page routes and the `handlers-svelte` adapter. |
+| `frontend.svelte.storybookFramework` | Package used for Svelte story imports (`@storybook/svelte-vite`, `@storybook/sveltekit`). Omitted: no generated stories. |
 | `backend.implementations` | Saved implementation labels, separated by contract kind and primary/test role; `integrationTests` lists the types whose implementations get [integration specs](#integration-tests). |
 | `backend.rules.dependencies` | Explicit dependency lists for every module kind, scaffolded by backend setup. Entries can be edited or replaced with `add`/`remove` patches. Missing kinds use defaults. |
 | `backend.rules.lint` | Backend setup writes every check as `true`; set one to `false` to disable it. Missing checks run. |
@@ -672,7 +681,7 @@ The context-root controller is the folder `(root)`: `presentation/rest/(root)/<p
 
 | Member                        | Kind            | Content                                                                                      |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
-| `adapter`                     | Module constant | `Adapter<any[], any>`, declared above the class; `undefined` until replaced, used by the class through closure. With the Next adapter: `import { nextAdapter } from '@domain-first/handlers-next'` instead, and the getters pass `nextAdapter` |
+| `adapter`                     | Module constant | `Adapter<any[], any>`, declared above the class; `undefined` until replaced, used by the class through closure. With the Next adapter: `import { nextAdapter } from '@domain-first/handlers-next'` instead, and the getters pass `nextAdapter`; with the SvelteKit adapter, `svelteAdapter` of `@domain-first/handlers-svelte` |
 | `withoutGuards`               | Getter          | `createEndpoint({ errors: [invalidRequest()] })(adapter) as EndpointGenerator`; `invalidRequest()` of `@domain-first/handlers-rest` answers invalid requests with `400` |
 
 Further generating methods are getters typed as `EndpointGenerator`; they keep `invalidRequest()` next to their own mappings: `errors: [httpError(MyError, 404), invalidRequest()]`.
@@ -980,6 +989,24 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 - While other files import the module, the CLI prints `Nothing was deleted: these files still use it.` with every `file → import`, and nothing changes.
 - In JSON mode, `delete-page` (`module`, optional `deleteRoute`, default true), `delete-widget`, `delete-ui-kit-component` and `delete-shared-hook` (`module`); a module still in use returns `DELETE_NOT_ALLOWED` with `details.usedBy`.
 
+
+## Svelte modules (`df-svelte`)
+
+`npx df-svelte` offers the operations of [`df-react`](#react-modules-df-react) for Svelte 5: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, and moving, renaming and deleting each of them. It needs the configuration file and `frontend.svelte`; otherwise it prints `Svelte is not configured: run df-init --section frontend.` and exits with 1. JSON requests take the operations and fields of `df-react`; `--describe` lists modules as `svelteModules`. Modules are written to `<rootFolder>/presentation/svelte`, `svelte/` below.
+
+| Module | Files |
+| --- | --- |
+| Page | `svelte/pages/<folders>/<file>-page.svelte`, exporting `<Name>PageProps` from `<script lang="ts" module>` and reading `$props()` |
+| Widget, `with separated ui` | `svelte/widgets/<folders>/<name>/`: `<file>-widget.svelte`, `types.ts`, `ui/<file>-widget-ui.svelte`, `hooks/use-<file>-ui-model.svelte.ts`, `index.ts` (`export { default as <Name>Widget }` and the props type); with `storybookFramework`, `ui/<file>-widget-ui.stories.ts` |
+| Widget, `headless` | `<file>-widget.svelte` rendering `<UI {...uiModel} />`, `types.ts` (`UI: Component<<Name>WidgetUIProps>`), `hooks/use-<file>-ui-model.svelte.ts`, `index.ts` |
+| Widget, `monolithic` | `<file>-widget.svelte` exporting `<Name>WidgetProps`, `index.ts` |
+| UI-kit component | `svelte/ui-kit/<file>/<file>.svelte`, `index.ts` (`export { default as <Name> }`); with `storybookFramework`, `<file>.stories.ts` |
+| Shared hook | `svelte/hooks/use-<file>.svelte.ts` with `use<Name>`, so it may use runes |
+
+Stories are CSF3 typed by `frontend.svelte.storybookFramework`: `import <Component> from './<file>.svelte'`, titles `UI-kit/<Name>` and `Widgets/<Folders>/<Name>`.
+
+With SvelteKit (`frontend.svelte.framework: sveltekit`), a page also gets its route at the same path, `src/routes/<folders>/<name>/+page.svelte`, which imports `<Name>Page` from the page file and renders it. An existing route file is kept and the CLI says to render the page there. Moving and deleting work as in `df-react`: imports with and without the `.svelte` extension are followed, and with SvelteKit the page's own route folder (whose `+page.svelte` renders `<Name>Page`) is offered to move or go along: `Move the SvelteKit route too: <from> → <to>? Its URL changes.`, `Delete its SvelteKit route too: <route>? Its URL stops working.` Its own files (`+page.svelte`, `+page.ts`, `+layout.svelte`…) follow; subfolders are other routes and stay.
+
 ## Integrations
 
 `npx df-integration` changes project files and prints next steps. It needs the configuration file: without it, it prints `No domain-first.project-structure.config.json found: run df-init first to initialize the project.` and exits with 1. The [project root](#project-root), staging and overwrite confirmation work as in `df-scaffold`. No integration installs packages, runs scripts or connects to a database. After the changes are written, the CLI prints one install command under `Run this command to install the required dependencies:` and other notes under `Additional information:`. Install commands omit version constraints; declared dependencies are kept.
@@ -1024,6 +1051,8 @@ With `wire`, the route serves `restHandlers` instead: `import { restHandlers } f
 
 Existing files are kept. With the Next adapter, it prints `npm i @domain-first/handlers-next` when the package is missing; when the generator already existed, it notes to pass `nextAdapter` to its `createEndpoint` calls.
 
+With SvelteKit selected in `frontend.svelte.framework`, it asks `Use @domain-first/handlers-svelte for REST endpoints` instead (JSON: `svelteAdapter`). The generator then uses `svelteAdapter`, and the catch-all route is `src/routes/api/[...path]/+server.ts` with `svelteEndpoints` from `@domain-first/handlers-svelte`, written the same way: `svelteEndpoints([])`, or `svelteEndpoints(restHandlers)` with `wire`. Missing `@domain-first/handlers-svelte` is printed as an install command.
+
 ### In-memory DB
 
 Sets `backend.withInMemoryDb` to `true` and writes the missing files of the shared [in-memory DB](#in-memory-db): the service and its wire with `wire`, as during [`df-init`](#df-init). Existing files are kept, so it also restores the wire when `wire` was enabled after the DB was created. No install command.
@@ -1047,6 +1076,8 @@ Sets `backend.withInMemoryDb` to `true` and writes the missing files of the shar
 ```
 
 `main.ts` uses relative story paths and sets the Vite alias `@` to the project root, computed at runtime from the config location. Add project CSS to `preview.ts`.
+
+With `frontend.svelte`, the integration is listed as `Storybook (Svelte + Vite)` or `Storybook (SvelteKit)` and asks nothing. It writes `<rootFolder>/presentation/svelte/.storybook/main.ts` and `preview.ts` for `@storybook/svelte-vite` (adding `@sveltejs/vite-plugin-svelte` unless the project's Vite config has it) or `@storybook/sveltekit` (which reads the project's Vite config), stories `../**/*.stories.@(ts|svelte)`, the same scripts with `presentation/svelte`, and `.gitignore` entry `<rootFolder>/presentation/svelte/storybook-static`. It sets `frontend.svelte.storybookFramework` and prints `--save-dev storybook <framework> vite` (plus `@sveltejs/vite-plugin-svelte` for Svelte + Vite) and `svelte` (`@sveltejs/kit svelte` for SvelteKit), each when missing.
 
 ### Prisma 8 (PostgreSQL, RC)
 
@@ -1144,15 +1175,17 @@ Listed with `handlers-rest`.
 
 | Item     | Value                                                                                                                         |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` with Next.js selected in `frontend.react.framework`, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `frontend.react`, `Add a Swagger UI page?` (default: Yes) |
-| Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`; with the Swagger UI page, `<rootFolder>/presentation/react/pages/swagger-page.tsx`, and with Next.js also its App Router route `app/swagger/page.tsx` (or `src/app/…`) |
+| Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` with Next.js selected in `frontend.react.framework`, `static/openapi.json` with SvelteKit in `frontend.svelte.framework`, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `frontend.react` or `frontend.svelte`, `Add a Swagger UI page?` (default: Yes) |
+| Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`; with the Swagger UI page, `<rootFolder>/presentation/react/pages/swagger-page.tsx`, and with Next.js also its App Router route `app/swagger/page.tsx` (or `src/app/…`); with Svelte, `<rootFolder>/presentation/svelte/pages/swagger-page.svelte`, and with SvelteKit also `src/routes/swagger/+page.svelte` |
 | Scripts  | `openapi`: `tsx --env-file-if-exists=.env scripts/generate-openapi.ts`                                                        |
-| Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev) |
-| Notes    | A reminder when `<rootFolder>/presentation/rest/index.ts` does not exist yet; with the Swagger UI page, a reminder to render it on a route (with Next.js, where `/swagger` lives instead), and one to set `resolveJsonModule` when `tsconfig.json` doesn't enable it |
+| Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev), for Svelte `swagger-ui` and `@types/swagger-ui` (dev) |
+| Notes    | A reminder when `<rootFolder>/presentation/rest/index.ts` does not exist yet; with the Swagger UI page, a reminder to render it on a route (with Next.js or SvelteKit, where `/swagger` lives instead), and one to set `resolveJsonModule` when `tsconfig.json` doesn't enable it |
 
 The script passes `restHandlers` from `<rootFolder>/presentation/rest` to `generateOpenAPI`. The document title is the package name in title case followed by `API`. `.env` is loaded because the wiring may read the environment.
 
 The Swagger UI page is a [page](#new-page) like any other, `SwaggerPage`. As with a scaffolded page, Next.js gets its App Router route at `/swagger`, and the page starts with `'use client'`, since Swagger UI keeps state; an existing `swagger/page.tsx` with other content is kept, with a reminder to render `SwaggerPage` there yourself. Without Next.js, it is not bound to a router. It imports `swagger-ui-react/swagger-ui.css` and the document at `OpenAPI document path:` as JSON (`with { type: 'json' }`), and renders `<SwaggerUI displayOperationId spec={spec} />`. It compiles once `npm run openapi` has written the document, with `resolveJsonModule` enabled. The CLI reads `compilerOptions.resolveJsonModule` from `tsconfig.json` through its `extends` chain (relative paths and packages; the nearest config wins) and prints a reminder when the option isn't `true`. When a config of the chain is missing or can't be read, it prints nothing. `tsconfig.json` itself is never changed.
+
+With `frontend.svelte`, the page is a Svelte [page](#svelte-modules-df-svelte), `swagger-page.svelte`. It imports `swagger-ui/dist/swagger-ui.css` and the document as JSON, and mounts Swagger UI into a `<div bind:this>` in `onMount` with a dynamic `import('swagger-ui')`, so it never runs during SvelteKit SSR. With SvelteKit it gets its route `src/routes/swagger/+page.svelte`, which renders `<SwaggerPage />`; an existing route with other content is kept, with a reminder. Without SvelteKit, it is not bound to a router.
 
 With TSDoc extraction, each endpoint's metadata is filled from the class passed as `this.handler` (the first argument of the generator call):
 
@@ -1166,26 +1199,29 @@ Metadata set explicitly on an endpoint takes precedence.
 
 ### Orval (API client)
 
-Listed with `handlers-rest`. Generates a typed API client and, with `frontend.react`, React Query hooks. Each target lives in its own data layer folder next to its config:
+Listed with `handlers-rest`. Generates a typed API client and, with `frontend.react`, React Query hooks, or with `frontend.svelte`, Svelte Query hooks. Each target lives in its own data layer folder next to its config:
 
 | Target              | Folder                                     |
 | ------------------- | ------------------------------------------ |
 | Typed API client    | `<rootFolder>/presentation/data-layer/`    |
 | React Query hooks   | `<rootFolder>/presentation/react/data-layer/` |
+| Svelte Query hooks  | `<rootFolder>/presentation/svelte/data-layer/` |
 
 | Item         | Value                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `frontend.react`, `Generate:` with `React Query hooks` (checked) and `Typed API client`, at least one. Without `frontend.react`, only the typed API client is generated |
-| Files        | In each target folder: `orval.config.ts`; `api-client/mutator.ts` if missing. For hooks, `query-provider.tsx` if missing. With both targets, the hooks use the typed client's mutator and get no own |
+| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `frontend.react` (`frontend.svelte`), `Generate:` with `React Query hooks` (`Svelte Query hooks`, checked) and `Typed API client`, at least one. Without a frontend section, only the typed API client is generated |
+| Files        | In each target folder: `orval.config.ts`; `api-client/mutator.ts` if missing. For hooks, `query-provider.tsx` (`query-provider.svelte`) if missing. Svelte Query hooks also get `orval.package.json`, which declares `@tanstack/svelte-query` 6 for Orval. With both targets, the hooks use the typed client's mutator and get no own. SvelteKit hooks: `src/routes/+layout.svelte` wrapping every page in `QueryProvider` when the layout doesn't exist; an existing layout without `QueryProvider` is kept, with a note to wrap `{@render children()}` |
 | Scripts      | `client:orval`: `orval --config "<folder>/orval.config.ts"` for each target, joined with `&&`                   |
 | `.gitignore` | `<folder>/orval/` for each target                                                                               |
-| Install      | `@tanstack/react-query` for hooks; `--save-dev orval`; each when missing                                       |
+| Install      | `@tanstack/react-query` (`@tanstack/svelte-query`) for hooks; `--save-dev orval`; each when missing |
 
 | File                  | Content                                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With Next.js selected in `frontend.react.framework`, request URLs start with `NEXT_PUBLIC_API_BASE_URL` |
+| `orval.config.ts`     | Split by tags into `orval`, schemas in its `model` folder. The typed client uses Orval's `fetch` client, the hooks are TanStack Query v5 hooks on `fetch`. With Next.js selected in `frontend.react.framework`, request URLs start with `NEXT_PUBLIC_API_BASE_URL`; with `frontend.svelte`, the hooks are `svelte-query` hooks and URLs start with `import.meta.env.VITE_API_BASE_URL`. Both are empty by default, so requests go to the app's origin |
 | `api-client/mutator.ts` | `customInstance`, used by every request. Throws `ApiError` with the status and the parsed body on non-2xx responses |
 | `query-provider.tsx`  | `QueryProvider` with one `QueryClient` per browser session                                                    |
+| `orval.package.json`  | Svelte Query hooks only: `output.packageJson` of the config. Orval picks the Svelte Query API by the version it finds there, so the hooks use the runes API of version 6 even before `@tanstack/svelte-query` is installed; an installed version takes precedence |
+| `query-provider.svelte` | `QueryProvider` taking `children` as a snippet, with one `QueryClient` per app instance; with SvelteKit, queries are `enabled` only in the browser (`$app/environment`), so server rendering doesn't fetch |
 
 ### Package scripts
 
@@ -1238,6 +1274,7 @@ The package ships `principles/df-principles.md`, instructions that apply to ever
 | `df-ps-plan-feature`    | Turns a feature request into a plan of bounded contexts and components                   |
 | `df-ps-scaffold`        | Generates components with `df-scaffold`; holds the shared rules and JSON workflow       |
 | `df-ps-react`           | Chooses, generates (`df-react`), moves and implements pages, widgets, UI-kit and hooks    |
+| `df-ps-svelte`          | The same for Svelte and SvelteKit with `df-svelte`                                        |
 | `df-ps-implement`       | Fills in the generated backend code                                                      |
 | `df-ps-project-scripts` | Rules for running project scripts such as Prisma emit and migrations                      |
 
@@ -1258,6 +1295,7 @@ npx df-lint [rootFolder]
 | Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and command/query contracts (and permitted neighboring handlers), or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
+| Svelte (`svelte`)          | The rules of `react` for `presentation/svelte`, including imports in `.svelte` files |
 | Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
 | Config (`config`)          | `process.env`, `process['env']` or `import.meta.env` in domain or application (use the config port)        |
 

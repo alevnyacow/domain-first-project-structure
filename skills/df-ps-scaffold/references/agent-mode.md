@@ -1,6 +1,6 @@
 # Non-interactive operations for agents
 
-Prefer the JSON interface for `df-scaffold`, `df-react` and `df-integration`. Initialization (`df-init`) remains a human task. The same plan, file creation and dependency rules apply to both interfaces.
+Prefer the JSON interface for `df-scaffold`, `df-react`, `df-svelte` and `df-integration`. Initialization (`df-init`) remains a human task. The same plan, file creation and dependency rules apply to both interfaces.
 
 For the complete operation map, conditional integration fields and recipes, read [agent-operations.md](agent-operations.md) for the work at hand.
 

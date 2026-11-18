@@ -15,7 +15,9 @@ import {
     drizzleConfigPath,
     inMemoryDbApplied,
     openapiScriptPath,
-    restEndpointGeneratorApplied
+    restEndpointGeneratorApplied,
+    storybookFolder,
+    storybookTitle
 } from '../integrations';
 import { checkbox, Separator } from '../interaction';
 import { printNextSteps } from '../print-next-steps';
@@ -35,7 +37,7 @@ const createdInRoot = (...segments: string[]) =>
 
 /**
  * Integrations are shown by group, but selected ones run in this order, each one seeing the changes of
- * the previous ones: Storybook configures `frontend.react` for the Swagger UI page
+ * the previous ones: Storybook configures `frontend.react` (or follows `frontend.svelte`) for the Swagger UI page
  * of OpenAPI, integration tests read the Prisma and Drizzle configs and the Vitest
  * config, Orval reads the OpenAPI document path.
  */
@@ -54,7 +56,7 @@ export const integrationIds = [
 
 const integrations: {
     id: (typeof integrationIds)[number];
-    name: string;
+    name: string | (() => string);
     group: 'backend' | 'frontend';
     run: () => string[] | Promise<string[]>;
     available?: () => boolean;
@@ -62,10 +64,10 @@ const integrations: {
 }[] = [
     {
         id: 'storybook',
-        name: 'Storybook (React + Vite)',
+        name: storybookTitle,
         group: 'frontend',
         run: addStorybook,
-        applied: () => createdInRoot('presentation/react/.storybook/main.ts')
+        applied: () => createdInRoot(`${storybookFolder()}/main.ts`)
     },
     {
         id: 'rest-endpoint-generator',
@@ -139,9 +141,13 @@ const integrations: {
         available: () => withHandlersRest(),
         applied: () =>
             createdInRoot('presentation/react/data-layer/orval.config.ts') ||
+            createdInRoot('presentation/svelte/data-layer/orval.config.ts') ||
             createdInRoot('presentation/data-layer/orval.config.ts')
     }
 ];
+
+const nameOf = ({ name }: { name: string | (() => string) }) =>
+    typeof name === 'string' ? name : name();
 
 export const addIntegration = async ({
     save = true
@@ -167,7 +173,7 @@ export const addIntegration = async ({
             ? [
                   new Separator(title),
                   ...items.map(({ value }) => ({
-                      name: `${value.name} · ${value.group}`,
+                      name: `${nameOf(value)} · ${value.group}`,
                       value
                   }))
               ]
@@ -200,7 +206,7 @@ export const addIntegration = async ({
 export const integrationDescriptions = () =>
     integrations.map((integration) => ({
         id: integration.id,
-        name: integration.name,
+        name: nameOf(integration),
         group: integration.group,
         available:
             (integration.group !== 'backend' ||

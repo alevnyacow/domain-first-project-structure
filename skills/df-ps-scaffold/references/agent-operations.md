@@ -129,22 +129,26 @@ The owner configures frontend first. React and Next.js use the same operations. 
 
 All support `dryRun` and `overwrite`. Use CLI moves even for a rename or folder regrouping; an existing target or a move into itself is rejected.
 
+## Svelte operations: df-svelte
+
+With `frontend.svelte` configured, `df-svelte` takes the same operations and fields as `df-react` for `<rootFolder>/presentation/svelte/`; `--describe` lists modules as `svelteModules`. Svelte and SvelteKit use the same operations. With SvelteKit, `page` also creates `src/routes/<name>/+page.svelte`, and `moveRoute` / `deleteRoute` apply to that route folder. Stories follow `frontend.svelte.storybookFramework`. Generated files: `df-ps-svelte/references/generators.md`.
+
 ## Integrations: df-integration
 
 Use `operation: "add"` and a nonempty `integrations` array. Select only IDs marked available by discovery. They run in the fixed order below, regardless of request order, so later integrations see earlier staged changes.
 
 | Integration ID | Relevant fields and conditions |
 | --- | --- |
-| `storybook` | Shared React + Vite setup. `configureReact` is required when React is absent or another Storybook framework is configured; true aligns it with the shared preset, false skips this setup. |
-| `rest-endpoint-generator` | Backend must have `@domain-first/handlers-rest`. `nextAdapter` applies only when `frontend.react.framework` is `next`; omitted means no Next adapter in JSON mode. Existing support files are preserved with a manual connection note as needed. |
+| `storybook` | Shared React + Vite setup. `configureReact` is required when React is absent or another Storybook framework is configured; true aligns it with the shared preset, false skips this setup. With `frontend.svelte`, it sets up `@storybook/svelte-vite` (Svelte) or `@storybook/sveltekit` (SvelteKit) in `presentation/svelte/.storybook` instead, without extra fields. |
+| `rest-endpoint-generator` | Backend must have `@domain-first/handlers-rest`. `nextAdapter` applies only when `frontend.react.framework` is `next`, `svelteAdapter` (`@domain-first/handlers-svelte`, route `src/routes/api/[...path]/+server.ts`) only when `frontend.svelte.framework` is `sveltekit`; omitted means no framework adapter in JSON mode. Existing support files are preserved with a manual connection note as needed. |
 | `in-memory-db` | Backend required. Enables the DB flag and restores missing support files while keeping edited files. No extra fields. |
 | `prisma` | Backend required. `withService` defaults to true; false skips the infrastructure service and its wire. Registers `prisma` implementation choices. Existing incompatible Prisma setups are rejected rather than upgraded. |
 | `drizzle` | Backend required. `withService` defaults to true; false skips the infrastructure service and its wire. Registers `drizzle` implementation choices. A `drizzle.config.*` in the project root is rejected as an existing setup. |
 | `vitest` | Backend required. `replaceTestingLibrary` is required if a different testing library is configured; true changes it to Vitest, false skips this setup. |
 | `playwright` | No extra integration-specific fields. Adds its config, example and scripts. |
 | `testcontainers` | Backend required. With wire: optional `integrationTestTypes`, the saved primary types whose implementations get integration specs (omitted: the configured list stays); missing specs of existing primary implementations are added. Reads staged Prisma/Drizzle/Vitest setup when selected together. Database scripts are generated, not executed. |
-| `openapi` | Backend with `handlers-rest`. `routePrefix` defaults to `/api`; `openapiPath` is computed from the project unless supplied. `withExtractor` defaults to true. `swaggerPage` applies only with React configured and defaults to true there; otherwise omit it. |
-| `orval` | Requires configured `handlers-rest`. `openapiPath` is read from the staged/existing OpenAPI generator when omitted. With React configured, `targets` can be a nonempty list of `hooks`/`client` and defaults to `hooks`. Without React, omit `targets`: the typed client is generated automatically. |
+| `openapi` | Backend with `handlers-rest`. `routePrefix` defaults to `/api`; `openapiPath` is computed from the project unless supplied. `withExtractor` defaults to true. `swaggerPage` applies only with React or Svelte configured and defaults to true there; otherwise omit it. With Svelte it is `swagger-page.svelte` (route `src/routes/swagger/+page.svelte` with SvelteKit), and `openapiPath` defaults to `static/openapi.json` with SvelteKit. |
+| `orval` | Requires configured `handlers-rest`. `openapiPath` is read from the staged/existing OpenAPI generator when omitted. With React or Svelte configured, `targets` can be a nonempty list of `hooks`/`client` and defaults to `hooks` (React Query or Svelte Query hooks; with SvelteKit, a missing `src/routes/+layout.svelte` is created with `QueryProvider`). Without a frontend, omit `targets`: the typed client is generated automatically. |
 
 Fields for integrations not selected, or for conditions that do not apply, must be omitted. For example, `targets` on a non-React project and `nextAdapter` on an explicitly React project are unused parameters. If OpenAPI and Orval are selected together, a supplied `openapiPath` applies to both.
 

@@ -5,26 +5,47 @@ import { confirm, input } from '../interaction';
 import { NestedName } from '../nested-name';
 import { nextAppFolder, usesNext } from '../next-app';
 import { ProjectRoot } from '../project-root';
+import type { FrontendFramework } from '../react-module-move';
+import { svelteKitRoutesFolder, usesSvelteKit } from '../sveltekit-app';
 import { compilerOption } from '../tsconfig';
 import {
     reactPageContent,
     scaffoldNextRoute
 } from '../use-cases/scaffold-react-page';
+import { scaffoldSvelteKitRoute } from '../use-cases/scaffold-svelte-modules';
 import { openapiExtractor, openapiExtractorPath } from './openapi-extractor';
 import { addPackageScripts, describeScripts } from './package-scripts';
 
 export const openapiScriptPath = 'scripts/generate-openapi.ts';
 
-export const defaultOpenapiPath = (withNext: boolean) =>
-    withNext ? 'public/openapi.json' : 'openapi.json';
+/** The static assets folder of Next.js or SvelteKit, so the app can serve it. */
+export const defaultOpenapiPath = () =>
+    usesNext()
+        ? 'public/openapi.json'
+        : usesSvelteKit()
+          ? 'static/openapi.json'
+          : 'openapi.json';
 
 const extractorPackages = ['ts-morph', '@microsoft/tsdoc'];
 
-export const swaggerPagePath = (rootFolder: string) =>
+export const swaggerPagePath = (
+    rootFolder: string,
+    framework: FrontendFramework = 'react'
+) =>
     path.posix.join(
         rootFolder.replaceAll('\\', '/'),
-        'presentation/react/pages/swagger-page.tsx'
+        framework === 'svelte'
+            ? 'presentation/svelte/pages/swagger-page.svelte'
+            : 'presentation/react/pages/swagger-page.tsx'
     );
+
+const specImportOf = (pagePath: string, outputPath: string) => {
+    const specImport = path.posix.relative(
+        path.posix.dirname(pagePath),
+        outputPath
+    );
+    return specImport.startsWith('.') ? specImport : `./${specImport}`;
+};
 
 /**
  * A React page rendering the OpenAPI document with Swagger UI. With
@@ -36,19 +57,51 @@ export const swaggerPage = (
     outputPath: string,
     withNext = false
 ) => {
-    const specImport = path.posix.relative(
-        path.posix.dirname(swaggerPagePath(rootFolder)),
-        outputPath
-    );
     const page = reactPageContent('Swagger', {
         imports: [
             "import 'swagger-ui-react/swagger-ui.css'",
             "import SwaggerUI from 'swagger-ui-react'",
-            `import spec from '${specImport.startsWith('.') ? specImport : `./${specImport}`}' with { type: 'json' }`
+            `import spec from '${specImportOf(swaggerPagePath(rootFolder), outputPath)}' with { type: 'json' }`
         ],
         body: '<SwaggerUI displayOperationId spec={spec} />'
     });
     return withNext ? `'use client'\n\n${page}` : page;
+};
+
+/**
+ * A Svelte page rendering the OpenAPI document with Swagger UI. Swagger UI
+ * needs the browser, so it is loaded on mount and never runs during SSR.
+ */
+export const svelteSwaggerPage = (rootFolder: string, outputPath: string) =>
+    `
+<script lang="ts" module>
+    export type SwaggerPageProps = {}
+</script>
+
+<script lang="ts">
+    import 'swagger-ui/dist/swagger-ui.css'
+    import { onMount } from 'svelte'
+    import spec from '${specImportOf(swaggerPagePath(rootFolder, 'svelte'), outputPath)}'
+
+    let props: SwaggerPageProps = $props()
+    let container: HTMLDivElement
+
+    onMount(async () => {
+        const { default: SwaggerUI } = await import('swagger-ui')
+        SwaggerUI({ domNode: container, spec, displayOperationId: true })
+    })
+</script>
+
+<div bind:this={container}></div>
+`.trim();
+
+/** Packages of the Swagger UI page: dependencies and dev dependencies. */
+const swaggerPackages: Record<
+    FrontendFramework,
+    { dependency: string; types: string }
+> = {
+    react: { dependency: 'swagger-ui-react', types: '@types/swagger-ui-react' },
+    svelte: { dependency: 'swagger-ui', types: '@types/swagger-ui' }
 };
 
 export const openapiScripts = {
@@ -139,7 +192,7 @@ export const addOpenapi = async (): Promise<string[]> => {
     const outputPath = await input({
         key: 'openapiPath',
         message: 'OpenAPI document path:',
-        default: defaultOpenapiPath(usesNext()),
+        default: defaultOpenapiPath(),
         validate: (value) =>
             splitPath(value).length ? true : 'Path is required'
     });
@@ -151,8 +204,14 @@ export const addOpenapi = async (): Promise<string[]> => {
         default: true
     });
 
+    const { frontend } = ConfigFile.Instance.data;
+    const framework: FrontendFramework | undefined = frontend?.svelte
+        ? 'svelte'
+        : frontend?.react
+          ? 'react'
+          : undefined;
     const withSwaggerPage =
-        Boolean(ConfigFile.Instance.data.frontend?.react) &&
+        !!framework &&
         (await confirm({
             key: 'swaggerPage',
             message: 'Add a Swagger UI page?',
@@ -181,27 +240,40 @@ export const addOpenapi = async (): Promise<string[]> => {
         generatorFile.data = content;
     }
 
-    const withNextRoute = withSwaggerPage && usesNext();
-    let nextRouteHint: string | undefined;
+    // Like a scaffolded page, it gets its route at /swagger
+    const routeFile =
+        withSwaggerPage && framework === 'react' && usesNext()
+            ? `${nextAppFolder(root)}/swagger/page.tsx`
+            : withSwaggerPage && framework === 'svelte' && usesSvelteKit()
+              ? `${svelteKitRoutesFolder(root)}/swagger/+page.svelte`
+              : undefined;
+    let routeHint: string | undefined;
     if (withSwaggerPage) {
-        const pagePath = path.join(root, swaggerPagePath(rootFolder));
-        const pageFile = new File(pagePath);
-        const page = swaggerPage(
-            rootFolder,
-            splitPath(outputPath).join('/'),
-            withNextRoute
+        const pagePath = path.join(
+            root,
+            swaggerPagePath(rootFolder, framework)
         );
+        const pageFile = new File(pagePath);
+        const page =
+            framework === 'svelte'
+                ? svelteSwaggerPage(rootFolder, splitPath(outputPath).join('/'))
+                : swaggerPage(
+                      rootFolder,
+                      splitPath(outputPath).join('/'),
+                      !!routeFile
+                  );
         if (!pageFile.exists || pageFile.data !== page) {
             pageFile.data = page;
         }
-        // Like a scaffolded page, it gets its App Router route at /swagger
-        if (withNextRoute) {
-            nextRouteHint = scaffoldNextRoute(
-                new NestedName('swagger'),
-                pagePath
-            );
+        if (routeFile) {
+            routeHint = (
+                framework === 'svelte'
+                    ? scaffoldSvelteKitRoute
+                    : scaffoldNextRoute
+            )(new NestedName('swagger'), pagePath);
         }
     }
+    const packages = swaggerPackages[framework ?? 'react'];
 
     /**
      * The page imports the document as JSON. An unreadable config gives
@@ -225,11 +297,11 @@ export const addOpenapi = async (): Promise<string[]> => {
         ...(missingExtractorPackages.length
             ? [`npm install --save-dev ${missingExtractorPackages.join(' ')}`]
             : []),
-        ...(withSwaggerPage && !dependencies['swagger-ui-react']
-            ? ['npm install swagger-ui-react']
+        ...(withSwaggerPage && !dependencies[packages.dependency]
+            ? [`npm install ${packages.dependency}`]
             : []),
-        ...(withSwaggerPage && !dependencies['@types/swagger-ui-react']
-            ? ['npm install --save-dev @types/swagger-ui-react']
+        ...(withSwaggerPage && !dependencies[packages.types]
+            ? [`npm install --save-dev ${packages.types}`]
             : []),
         ...(resolveJsonModule === true || resolveJsonModule === null
             ? []
@@ -239,15 +311,15 @@ export const addOpenapi = async (): Promise<string[]> => {
         ...describeScripts(selected, {
             openapi: `generate the OpenAPI document from restHandlers in ${splitPath(outputPath).join('/')}`
         }),
-        ...(withSwaggerPage && !withNextRoute
+        ...(withSwaggerPage && !routeFile
             ? [
-                  `SwaggerPage from ${swaggerPagePath(rootFolder)} shows ${splitPath(outputPath).join('/')} once it is generated — render it on a route of your app`
+                  `SwaggerPage from ${swaggerPagePath(rootFolder, framework)} shows ${splitPath(outputPath).join('/')} once it is generated — render it on a route of your app`
               ]
             : []),
-        ...(withNextRoute
+        ...(routeFile
             ? [
-                  nextRouteHint ??
-                      `/swagger shows ${splitPath(outputPath).join('/')} once it is generated — the route is ${nextAppFolder(root)}/swagger/page.tsx`
+                  routeHint ??
+                      `/swagger shows ${splitPath(outputPath).join('/')} once it is generated — the route is ${routeFile}`
               ]
             : []),
         ...(hasRestHandlers

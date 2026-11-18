@@ -305,6 +305,112 @@ export default function Page() {
     expect(filesToOverwrite()).toEqual([]);
 });
 
+const useSvelte = (project: string, framework: 'svelte' | 'sveltekit') =>
+    fs.writeFileSync(
+        path.join(project, 'domain-first.project-structure.config.json'),
+        JSON.stringify({
+            project: { rootFolder: 'src/lib' },
+            backend: { domainFirstPackages: [] },
+            frontend: { svelte: { framework } }
+        })
+    );
+
+test('with SvelteKit, the Svelte Swagger UI page gets its route and the document goes to static/', async () => {
+    const { project } = setup(
+        'src/lib',
+        {
+            name: 'demo',
+            dependencies: { '@domain-first/handlers-rest': '*' },
+            devDependencies: { tsx: '*' }
+        },
+        []
+    );
+    useSvelte(project, 'sveltekit');
+    rstest
+        .mocked(input)
+        .mockImplementation(async ({ default: fallback }: any) => fallback);
+    rstest.mocked(confirm).mockResolvedValueOnce(false);
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
+    const steps = await addOpenapi();
+    writePendingChanges();
+
+    expect(
+        fs.readFileSync(
+            path.join(project, 'scripts/generate-openapi.ts'),
+            'utf8'
+        )
+    ).toContain("outputFile: { path: 'static/openapi.json' }");
+    expect(
+        fs.readFileSync(
+            path.join(
+                project,
+                'src/lib/presentation/svelte/pages/swagger-page.svelte'
+            ),
+            'utf8'
+        )
+    ).toBe(`<script lang="ts" module>
+    export type SwaggerPageProps = {}
+</script>
+
+<script lang="ts">
+    import 'swagger-ui/dist/swagger-ui.css'
+    import { onMount } from 'svelte'
+    import spec from '../../../../../static/openapi.json'
+
+    let props: SwaggerPageProps = $props()
+    let container: HTMLDivElement
+
+    onMount(async () => {
+        const { default: SwaggerUI } = await import('swagger-ui')
+        SwaggerUI({ domNode: container, spec, displayOperationId: true })
+    })
+</script>
+
+<div bind:this={container}></div>`);
+    expect(
+        fs.readFileSync(
+            path.join(project, 'src/routes/swagger/+page.svelte'),
+            'utf8'
+        )
+    ).toBe(`<script lang="ts">
+    import SwaggerPage from '../../lib/presentation/svelte/pages/swagger-page.svelte'
+</script>
+
+<SwaggerPage />`);
+    expect(steps).toContain('npm install swagger-ui');
+    expect(steps).toContain('npm install --save-dev @types/swagger-ui');
+    expect(steps).toContain(
+        '/swagger shows static/openapi.json once it is generated — the route is src/routes/swagger/+page.svelte'
+    );
+    expect(steps.some((step) => step.includes('swagger-ui-react'))).toBe(false);
+});
+
+test('with plain Svelte, the Swagger UI page is not bound to a router', async () => {
+    const { project } = setup(
+        'src/lib',
+        {
+            name: 'demo',
+            dependencies: {
+                '@domain-first/handlers-rest': '*',
+                'swagger-ui': '*'
+            },
+            devDependencies: { tsx: '*', '@types/swagger-ui': '*' }
+        },
+        ['/api', 'openapi.json']
+    );
+    useSvelte(project, 'svelte');
+    rstest.mocked(confirm).mockResolvedValueOnce(false);
+    rstest.mocked(confirm).mockResolvedValueOnce(true);
+    const steps = await addOpenapi();
+    writePendingChanges();
+
+    expect(fs.existsSync(path.join(project, 'src/routes'))).toBe(false);
+    expect(steps).not.toContain('npm install swagger-ui');
+    expect(steps).toContain(
+        'SwaggerPage from src/lib/presentation/svelte/pages/swagger-page.svelte shows openapi.json once it is generated — render it on a route of your app'
+    );
+});
+
 test('the Swagger UI page asks for resolveJsonModule unless it is set', async () => {
     const hint =
         'set "resolveJsonModule": true in compilerOptions of tsconfig.json — the Swagger UI page imports the OpenAPI document as JSON';

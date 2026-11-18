@@ -26,7 +26,9 @@ rstest.mock('../integrations', () => ({
     addInMemoryDb: rstest.fn(),
     restEndpointGeneratorApplied: rstest.fn(() => false),
     inMemoryDbApplied: rstest.fn(() => false),
-    openapiScriptPath: 'scripts/generate-openapi.ts'
+    openapiScriptPath: 'scripts/generate-openapi.ts',
+    storybookTitle: () => 'Storybook (React + Vite)',
+    storybookFolder: () => 'presentation/react/.storybook'
 }));
 rstest.mock('../config-file', () => ({
     ConfigFile: {

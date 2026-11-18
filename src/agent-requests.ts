@@ -154,47 +154,53 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
         aggregate: name.optional()
     })
 ]);
-export const reactRequestSchema = z.discriminatedUnion('operation', [
-    operation('page', { ...common, name: nestedName }),
-    operation('widget', {
-        ...common,
-        name: nestedName,
-        widgetType: z.enum(['monolithic', 'separated', 'headless']).optional()
-    }),
-    operation('ui-kit-component', { ...common, name }),
-    operation('shared-hook', { ...common, name }),
-    operation('move-page', {
-        ...common,
-        module: nestedName,
-        name: nestedName,
-        moveRoute: z
-            .boolean()
-            .optional()
-            .describe(
-                'With Next.js and a route at the page path: move it too (default true). Omit it without such a route.'
-            )
-    }),
-    operation('delete-page', {
-        ...common,
-        module: nestedName,
-        deleteRoute: z
-            .boolean()
-            .optional()
-            .describe(
-                "With Next.js and the page's own route: delete it too (default true). Omit it without such a route."
-            )
-    }),
-    operation('delete-widget', { ...common, module: nestedName }),
-    operation('move-ui-kit-component', { ...common, module: name, name }),
-    operation('move-shared-hook', { ...common, module: name, name }),
-    operation('delete-ui-kit-component', { ...common, module: name }),
-    operation('delete-shared-hook', { ...common, module: name }),
-    operation('move-widget', {
-        ...common,
-        module: nestedName,
-        name: nestedName
-    })
-]);
+/** Requests of df-react and df-svelte; `router` names their page router. */
+const frontendRequestSchema = (router: string) =>
+    z.discriminatedUnion('operation', [
+        operation('page', { ...common, name: nestedName }),
+        operation('widget', {
+            ...common,
+            name: nestedName,
+            widgetType: z
+                .enum(['monolithic', 'separated', 'headless'])
+                .optional()
+        }),
+        operation('ui-kit-component', { ...common, name }),
+        operation('shared-hook', { ...common, name }),
+        operation('move-page', {
+            ...common,
+            module: nestedName,
+            name: nestedName,
+            moveRoute: z
+                .boolean()
+                .optional()
+                .describe(
+                    `With ${router} and a route at the page path: move it too (default true). Omit it without such a route.`
+                )
+        }),
+        operation('delete-page', {
+            ...common,
+            module: nestedName,
+            deleteRoute: z
+                .boolean()
+                .optional()
+                .describe(
+                    `With ${router} and the page's own route: delete it too (default true). Omit it without such a route.`
+                )
+        }),
+        operation('delete-widget', { ...common, module: nestedName }),
+        operation('move-ui-kit-component', { ...common, module: name, name }),
+        operation('move-shared-hook', { ...common, module: name, name }),
+        operation('delete-ui-kit-component', { ...common, module: name }),
+        operation('delete-shared-hook', { ...common, module: name }),
+        operation('move-widget', {
+            ...common,
+            module: nestedName,
+            name: nestedName
+        })
+    ]);
+export const reactRequestSchema = frontendRequestSchema('Next.js');
+export const svelteRequestSchema = frontendRequestSchema('SvelteKit');
 const relativePath = z
     .string()
     .regex(/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/)
@@ -207,6 +213,7 @@ export const integrationRequestSchema = operation('add', {
     ...common,
     integrations: z.array(z.enum(integrationIds)).min(1),
     nextAdapter: z.boolean().optional(),
+    svelteAdapter: z.boolean().optional(),
     configureReact: z.boolean().optional(),
     replaceTestingLibrary: z.boolean().optional(),
     integrationTestTypes: z
@@ -232,10 +239,15 @@ export const integrationRequestSchema = operation('add', {
         .optional(),
     scriptNames: z.record(id, z.string().regex(/^[a-zA-Z0-9:_-]+$/)).optional()
 });
-export type AgentCommand = 'df-scaffold' | 'df-react' | 'df-integration';
+export type AgentCommand =
+    | 'df-scaffold'
+    | 'df-react'
+    | 'df-svelte'
+    | 'df-integration';
 export const requestSchemaFor = (command: AgentCommand) =>
     ({
         'df-scaffold': scaffoldRequestSchema,
         'df-react': reactRequestSchema,
+        'df-svelte': svelteRequestSchema,
         'df-integration': integrationRequestSchema
     })[command];

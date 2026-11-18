@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, expect, rstest, test } from '@rstest/core';
 import { Folder, writePendingChanges } from '../file-system';
+import type { RestAdapter } from '../rest-adapters';
 import { scaffoldRestEndpointGenerator } from './rest-endpoint-generator';
 
 const roots: string[] = [];
@@ -10,7 +11,7 @@ afterAll(() => {
     for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
 });
 
-const generate = (withNextAdapter?: boolean) => {
+const generate = (adapter?: RestAdapter) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'df-rest-generator-'));
     roots.push(root);
     fs.writeFileSync(path.join(root, 'package.json'), '{}');
@@ -25,7 +26,7 @@ const generate = (withNextAdapter?: boolean) => {
     try {
         scaffoldRestEndpointGenerator(
             new Folder(root).subitem(['src', 'shared-kernel']),
-            { withNextAdapter }
+            { adapter }
         );
         writePendingChanges();
     } finally {
@@ -53,13 +54,22 @@ test('declares a placeholder adapter above the class by default', () => {
 });
 
 test('imports the Next adapter instead of the placeholder', () => {
-    const content = generate(true);
+    const content = generate('next');
     expect(content).toContain(
         "import { nextAdapter } from '@domain-first/handlers-next'"
     );
     expect(content).toContain('})(nextAdapter) as EndpointGenerator');
     expect(content).not.toContain('const adapter');
     expect(content).not.toContain('type Adapter');
+});
+
+test('imports the SvelteKit adapter instead of the placeholder', () => {
+    const content = generate('svelte');
+    expect(content).toContain(
+        "import { svelteAdapter } from '@domain-first/handlers-svelte'"
+    );
+    expect(content).toContain('})(svelteAdapter) as EndpointGenerator');
+    expect(content).not.toContain('const adapter');
 });
 
 test('answers invalid requests with invalidRequest of handlers-rest', () => {

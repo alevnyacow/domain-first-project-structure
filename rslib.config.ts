@@ -8,6 +8,7 @@ export default defineConfig({
       integration: './src/integration.ts',
       init: './src/init.ts',
       react: './src/react.ts',
+      svelte: './src/svelte.ts',
       upgrade: './src/upgrade.ts',
       graph: './src/graph.ts',
       'agent-principles': './src/agent-principles.ts',

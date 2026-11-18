@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { File, type Folder } from '../file-system';
+import { type RestAdapter, restAdapters } from '../rest-adapters';
 import { createPresentationService } from './scaffold-new-presentation-service';
 
 const name = 'rest-endpoint-generator';
@@ -7,24 +8,26 @@ const name = 'rest-endpoint-generator';
 /**
  * The one endpoint generator of the project: a Shared Kernel presentation
  * service, scaffolded like any other. Every generating method is a getter
- * typed as `EndpointGenerator`. With `withNextAdapter`, the adapter is
- * `nextAdapter` of `@domain-first/handlers-next` instead of a placeholder.
+ * typed as `EndpointGenerator`. With a framework `adapter`, it is
+ * `nextAdapter` of `@domain-first/handlers-next` or `svelteAdapter` of
+ * `@domain-first/handlers-svelte` instead of a placeholder.
  */
 export const scaffoldRestEndpointGenerator = (
     sharedFolder: Folder,
-    { withNextAdapter = false }: { withNextAdapter?: boolean } = {}
+    { adapter: framework }: { adapter?: RestAdapter } = {}
 ) =>
     createPresentationService(sharedFolder, name, (className) => {
-        const adapter = withNextAdapter ? 'nextAdapter' : 'adapter';
+        const known = framework && restAdapters[framework];
+        const adapter = known ? known.adapter : 'adapter';
         return `
 import {
-${withNextAdapter ? '' : '    type Adapter,\n'}    type EndpointGenerator,
+${known ? '' : '    type Adapter,\n'}    type EndpointGenerator,
     createEndpoint,
     invalidRequest
 } from '@domain-first/handlers-rest'
 ${
-    withNextAdapter
-        ? `import { nextAdapter } from '@domain-first/handlers-next'`
+    known
+        ? `import { ${known.adapter} } from '${known.package}'`
         : `
 /**
  * The adapter of your HTTP framework.

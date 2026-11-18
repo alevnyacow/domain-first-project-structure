@@ -7,6 +7,7 @@ const ignoredFolders = new Set([
     'node_modules',
     '.git',
     '.next',
+    '.svelte-kit',
     'dist',
     'build',
     'out',
@@ -14,7 +15,7 @@ const ignoredFolders = new Set([
     'storybook-static'
 ]);
 
-export const codeExtension = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|mdx)$/;
+export const codeExtension = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|mdx|svelte)$/;
 
 export const escapeRegExp = (value: string) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

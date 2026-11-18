@@ -23,4 +23,5 @@ export * from './scaffold-react-page';
 export * from './scaffold-react-shared-hook';
 export * from './scaffold-react-ui-kit-component';
 export * from './scaffold-react-widget';
+export * from './scaffold-svelte-modules';
 export * from './wire-dependency';

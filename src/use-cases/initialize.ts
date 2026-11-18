@@ -12,14 +12,15 @@ import { File, Folder, withoutOverwrites } from '../file-system';
 import { scaffoldInMemoryDb } from '../in-memory-db';
 import {
     addStorybook,
-    askNextAdapter,
+    askRestAdapter,
     hasDependency,
     missingDomainFirstPackages,
     missingPackages,
     scaffoldRestEndpointGeneratorFiles,
-    storybookFrameworkPackage
+    storybookPackageFor
 } from '../integrations';
 import { ProjectRoot } from '../project-root';
+import type { RestAdapter } from '../rest-adapters';
 import { defaultEnvBranches, envBranchedWireSource } from '../wire-branches';
 
 export const configurationSections = [
@@ -208,65 +209,97 @@ const configureBackend = async (config: ProjectConfig): Promise<string[]> => {
     return notes;
 };
 
+type FrontendChoice = 'react' | 'next' | 'svelte' | 'sveltekit';
+
+/** Packages of each frontend choice, printed when missing. */
+const frontendPackages: Record<FrontendChoice, string[]> = {
+    react: ['react', 'react-dom'],
+    next: ['next', 'react', 'react-dom'],
+    svelte: ['svelte'],
+    sveltekit: ['@sveltejs/kit', 'svelte']
+};
+
+const savedFrontendChoice = ({ frontend }: ProjectConfig) =>
+    frontend?.react?.framework ??
+    frontend?.svelte?.framework ??
+    (frontend?.react ? 'react' : frontend?.svelte ? 'svelte' : undefined);
+
 const configureFrontend = async (config: ProjectConfig) => {
-    // Next.js shares React generators and story settings.
-    const currentFramework =
-        config.frontend?.react?.framework ??
-        (hasDependency('next') ? 'next' : 'react');
-    const framework = await select<'react' | 'next'>({
+    // Next.js shares React generators and story settings, SvelteKit Svelte's.
+    const choice = await select<FrontendChoice>({
         message: 'Frontend framework:',
         choices: [
             { name: 'React', value: 'react' },
-            { name: 'Next.js', value: 'next' }
+            { name: 'Next.js', value: 'next' },
+            { name: 'Svelte', value: 'svelte' },
+            { name: 'SvelteKit', value: 'sveltekit' }
         ],
-        default: currentFramework
+        default:
+            savedFrontendChoice(config) ??
+            (hasDependency('next')
+                ? 'next'
+                : hasDependency('@sveltejs/kit')
+                  ? 'sveltekit'
+                  : hasDependency('svelte')
+                    ? 'svelte'
+                    : 'react')
     });
-    const withNextAdapter =
-        framework === 'next' && config.backend
-            ? await askNextAdapter({ nextSelected: true })
-            : false;
+    const family = choice === 'react' || choice === 'next' ? 'react' : 'svelte';
+    const adapter: RestAdapter | undefined =
+        choice === 'next'
+            ? 'next'
+            : choice === 'sveltekit'
+              ? 'svelte'
+              : undefined;
+    const restAdapter =
+        adapter && config.backend
+            ? { adapter: await askRestAdapter({ adapter }) }
+            : { adapter: undefined };
+    const current = config.frontend?.[family];
     const withStorybook = await confirm({
         message: 'Use Storybook',
-        default: config.frontend?.react
-            ? Boolean(config.frontend.react.storybookFramework)
-            : true
+        default: current ? Boolean(current.storybookFramework) : true
     });
-    const storybookFramework = withStorybook
-        ? storybookFrameworkPackage
-        : undefined;
+    // One frontend framework per project: the other section is replaced.
+    const { react, svelte, ...otherSettings } = config.frontend ?? {};
     ConfigFile.update({
         frontend: {
-            ...config.frontend,
-            react: { ...config.frontend?.react, framework, storybookFramework }
+            ...otherSettings,
+            [family]: {
+                ...current,
+                framework: choice,
+                storybookFramework: withStorybook
+                    ? storybookPackageFor(choice)
+                    : undefined
+            }
         }
     });
     return {
-        withNextAdapter,
+        restAdapter,
         nextSteps: [
-            ...missingPackages(
-                framework === 'next'
-                    ? ['next', 'react', 'react-dom']
-                    : ['react', 'react-dom']
-            ),
+            ...missingPackages(frontendPackages[choice]),
             ...(withStorybook ? await addStorybook() : [])
         ]
     };
 };
 
-/** Finish REST setup once, after the frontend choice is known. */
-const configureRest = async (withNextAdapter?: boolean): Promise<string[]> => {
+/**
+ * Finish REST setup once, after the frontend choice is known. Without
+ * `restAdapter`, the adapter of the configured framework is asked about.
+ */
+const configureRest = async (restAdapter?: {
+    adapter?: RestAdapter;
+}): Promise<string[]> => {
     const backend = ConfigFile.Instance.data.backend;
     if (!backend) return [];
     const withRest = backend.domainFirstPackages.includes(
         '@domain-first/handlers-rest'
     );
-    const nextSelected =
-        ConfigFile.Instance.data.frontend?.react?.framework === 'next';
-    if (withNextAdapter === undefined && (withRest || nextSelected)) {
-        withNextAdapter = await askNextAdapter();
-    }
-    if (!withRest && !withNextAdapter) return [];
-    if (withNextAdapter && !withRest) {
+    const adapter =
+        restAdapter?.adapter ??
+        (restAdapter ? undefined : await askRestAdapter());
+    if (!withRest && !adapter) return [];
+    if (adapter && !withRest) {
         ConfigFile.update({
             backend: {
                 ...backend,
@@ -277,9 +310,7 @@ const configureRest = async (withNextAdapter?: boolean): Promise<string[]> => {
             }
         });
     }
-    return scaffoldRestEndpointGeneratorFiles({
-        withNextAdapter: withNextAdapter ?? false
-    });
+    return scaffoldRestEndpointGeneratorFiles({ adapter });
 };
 
 /** New projects walk all sections; existing projects can resume any section. */
@@ -309,7 +340,7 @@ export const initializeUseCase = async (
     }
     const nextSteps: string[] = [];
     let backendConfigured = false;
-    let withNextAdapter: boolean | undefined;
+    let restAdapter: { adapter?: RestAdapter } | undefined;
     for (const currentSection of sections) {
         console.log(
             `\n${currentSection[0].toUpperCase()}${currentSection.slice(1)} configuration`
@@ -342,14 +373,14 @@ export const initializeUseCase = async (
                 break;
             case 'frontend': {
                 const frontend = await configureFrontend(config);
-                withNextAdapter = frontend.withNextAdapter;
+                restAdapter = frontend.restAdapter;
                 nextSteps.push(...frontend.nextSteps);
                 break;
             }
         }
     }
-    if (backendConfigured || withNextAdapter) {
-        const restSteps = await configureRest(withNextAdapter);
+    if (backendConfigured || restAdapter?.adapter) {
+        const restSteps = await configureRest(restAdapter);
         nextSteps.push(...missingDomainFirstPackages(), ...restSteps);
     }
     return nextSteps;

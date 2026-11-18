@@ -122,7 +122,8 @@ const sourceFiles = (folder: string): string[] => {
         if (entry.isDirectory()) {
             return entry.name === 'node_modules' ? [] : sourceFiles(entryPath);
         }
-        return /\.(c|m)?tsx?$/.test(entry.name) && !entry.name.endsWith('.d.ts')
+        return /\.((c|m)?tsx?|svelte)$/.test(entry.name) &&
+            !entry.name.endsWith('.d.ts')
             ? [entryPath]
             : [];
     });
@@ -259,7 +260,7 @@ const helperImportRule = (
 
 /**
  * Checks imports: bounded context isolation, layers, dependency rules
- * between module files, and React modules.
+ * between module files, and React and Svelte modules.
  */
 const importViolations = (
     projectRoot: string,
@@ -269,10 +270,22 @@ const importViolations = (
     const root = path.resolve(projectRoot, rootFolder);
     const contextsFolder = path.join(root, 'bounded-contexts');
     const sharedFolder = path.join(root, 'shared-kernel');
-    const reactFolder = path.join(root, 'presentation', 'react');
-    const uiKitFolder = path.join(reactFolder, 'ui-kit');
-    const widgetsFolder = path.join(reactFolder, 'widgets');
-    const hooksFolder = path.join(reactFolder, 'hooks');
+    /** `presentation/react` and `presentation/svelte` follow the same rules. */
+    const frontends = (['react', 'svelte'] as const).map((framework) => {
+        const folder = path.join(root, 'presentation', framework);
+        return {
+            check: framework,
+            label: `presentation/${framework}`,
+            folder,
+            uiKit: path.join(folder, 'ui-kit'),
+            widgets: path.join(folder, 'widgets'),
+            hooks: path.join(folder, 'hooks'),
+            widgetFile:
+                framework === 'svelte' ? '-widget.svelte' : '-widget.tsx'
+        };
+    });
+    const frontendOf = (file: string) =>
+        frontends.find((frontend) => inside(frontend.folder, file));
     const inMemoryDbFile = path.join(
         sharedFolder,
         'infrastructure',
@@ -316,15 +329,21 @@ const importViolations = (
                     fs.statSync(folder).isDirectory() &&
                     fs
                         .readdirSync(folder)
-                        .some((name) => name.endsWith('-widget.tsx'))
+                        .some((name) =>
+                            frontends.some(({ widgetFile }) =>
+                                name.endsWith(widgetFile)
+                            )
+                        )
             );
         }
         return widgetFolders.get(folder);
     };
     /**
-     * The nearest folder under widgets/ with a `*-widget.tsx`.
+     * The nearest folder under widgets/ with a `*-widget.tsx` (`.svelte`).
      */
     const widgetOf = (file: string) => {
+        const widgetsFolder = frontendOf(file)?.widgets;
+        if (!widgetsFolder) return undefined;
         for (
             let folder = file;
             inside(widgetsFolder, folder);
@@ -337,9 +356,11 @@ const importViolations = (
         return undefined;
     };
 
-    const files = [contextsFolder, sharedFolder, reactFolder].flatMap(
-        sourceFiles
-    );
+    const files = [
+        contextsFolder,
+        sharedFolder,
+        ...frontends.map(({ folder }) => folder)
+    ].flatMap(sourceFiles);
 
     for (const file of files) {
         const source = fs.readFileSync(file, 'utf8');
@@ -355,6 +376,7 @@ const importViolations = (
             });
         }
         const ownContext = contextOf(file);
+        const frontend = frontendOf(file);
         const directWiring =
             ownContext &&
             from?.segments[0] === 'wiring' &&
@@ -411,21 +433,26 @@ const importViolations = (
                         imported
                     );
                 }
-            } else if (inside(uiKitFolder, file) || inside(hooksFolder, file)) {
-                const [area] = inside(reactFolder, target) ?? [];
-                const forbidden = inside(uiKitFolder, file)
+            } else if (
+                frontend &&
+                (inside(frontend.uiKit, file) || inside(frontend.hooks, file))
+            ) {
+                const [area] = inside(frontend.folder, target) ?? [];
+                const inUiKit = inside(frontend.uiKit, file);
+                const forbidden = inUiKit
                     ? ['widgets', 'pages']
                     : ['ui-kit', 'widgets', 'pages'];
                 if (targetContext || forbidden.includes(area)) {
                     report(
-                        'react',
-                        inside(uiKitFolder, file)
-                            ? '[presentation/react/ui-kit] imports a bounded context, widget or page:'
-                            : '[presentation/react/hooks] a shared hook imports a bounded context, UI-kit, widget or page:',
+                        frontend.check,
+                        inUiKit
+                            ? `[${frontend.label}/ui-kit] imports a bounded context, widget or page:`
+                            : `[${frontend.label}/hooks] a shared hook imports a bounded context, UI-kit, widget or page:`,
                         imported
                     );
                 }
             } else if (
+                frontend &&
                 targetContext &&
                 !(
                     imported.typeOnly &&
@@ -434,18 +461,23 @@ const importViolations = (
                 )
             ) {
                 report(
-                    'react',
-                    '[presentation/react] imports a context other than `import type` from presentation/rest:',
+                    frontend.check,
+                    `[${frontend.label}] imports a context other than \`import type\` from presentation/rest:`,
                     imported
                 );
             }
 
             const ownWidget = widgetOf(file);
             const targetWidget = widgetOf(target);
-            if (ownWidget && targetWidget && targetWidget !== ownWidget) {
+            if (
+                frontend &&
+                ownWidget &&
+                targetWidget &&
+                targetWidget !== ownWidget
+            ) {
                 report(
-                    'react',
-                    '[presentation/react/widgets] a widget imports another widget:',
+                    frontend.check,
+                    `[${frontend.label}/widgets] a widget imports another widget:`,
                     imported
                 );
             }

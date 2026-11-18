@@ -18,6 +18,7 @@ export const lintChecks = [
     'layers',
     'dependencies',
     'react',
+    'svelte',
     'clock',
     'config'
 ] as const;
@@ -82,9 +83,16 @@ export const reactConfigSchema = z
         storybookFramework: z.string().optional()
     })
     .passthrough();
+export const svelteConfigSchema = z
+    .object({
+        framework: z.enum(['svelte', 'sveltekit']).optional(),
+        storybookFramework: z.string().optional()
+    })
+    .passthrough();
 export const frontendConfigSchema = z
     .object({
-        react: reactConfigSchema.optional()
+        react: reactConfigSchema.optional(),
+        svelte: svelteConfigSchema.optional()
     })
     .passthrough();
 export const configSchema = z

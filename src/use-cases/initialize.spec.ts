@@ -691,3 +691,114 @@ test('an entered test branch is preselected instead of offering to create one', 
         test: 'test'
     });
 });
+
+const svelteAdapterPrompt =
+    'Use @domain-first/handlers-svelte for REST endpoints';
+
+test('SvelteKit setup connects handlers-svelte, its catch-all route and SvelteKit Storybook', async () => {
+    answer({
+        'Configure project now?': true,
+        'Configure backend now?': true,
+        '@domain-first packages': ['@domain-first/wire'],
+        'Scaffold in-memory DB for test implementations': false,
+        'Scaffold unit tests': false,
+        'Configure frontend now?': true,
+        'Frontend framework:': 'sveltekit',
+        [svelteAdapterPrompt]: true,
+        'Use Storybook': true
+    });
+    const steps = await initializeUseCase();
+    const config = await persist();
+    expect(config.frontend).toEqual({
+        svelte: {
+            framework: 'sveltekit',
+            storybookFramework: '@storybook/sveltekit'
+        }
+    });
+    expect(config.backend?.domainFirstPackages).toEqual([
+        '@domain-first/wire',
+        '@domain-first/handlers-rest'
+    ]);
+    expect(prompts).not.toContain(nextAdapterPrompt);
+    expect(
+        prompts.filter((message) => message === svelteAdapterPrompt)
+    ).toHaveLength(1);
+    expect(
+        fs.readFileSync(path.join(project, generatorPath), 'utf8')
+    ).toContain(
+        "import { svelteAdapter } from '@domain-first/handlers-svelte'"
+    );
+    const route = fs.readFileSync(
+        path.join(project, 'src/routes/api/[...path]/+server.ts'),
+        'utf8'
+    );
+    expect(route).toContain(
+        "import { svelteEndpoints } from '@domain-first/handlers-svelte'"
+    );
+    expect(route).toContain('svelteEndpoints(restHandlers)');
+    expect(route).toContain(
+        "import { restHandlers } from '../../../presentation/rest'"
+    );
+    expect(steps).toContain('npm i @domain-first/handlers-svelte');
+    expect(steps).toContain('npm i @sveltejs/kit svelte');
+    const storybookMain = fs.readFileSync(
+        path.join(project, 'src/presentation/svelte/.storybook/main.ts'),
+        'utf8'
+    );
+    expect(storybookMain).toContain("name: '@storybook/sveltekit'");
+    expect(storybookMain).not.toContain('vite-plugin-svelte');
+    expect(steps).toContain(
+        'npm install --save-dev storybook @storybook/sveltekit vite'
+    );
+    expect(fs.readFileSync(path.join(project, '.gitignore'), 'utf8')).toContain(
+        '/src/presentation/svelte/storybook-static/'
+    );
+});
+
+test('Svelte replaces a configured React frontend and asks no adapter question', async () => {
+    ConfigFile.write({
+        project: { rootFolder: 'src' },
+        backend: { domainFirstPackages: ['@domain-first/handlers-rest'] },
+        frontend: { react: { framework: 'next' } }
+    });
+    writePendingChanges();
+    fs.writeFileSync(
+        path.join(project, 'package.json'),
+        JSON.stringify({ dependencies: { svelte: '5' } })
+    );
+    answer({ 'Frontend framework:': 'svelte', 'Use Storybook': true });
+    const steps = await initializeUseCase('frontend');
+    const config = await persist();
+    expect(config.frontend).toEqual({
+        svelte: {
+            framework: 'svelte',
+            storybookFramework: '@storybook/svelte-vite'
+        }
+    });
+    expect(prompts).not.toContain(svelteAdapterPrompt);
+    expect(prompts).not.toContain(nextAdapterPrompt);
+    expect(steps).not.toContain('npm i svelte');
+    expect(
+        fs.readFileSync(
+            path.join(project, 'src/presentation/svelte/.storybook/main.ts'),
+            'utf8'
+        )
+    ).toContain("await import('@sveltejs/vite-plugin-svelte')");
+    expect(steps).toContain(
+        'npm install --save-dev storybook @storybook/svelte-vite vite @sveltejs/vite-plugin-svelte'
+    );
+});
+
+test('frontend selection falls back to SvelteKit when @sveltejs/kit is declared', async () => {
+    fs.writeFileSync(
+        path.join(project, 'package.json'),
+        JSON.stringify({ devDependencies: { '@sveltejs/kit': '2' } })
+    );
+    answer({ 'Use Storybook': false });
+    await initializeUseCase('frontend');
+    await persist();
+    expect(rstest.mocked(select).mock.lastCall?.[0].default).toBe('sveltekit');
+    expect(ConfigFile.Instance.data.frontend?.svelte?.framework).toBe(
+        'sveltekit'
+    );
+});

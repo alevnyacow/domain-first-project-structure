@@ -25,7 +25,7 @@ For each affected context, note what it owns, what it does, its language, and th
 
 ## 2. Decompose
 
-Split the request into pieces of logic and choose each piece's component with `df-ps-scaffold/references/choosing-components.md` (pieces of UI: `df-ps-react`, "Choosing the module"). Record the deciding step for the "Why" in the plan: `choosing-components, step N` for a component, `step 3, rule N` (below) for a placement.
+Split the request into pieces of logic and choose each piece's component with `df-ps-scaffold/references/choosing-components.md` (pieces of UI: `df-ps-react`, "Choosing the module"; Svelte projects run them with `df-svelte`). Record the deciding step for the "Why" in the plan: `choosing-components, step N` for a component, `step 3, rule N` (below) for a placement.
 
 ## 3. Assign to contexts
 

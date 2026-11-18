@@ -8,7 +8,13 @@ import {
     filesToOverwrite,
     writePendingChanges
 } from '../file-system';
-import { addOrval, orvalMutator, queryProvider } from './index';
+import {
+    addOrval,
+    orvalMutator,
+    queryProvider,
+    svelteKitQueryLayout,
+    svelteQueryProvider
+} from './index';
 
 rstest.mock('@inquirer/prompts', () => ({
     checkbox: rstest.fn(),
@@ -224,4 +230,102 @@ test('generates hooks and the typed API client sharing one mutator', async () =>
         'Wrap your app in QueryProvider from src/presentation/react/data-layer/query-provider.tsx',
         'npx df-integration → OpenAPI generates the OpenAPI document the client is built from'
     ]);
+});
+
+const useSvelte = (project: string, framework: 'svelte' | 'sveltekit') =>
+    fs.writeFileSync(
+        path.join(project, 'domain-first.project-structure.config.json'),
+        JSON.stringify({
+            project: { rootFolder: 'src/lib' },
+            backend: { domainFirstPackages: ['@domain-first/handlers-rest'] },
+            frontend: { svelte: { framework } }
+        })
+    );
+
+test('with SvelteKit, Svelte Query hooks are plug and play: provider in the root layout, static document, base URL', async () => {
+    const { project, read } = setup('src/lib', {}, { targets: ['hooks'] });
+    useSvelte(project, 'sveltekit');
+    const steps = await addOrval();
+    writePendingChanges();
+
+    const dataLayer = 'src/lib/presentation/svelte/data-layer';
+    const config = read(`${dataLayer}/orval.config.ts`);
+    expect(config).toContain("input: '../../../../../static/openapi.json'");
+    expect(config).toContain("client: 'svelte-query'");
+    expect(config).toContain("httpClient: 'fetch'");
+    expect(config).toContain("packageJson: './orval.package.json'");
+    expect(
+        JSON.parse(read(`${dataLayer}/orval.package.json`)).dependencies
+    ).toEqual({ '@tanstack/svelte-query': '^6.0.0' });
+    expect(config).toContain(
+        `runtime: 'import.meta.env.VITE_API_BASE_URL ?? ""'`
+    );
+    expect(config).not.toContain('NEXT_PUBLIC_API_BASE_URL');
+    expect(read(`${dataLayer}/api-client/mutator.ts`)).toBe(orvalMutator);
+    const provider = read(`${dataLayer}/query-provider.svelte`);
+    expect(provider).toBe(svelteQueryProvider(true));
+    expect(provider).toContain("import { browser } from '$app/environment'");
+    expect(provider).toContain('enabled: browser');
+    expect(read('src/routes/+layout.svelte')).toBe(
+        svelteKitQueryLayout(
+            '../lib/presentation/svelte/data-layer/query-provider.svelte'
+        )
+    );
+    expect(read('.gitignore')).toBe(`/${dataLayer}/orval/\n`);
+    expect(steps).toEqual([
+        'npm install @tanstack/svelte-query',
+        'npm install --save-dev orval',
+        `npm run client:orval — generate Svelte Query hooks in ${dataLayer}/orval from static/openapi.json`,
+        'npx df-integration → OpenAPI generates the OpenAPI document the client is built from'
+    ]);
+
+    await addOrval();
+    expect(filesToOverwrite()).toEqual([]);
+});
+
+test('an existing SvelteKit layout is kept with a note; hooks share the typed client mutator', async () => {
+    const { project, read } = setup(
+        'src/lib',
+        { dependencies: { '@tanstack/svelte-query': '^6.0.0' } },
+        { targets: ['hooks', 'client'] }
+    );
+    useSvelte(project, 'sveltekit');
+    fs.mkdirSync(path.join(project, 'src/routes'), { recursive: true });
+    fs.writeFileSync(
+        path.join(project, 'src/routes/+layout.svelte'),
+        '<slot />'
+    );
+    const steps = await addOrval();
+    writePendingChanges();
+
+    expect(read('src/routes/+layout.svelte')).toBe('<slot />');
+    expect(
+        read('src/lib/presentation/svelte/data-layer/orval.config.ts')
+    ).toContain("path: '../../data-layer/api-client/mutator.ts'");
+    expect(read('src/lib/presentation/data-layer/orval.config.ts')).toContain(
+        'VITE_API_BASE_URL'
+    );
+    expect(steps).toContain(
+        'Wrap {@render children()} of src/routes/+layout.svelte in QueryProvider from src/lib/presentation/svelte/data-layer/query-provider.svelte'
+    );
+    expect(
+        read('src/lib/presentation/data-layer/orval.config.ts')
+    ).not.toContain('packageJson');
+});
+
+test('with plain Svelte, the provider is not bound to SvelteKit', async () => {
+    const { project, read } = setup('src/lib', {}, { targets: ['hooks'] });
+    useSvelte(project, 'svelte');
+    const steps = await addOrval();
+    writePendingChanges();
+
+    const provider = read(
+        'src/lib/presentation/svelte/data-layer/query-provider.svelte'
+    );
+    expect(provider).not.toContain('$app/environment');
+    expect(provider).toContain('const queryClient = new QueryClient()');
+    expect(fs.existsSync(path.join(project, 'src/routes'))).toBe(false);
+    expect(steps).toContain(
+        'Wrap your app in QueryProvider from src/lib/presentation/svelte/data-layer/query-provider.svelte'
+    );
 });

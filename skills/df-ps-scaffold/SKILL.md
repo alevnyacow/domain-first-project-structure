@@ -9,13 +9,13 @@ description: Generate Domain-First components with the `df-scaffold` CLI (@domai
 
 Follow this order for every request:
 
-1. Read `domain-first.project-structure.config.json` beside the nearest `package.json`: `project.rootFolder`, `backend` (including `backend.implementations` and `backend.rules`), and `frontend`. `frontend.react.framework` records React (`react`) or Next.js (`next`); both use `df-react`. Initialization and configuration belong to the human: never run `df-init` or manually add/change these settings. If the config is missing, tell the user to run `npx df-init`; if backend work needs an absent `backend`, tell them to run `npx df-init --section backend`. Continue only with work whose required sections are configured. A config of an earlier major version (flat, without `project`) makes every command stop with `run npx df-upgrade` (`CONFIG_OUTDATED` in JSON mode): ask the user to run `npx df-upgrade`; never run it or convert the config yourself. `df-init` scaffolds explicit standard lists and enabled lint checks under `backend.rules`; read the saved values as authoritative. Older or partial configs may omit entries, which retain the defaults. Backend reconfiguration by the user fills missing entries without resetting existing rules.
+1. Read `domain-first.project-structure.config.json` beside the nearest `package.json`: `project.rootFolder`, `backend` (including `backend.implementations` and `backend.rules`), and `frontend`. `frontend.react.framework` records React (`react`) or Next.js (`next`); both use `df-react`. `frontend.svelte.framework` records Svelte (`svelte`) or SvelteKit (`sveltekit`); both use `df-svelte`. Initialization and configuration belong to the human: never run `df-init` or manually add/change these settings. If the config is missing, tell the user to run `npx df-init`; if backend work needs an absent `backend`, tell them to run `npx df-init --section backend`. Continue only with work whose required sections are configured. A config of an earlier major version (flat, without `project`) makes every command stop with `run npx df-upgrade` (`CONFIG_OUTDATED` in JSON mode): ask the user to run `npx df-upgrade`; never run it or convert the config yourself. `df-init` scaffolds explicit standard lists and enabled lint checks under `backend.rules`; read the saved values as authoritative. Older or partial configs may omit entries, which retain the defaults. Backend reconfiguration by the user fills missing entries without resetting existing rules.
 2. Feature request without named contexts/components → `df-ps-plan-feature` (it covers steps 3–5).
-3. Choose a component for each piece of logic with `references/choosing-components.md`. Pieces of UI (pages, widgets, UI-kit components, shared hooks): `df-ps-react`.
+3. Choose a component for each piece of logic with `references/choosing-components.md`. Pieces of UI (pages, widgets, UI-kit components, shared hooks): `df-ps-react` (Svelte: `df-ps-svelte`).
 4. Read `references/units/<unit>.md` for every unit in the plan ("Units" below) and prepare the run details ("Preparing runs"). Read [agent-mode.md](references/agent-mode.md) for the JSON protocol and use `--describe` to obtain the installed request schema and selectable IDs.
 5. If the task creates files, show the work plan and **stop until it's approved** (rule 1).
 6. Run the generators in plan order with `--request` JSON; check exit code, `ok` and all returned file lists.
-7. Implement each unit by the "Implement" and "Test" sections of its unit file and the general rules of `df-ps-implement`, in this order: domain → application → schema tool runs (migrations) → infrastructure → endpoints → other tool runs (OpenAPI, API client) → React (`df-ps-react`).
+7. Implement each unit by the "Implement" and "Test" sections of its unit file and the general rules of `df-ps-implement`, in this order: domain → application → schema tool runs (migrations) → infrastructure → endpoints → other tool runs (OpenAPI, API client) → React (`df-ps-react`) or Svelte (`df-ps-svelte`).
 8. Run `npx df-lint` and the project's tsc/lint/tests.
 9. Report against the plan.
 
@@ -34,13 +34,13 @@ Read [references/work-plan.md](references/work-plan.md), show the plan in that f
 
 ### 2. New files only through df-scaffold
 
-Every new file is created by `df-scaffold` (React modules: `df-react`). Don't create files with the Write tool, `touch`, redirects, or by copying templates. The only exceptions (`<C>` = `<rootFolder>/bounded-contexts/<context>`):
+Every new file is created by `df-scaffold` (React modules: `df-react`; Svelte modules: `df-svelte`). Don't create files with the Write tool, `touch`, redirects, or by copying templates. The only exceptions (`<C>` = `<rootFolder>/bounded-contexts/<context>`):
 
 | # | Files | Location | Condition |
 | --- | --- | --- | --- |
 | 1 | Missing spec | `<component>.spec.ts` next to the component | Exactly from "Spec templates" in `references/generators.md`. |
 | 2 | Output of project tools | where the tool puts it | Migrations, codegen: run the project's script, use its output as-is; never hand-write or edit it. No approval needed for these files. |
-| 3 | Widget hooks / UI | `…/presentation/react/widgets/<name>/hooks/**`, `ui/**` | Widget generated by df-react. |
+| 3 | Widget hooks / UI | `…/presentation/react/widgets/<name>/hooks/**`, `ui/**` (Svelte: `…/presentation/svelte/widgets/<name>/…`) | Widget generated by df-react or df-svelte. |
 | 4 | Widget/page/UI-kit support files | inside the widget folder or `ui-kit/<name>/`: styles, assets, `*.test.tsx`, `*.stories.tsx`; next to a page: `pages/<name>-page.module.css`, for a nested page in its folder (`pages/admin/admin-users-page.module.css`) (layout of its widgets only) | Widget/page/UI-kit component generated by df-react. Details and story templates: `df-ps-react`. |
 | 5 | App bootstrap and config | outside `<rootFolder>/{bounded-contexts,shared-kernel,presentation}/`: entry point, HTTP server setup registering `restHandlers`, tool configs | Bootstrapping only. Domain/application/infrastructure logic never goes there. |
 
@@ -48,7 +48,7 @@ Anything else (helpers, types, constants, mappers, wiring, barrels): put it in a
 
 If the CLI cannot run, report the failure and give the user the prepared JSON command to run themselves. Never hand-write its output. Missing generated files are only recreated by re-running the generator, as an approved overwrite.
 
-Moving, renaming and deleting a module go through the CLI too, never by hand, and need an approved plan: `references/units/move-or-rename.md`, `references/units/delete.md`; pages and widgets: `df-ps-react`.
+Moving, renaming and deleting a module go through the CLI too, never by hand, and need an approved plan: `references/units/move-or-rename.md`, `references/units/delete.md`; pages and widgets: `df-ps-react` / `df-ps-svelte`.
 
 ### 3. New dependencies only through df-scaffold
 
@@ -83,6 +83,7 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 | Moving or renaming a module | `move-or-rename.md` | Move or rename |
 | Deleting a module | `delete.md` | Delete |
 | React modules | `df-ps-react` skill | `df-react` |
+| Svelte modules | `df-ps-svelte` skill | `df-svelte` |
 
 ## Preparing runs
 
@@ -91,11 +92,11 @@ One file per unit in `references/units/`: when to choose it, how to generate it 
 - **Collisions**: JSON requests require `overwrite: true` to replace changed existing files. Inspect `overwriteRequired` with `dryRun: true` and include those overwrites in the plan. The interactive equivalent asks `Overwrite them?`.
 - **Integration specs**: with the Testcontainers integration and wire, primary implementations of the types in `backend.implementations.integrationTests`, and infrastructure services when asked, get a spec in `specs/integration/` (`references/generators.md`). For a new type, set `integrationTests: false` when the container can't exercise it (an external API).
 - **Tests**: with `backend.testingLibrary` set, df-scaffold generates specs for modules without infrastructure (domain model, non-infrastructure services, use cases); repositories, commands/queries, ports, infrastructure services and helpers get none. Add a test implementation (`in-memory`/`mock`) to repositories, commands/queries and ports, so `NODE_ENV=test` specs of the use cases that inject them don't touch real infrastructure. Without `backend.testingLibrary`, tell the user once and suggest adding it with `! npx df-integration` (Vitest); don't edit the config yourself.
-- **Run order** in a plan: new contexts → domain (aggregates before their entities and value objects) → application (ports, commands/queries, use cases) → new implementations of existing contracts → endpoints → React (`df-ps-react`).
+- **Run order** in a plan: new contexts → domain (aggregates before their entities and value objects) → application (ports, commands/queries, use cases) → new implementations of existing contracts → endpoints → React (`df-ps-react`) or Svelte (`df-ps-svelte`).
 - **Requests**: take the unit semantics and output files from its reference, then use `--describe` and `references/agent-mode.md` to build a JSON request.
 
 ## Running non-interactively
 
-Use `npx df-scaffold --describe` and execute approved operations with `--request` JSON. React uses `df-react`; integrations use `df-integration`. Protocol, discovery IDs, previews and error handling: [references/agent-mode.md](references/agent-mode.md). Complete backend/React operation map, dependency recipes and conditional integration options: [references/agent-operations.md](references/agent-operations.md).
+Use `npx df-scaffold --describe` and execute approved operations with `--request` JSON. React uses `df-react`, Svelte `df-svelte`; integrations use `df-integration`. Protocol, discovery IDs, previews and error handling: [references/agent-mode.md](references/agent-mode.md). Complete backend/React operation map, dependency recipes and conditional integration options: [references/agent-operations.md](references/agent-operations.md).
 
 Initialization remains a human task. No JSON initialization workflow is provided.
