@@ -11,6 +11,7 @@ import { hasDependency } from './integrations/missing-domain-first-packages';
 import { inMemoryDbWithIdStep } from './upgrade-in-memory-db';
 import {
     openapiExtractorManualStep,
+    openapiExtractorNestedStep,
     openapiExtractorRootStep,
     restRootControllerStep
 } from './upgrade-rest-root';
@@ -191,6 +192,7 @@ export const upgradeSteps: UpgradeStep[] = [
     persistenceStep,
     restRootControllerStep,
     openapiExtractorRootStep,
+    openapiExtractorNestedStep,
     openapiExtractorManualStep,
     inMemoryDbWithIdStep
 ];

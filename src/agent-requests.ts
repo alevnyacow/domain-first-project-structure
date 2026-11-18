@@ -34,7 +34,9 @@ const common = {
     dryRun: z.boolean().optional()
 };
 const owner = {
-    context: name.describe('A bounded-context name, or shared-kernel.')
+    context: nestedName.describe(
+        'A bounded-context name (nested ones as paths, e.g. sales/orders), or shared-kernel.'
+    )
 };
 const wired = { dependencies: dependencies.optional() };
 const implementations = {
@@ -51,10 +53,12 @@ const operation = <T extends string, S extends z.ZodRawShape>(
 export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
     operation('bounded-context', {
         ...common,
-        name: name.refine(
-            (value) => value !== 'shared-kernel',
-            'shared-kernel is reserved for the Shared Kernel.'
-        )
+        name: nestedName
+            .describe('Folders split by "/", e.g. sales/orders.')
+            .refine(
+                (value) => value !== 'shared-kernel',
+                'shared-kernel is reserved for the Shared Kernel.'
+            )
     }),
     operation('aggregate', {
         ...named,
@@ -145,7 +149,7 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
         ...common,
         ...owner,
         module: id.describe('Exact unit ID from --describe.'),
-        targetContext: name.optional(),
+        targetContext: nestedName.optional(),
         name: name.optional(),
         aggregate: name.optional()
     })

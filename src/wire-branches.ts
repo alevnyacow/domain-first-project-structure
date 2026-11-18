@@ -1,4 +1,6 @@
+import path from 'node:path';
 import { ConfigFile } from './config-file';
+import { ProjectRoot } from './project-root';
 
 export const defaultEnvBranches: { names: string[]; test?: string } = {
     names: ['test', 'development', 'production'],
@@ -50,6 +52,27 @@ export const envBranchedWireArgument = (
         ...(test ? [`    ${test}: ${testWire}`] : []),
         ...primary.map((name) => `    ${name}: ${primaryWire}`)
     ].join(',\n')}\n}`;
+};
+
+/**
+ * The import of the Shared Kernel `envBranchedWire` from a wire in the
+ * folder, however deep its bounded context is nested.
+ */
+export const envBranchedWireImport = (wireFolder: string) => {
+    const relativePath = path
+        .relative(
+            wireFolder,
+            path.join(
+                new ProjectRoot().path,
+                ConfigFile.Instance.data.project.rootFolder,
+                'shared-kernel',
+                'wiring',
+                'env-branched-wire'
+            )
+        )
+        .split(path.sep)
+        .join('/');
+    return `import { envBranchedWire } from '${relativePath.startsWith('.') ? relativePath : `./${relativePath}`}'`;
 };
 
 /** `env-branched-wire.ts` of the Shared Kernel for the configured branches. */

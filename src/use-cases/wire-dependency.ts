@@ -1,5 +1,7 @@
 import { moduleId } from '../agent-identifiers';
+import { boundedContextNames } from '../bounded-contexts';
 import { ConfigFile } from '../config-file';
+import { boundedContextName } from '../context-dependencies';
 import { type File, Folder } from '../file-system';
 import { checkbox, report, Separator, select } from '../interaction';
 import { ProjectRoot } from '../project-root';
@@ -109,16 +111,18 @@ const dependencyOptions = (boundedContextFolder: Folder): Option[] => {
               }))),
         ...(isShared
             ? []
-            : contextsFolder.content.subfolderNames
-                  .filter((name) => name !== boundedContextFolder.name)
-                  .sort()
+            : boundedContextNames(contextsFolder.path)
+                  .filter(
+                      (name) =>
+                          name !== boundedContextName(boundedContextFolder.path)
+                  )
                   .flatMap((name) =>
-                      findWiredModules(contextsFolder.subitem([name]).path).map(
-                          (module) => ({
-                              module,
-                              label: `${module.typeName} (${name})`
-                          })
-                      )
+                      findWiredModules(
+                          contextsFolder.subitem(name.split('/')).path
+                      ).map((module) => ({
+                          module,
+                          label: `${module.typeName} (${name})`
+                      }))
                   ))
     ];
 };

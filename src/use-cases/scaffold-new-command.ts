@@ -9,6 +9,7 @@ import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
     envBranchedWireArgument,
+    envBranchedWireImport,
     offersTestImplementation
 } from '../wire-branches';
 import { promptImplementationType } from './prompt-implementation-type';
@@ -112,7 +113,7 @@ export abstract class ${naming.ClassName}Command {
                 `wire-${naming.fileName}-command.ts`,
                 `
 import { wireClass } from '@domain-first/wire'
-import { envBranchedWire } from '../../../../shared-kernel/wiring/env-branched-wire'
+${envBranchedWireImport(boundedContextFolder.subitem(['wiring', 'commands']).path)}
 ${implementationTypes
     .map((x) => new UnknownFormatNaming(x))
     .map(({ ClassName, fileName }) => {

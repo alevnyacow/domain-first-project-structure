@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { ConfigFile } from '../config-file';
-import type { Folder } from '../file-system';
+import { boundedContextName } from '../context-dependencies';
+import { Folder } from '../file-system';
 import { input, RequestError, select } from '../interaction';
+import { ProjectRoot } from '../project-root';
 import {
     hasLegacyRootEndpoints,
     isPathParameterName,
@@ -22,11 +24,15 @@ const newController = 'New controller';
  */
 export const rootControllerChoice = 'No controller (context root)';
 
+const sourceFolder = () =>
+    new Folder(new ProjectRoot().path).subitem([
+        ConfigFile.Instance.data.project.rootFolder
+    ]);
+
 /**
  * `<rootFolder>/presentation/rest/`: `wires.ts` and `restHandlers`.
  */
-const sharedRestFolder = (boundedContextFolder: Folder) =>
-    boundedContextFolder.subitem(['..', '..', 'presentation', 'rest']);
+const sharedRestFolder = () => sourceFolder().subitem(['presentation', 'rest']);
 
 export const legacyRootEndpointsMessage = (context: string) =>
     `${context} keeps its context-root endpoints in the 8.5 layout (presentation/rest/<METHOD>.ts, _param_/). Run npx df-upgrade to move them to presentation/rest/${rootControllerFolder}/ first.`;
@@ -34,7 +40,14 @@ export const legacyRootEndpointsMessage = (context: string) =>
 export const scaffoldNewHandlersRestEndpoint = async (
     boundedContextFolder: Folder
 ) => {
-    const context = boundedContextFolder.name;
+    /**
+     * A nested context (`sales/orders`) is the start of its routes:
+     * `/sales/orders/...`.
+     */
+    const context =
+        boundedContextName(boundedContextFolder.path) ??
+        boundedContextFolder.name;
+    const contextSegments = context.split('/');
     const restPresentationFolder = boundedContextFolder.subitem([
         'presentation',
         'rest'
@@ -136,7 +149,7 @@ export const scaffoldNewHandlersRestEndpoint = async (
     const group = controller ?? rootControllerFolder;
     const folderSegments = [group, ...routeSegments];
     const routePath = [
-        context,
+        ...contextSegments,
         ...(controller ? [controller] : []),
         ...routeSegments
     ];
@@ -148,7 +161,10 @@ export const scaffoldNewHandlersRestEndpoint = async (
      * Named after the context without a controller: wires of every
      * context meet in `<rootFolder>/presentation/rest/wires.ts`.
      */
-    const nameSegments = [controller ?? context, ...routeSegments];
+    const nameSegments = [
+        ...(controller ? [controller] : contextSegments),
+        ...routeSegments
+    ];
     const nameBase = `${[...nameSegments.map(pathParameterAsName), method].join('-')}-endpoint`;
 
     /**
@@ -167,7 +183,7 @@ export const scaffoldNewHandlersRestEndpoint = async (
      * the handler from wired modules, otherwise it stays a placeholder.
      */
     const endpointGenerator = findRestEndpointGenerator(
-        boundedContextFolder.subitem(['..', '..', 'shared-kernel'])
+        sourceFolder().subitem(['shared-kernel'])
     );
     const handler = withWiring
         ? await promptEndpointHandler(boundedContextFolder)
@@ -267,16 +283,15 @@ export const wire${endpointClassName} = wireClass(
             .subitem(['wiring', 'presentation', 'rest'])
             .file('index.ts')
             .addLineIfMissing(`export * from './${group}'`);
-        sharedRestFolder(boundedContextFolder)
+        sharedRestFolder()
             .file('wires.ts')
             .addLineIfMissing(
                 `export * from '../../bounded-contexts/${context}/wiring/presentation/rest/${group}'`
             );
 
-        const restHandlersFile =
-            sharedRestFolder(boundedContextFolder).file('index.ts');
+        const restHandlersFile = sharedRestFolder().file('index.ts');
         if (!restHandlersFile.exists) {
-            sharedRestFolder(boundedContextFolder).createFile(
+            sharedRestFolder().createFile(
                 'index.ts',
                 `
 import * as wires from './wires'

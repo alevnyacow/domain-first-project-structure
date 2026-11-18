@@ -43,10 +43,10 @@ export default defineConfig({
             exclude: [
                 '**/*.spec.ts',
                 ${folder('shared-kernel/infrastructure/**')},
-                ${folder('bounded-contexts/*/infrastructure/**')},
-                ${folder('bounded-contexts/*/presentation/rest/**')},
+                ${folder('bounded-contexts/**/infrastructure/**')},
+                ${folder('bounded-contexts/**/presentation/rest/**')},
                 ${folder('shared-kernel/wiring/**')},
-                ${folder('bounded-contexts/*/wiring/**')}
+                ${folder('bounded-contexts/**/wiring/**')}
             ],
             reporter: [['text', { skipFull: true }], 'html']
         }${server}

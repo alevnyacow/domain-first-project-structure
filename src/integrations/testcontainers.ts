@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { boundedContextNames } from '../bounded-contexts';
 import { ConfigFile } from '../config-file';
 import { File, Folder } from '../file-system';
 import {
@@ -223,10 +224,9 @@ const configureIntegrationTests = async (root: string) => {
     ]);
     const owners = [
         source.subitem(['shared-kernel']),
-        ...source
-            .subitem(['bounded-contexts'])
-            .content.subfolderNames.sort()
-            .map((name) => source.subitem(['bounded-contexts', name]))
+        ...boundedContextNames(source.subitem(['bounded-contexts']).path).map(
+            (name) => source.subitem(['bounded-contexts', ...name.split('/')])
+        )
     ];
     for (const owner of owners) {
         for (const unit of findContracts(owner.path)) {

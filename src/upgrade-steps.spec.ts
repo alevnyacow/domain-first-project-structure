@@ -14,7 +14,8 @@ import {
     endpointFileLookup,
     legacyEndpointFileLookup,
     openapiExtractor,
-    openapiExtractorPath
+    openapiExtractorPath,
+    rootEndpointFileLookup
 } from './integrations/openapi-extractor';
 import { planUpgrade, type UpgradeStep } from './upgrade-steps';
 
@@ -281,6 +282,25 @@ test('declined layout steps change nothing', async () => {
     writePendingChanges();
     expect(exists(`${posts}/presentation/rest/GET.ts`)).toBe(true);
     expect(exists(`${posts}/presentation/rest/(root)`)).toBe(false);
+});
+
+test('the 8.9 extractor learns nested contexts once the project has one', async () => {
+    const extractor89 = openapiExtractor('src').replace(
+        endpointFileLookup('src'),
+        rootEndpointFileLookup('src')
+    );
+    write(openapiExtractorPath, extractor89);
+    write('src/bounded-contexts/blog/domain/index.ts', '');
+    expect((await planUpgrade(current)).planned).toEqual([]);
+
+    write('src/bounded-contexts/commerce/orders/domain/index.ts', '');
+    const { planned } = await planUpgrade(current);
+    expect(planned.map(({ step }) => step.id)).toEqual([
+        'openapi-extractor-nested'
+    ]);
+    writePendingChanges();
+    expect(read(openapiExtractorPath)).toBe(openapiExtractor('src'));
+    expect((await planUpgrade(current)).planned).toEqual([]);
 });
 
 test('an extractor changed by hand is left to the user', async () => {

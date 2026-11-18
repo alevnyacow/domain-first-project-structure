@@ -1,5 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+    boundedContextNames,
+    boundedContextPath,
+    splitContextSegments
+} from './bounded-contexts';
 import type { LintCheck } from './config-file';
 import {
     crossContextImportAllowed,
@@ -277,11 +282,17 @@ const importViolations = (
     const aliases = readAliases(projectRoot);
     const violations: Violation[] = [];
 
+    /** `sales/orders` for a file of a nested context. */
+    const contextOf = (file: string) => {
+        const segments = inside(contextsFolder, file);
+        return segments && splitContextSegments(segments).name;
+    };
+
     const locate = (file: string): Location | undefined => {
         const inContext = inside(contextsFolder, file);
         if (inContext && inContext.length > 1) {
-            const [owner, ...segments] = inContext;
-            return { owner, segments };
+            const { name, segments } = splitContextSegments(inContext);
+            return { owner: name, segments };
         }
         const inShared = inside(sharedFolder, file);
         return inShared && { owner: 'shared-kernel', segments: inShared };
@@ -343,13 +354,13 @@ const importViolations = (
                 text: path.basename(file)
             });
         }
-        const ownContext = inside(contextsFolder, file)?.[0];
+        const ownContext = contextOf(file);
         const directWiring =
             ownContext &&
             from?.segments[0] === 'wiring' &&
             readWiredModule(
                 file,
-                path.join(contextsFolder, ownContext)
+                boundedContextPath(contextsFolder, ownContext)
             )?.implementations.some((implementation) =>
                 isCrossContextImplementation(implementation.file)
             );
@@ -368,7 +379,7 @@ const importViolations = (
                 continue;
             }
             const to = locate(target);
-            const targetContext = inside(contextsFolder, target)?.[0];
+            const targetContext = contextOf(target);
             const crossContextAllowed =
                 crossContextImportAllowed(file, target) === true &&
                 (from?.segments[0] !== 'wiring' || directWiring);
@@ -502,17 +513,10 @@ const wiringViolations = (
     const sharedModules = findWiredModules(sharedFolder);
     const owners = [
         { name: 'shared-kernel', modules: sharedModules },
-        ...(fs.existsSync(contextsFolder)
-            ? fs
-                  .readdirSync(contextsFolder, { withFileTypes: true })
-                  .filter((entry) => entry.isDirectory())
-                  .map((entry) => ({
-                      name: entry.name,
-                      modules: findWiredModules(
-                          path.join(contextsFolder, entry.name)
-                      )
-                  }))
-            : [])
+        ...boundedContextNames(contextsFolder).map((name) => ({
+            name,
+            modules: findWiredModules(boundedContextPath(contextsFolder, name))
+        }))
     ];
     const violations: Violation[] = [];
 
@@ -600,11 +604,10 @@ const directReadViolations = (projectRoot: string, rootFolder: string) => {
     const root = path.resolve(projectRoot, rootFolder);
     const folders = [
         path.join(root, 'shared-kernel'),
-        ...(fs.existsSync(path.join(root, 'bounded-contexts'))
-            ? fs
-                  .readdirSync(path.join(root, 'bounded-contexts'))
-                  .map((name) => path.join(root, 'bounded-contexts', name))
-            : [])
+        ...boundedContextNames(path.join(root, 'bounded-contexts')).map(
+            (name) =>
+                boundedContextPath(path.join(root, 'bounded-contexts'), name)
+        )
     ].flatMap((folder) => [
         path.join(folder, 'domain'),
         path.join(folder, 'application')

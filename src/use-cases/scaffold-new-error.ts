@@ -1,6 +1,8 @@
 import { ConfigFile } from '../config-file';
+import { boundedContextName } from '../context-dependencies';
 import { type File, Folder } from '../file-system';
 import { input, select } from '../interaction';
+import { NestedName } from '../nested-name';
 import { ProjectRoot } from '../project-root';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 
@@ -62,7 +64,15 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
         'errors'
     ]);
     const names = errorNames(boundedContextFolder);
-    const contextNaming = new UnknownFormatNaming(boundedContextFolder.name);
+    /**
+     * A nested context is named by its whole path: `sales/orders` →
+     * `SalesOrdersErrors`, codes `sales/orders.<error>`, so they never
+     * match those of a context `sales-orders`.
+     */
+    const contextName =
+        boundedContextName(boundedContextFolder.path) ??
+        boundedContextFolder.name;
+    const contextNaming = new NestedName(contextName);
 
     const currentErrorNamespaces = currentErrorFolder.content.fileNames.filter(
         (x) => x !== 'index'
@@ -90,7 +100,7 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
                 rootNamespace(
                     indexFile,
                     `${contextNaming.ClassName}Errors`,
-                    boundedContextFolder.name
+                    contextName
                 ),
                 naming.fileName
             ),
@@ -115,7 +125,7 @@ export const scaffoldNewErrorUseCase = async (boundedContextFolder: Folder) => {
                 `
 import { errorNamespace } from '@domain-first/errors'
 
-export const ${names.namespace(ClassName)} = errorNamespace('${boundedContextFolder.name}').subnamespace('${fileName}')
+export const ${names.namespace(ClassName)} = errorNamespace('${contextName}').subnamespace('${fileName}')
 `.trim()
             );
         }

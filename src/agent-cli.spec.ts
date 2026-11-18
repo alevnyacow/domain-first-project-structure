@@ -248,6 +248,140 @@ test('reserved cross-context implementations retain the port-only boundary', asy
     expect(lintProject(project, 'src')).toEqual([]);
 });
 
+test('bounded contexts nest in folders like React pages, and stay isolated', async () => {
+    ConfigFile.update({
+        backend: {
+            ...ConfigFile.backend,
+            domainFirstPackages: [
+                '@domain-first/wire',
+                '@domain-first/handlers-rest'
+            ]
+        }
+    });
+    writePendingChanges();
+    for (const name of ['commerce/orders', 'commerce/payments'])
+        await executeAgentRequest('df-scaffold', {
+            operation: 'bounded-context',
+            name
+        });
+    expect(exists('src/bounded-contexts/commerce/orders')).toBe(true);
+
+    for (const [name, message] of [
+        ['sales/returns', 'sales is a bounded context'],
+        ['commerce', 'commerce groups bounded contexts'],
+        ['commerce/domain', '"domain" is a layer folder']
+    ])
+        await expect(
+            executeAgentRequest('df-scaffold', {
+                operation: 'bounded-context',
+                name
+            })
+        ).rejects.toThrow(message);
+
+    const contexts = () =>
+        describeAgentCommand('df-scaffold').project!.contexts.map(
+            (context) => context.name
+        );
+    expect(contexts()).toEqual([
+        'shared-kernel',
+        'billing',
+        'commerce/orders',
+        'commerce/payments',
+        'sales'
+    ]);
+
+    await executeAgentRequest('df-scaffold', {
+        operation: 'query',
+        context: 'commerce/orders',
+        name: 'invoice',
+        implementation: { type: 'sql' }
+    });
+    expect(
+        read(
+            'src/bounded-contexts/commerce/orders/wiring/queries/wire-invoice-query.ts'
+        )
+    ).toContain(
+        "import { envBranchedWire } from '../../../../../shared-kernel/wiring/env-branched-wire'"
+    );
+    expect(
+        describeAgentCommand('df-scaffold')
+            .project!.contexts.find(
+                (context) => context.name === 'commerce/orders'
+            )!
+            .modules.map((module) => module.id)
+    ).toEqual(['commerce/orders:InvoiceQuery']);
+
+    await executeAgentRequest('df-scaffold', {
+        operation: 'port',
+        context: 'commerce/payments',
+        name: 'orders-gateway',
+        implementation: { type: 'cross-context' },
+        dependencies: {
+            CrossContextOrdersGateway: ['commerce/orders:InvoiceQuery']
+        }
+    });
+    expect(
+        read(
+            'src/bounded-contexts/commerce/payments/infrastructure/application-adapters/cross-context/cross-context-orders-gateway.ts'
+        )
+    ).toContain('CommerceOrdersInvoiceQuery');
+
+    await executeAgentRequest('df-scaffold', {
+        operation: 'error',
+        context: 'commerce/orders',
+        name: 'not-found'
+    });
+    expect(
+        read('src/bounded-contexts/commerce/orders/domain/errors/index.ts')
+    ).toContain(
+        "export const CommerceOrdersErrors = errorNamespace('commerce/orders')"
+    );
+    await executeAgentRequest('df-scaffold', {
+        operation: 'error-namespace',
+        context: 'commerce/orders',
+        name: 'payment'
+    });
+    expect(
+        read('src/bounded-contexts/commerce/orders/domain/errors/payment.ts')
+    ).toContain(
+        "export const PaymentErrors = errorNamespace('commerce/orders').subnamespace('payment')"
+    );
+
+    await executeAgentRequest('df-integration', {
+        operation: 'add',
+        integrations: ['rest-endpoint-generator'],
+        nextAdapter: true
+    });
+    await executeAgentRequest('df-scaffold', {
+        operation: 'endpoint',
+        context: 'commerce/orders',
+        method: 'get',
+        path: '',
+        handler: 'commerce/orders:InvoiceQuery'
+    });
+    const endpoint = read(
+        'src/bounded-contexts/commerce/orders/presentation/rest/(root)/GET.ts'
+    );
+    expect(endpoint).toContain('export class CommerceOrdersGetEndpoint');
+    expect(endpoint).toContain("path: ['commerce', 'orders'] }");
+    expect(read('src/presentation/rest/wires.ts')).toBe(
+        "export * from '../../bounded-contexts/commerce/orders/wiring/presentation/rest/(root)'"
+    );
+
+    expect(lintProject(project, 'src')).toEqual([]);
+
+    // Only cross-context adapters reach a neighbor, nested or not
+    write(
+        'src/bounded-contexts/commerce/payments/application/queries/peek-query.ts',
+        "import { InvoiceQuery } from '../../../orders/application/queries/invoice-query'\nexport abstract class PeekQuery { query?: InvoiceQuery }"
+    );
+    expect(
+        lintProject(project, 'src').filter(
+            (violation) => violation.check === 'context-isolation'
+        )
+    ).toMatchObject([{ rule: '[commerce/payments] imports another context:' }]);
+});
+
 test('description exposes schemas, context IDs and actual dependency choices', async () => {
     await executeAgentRequest('df-scaffold', query);
     const description = describeAgentCommand('df-scaffold');

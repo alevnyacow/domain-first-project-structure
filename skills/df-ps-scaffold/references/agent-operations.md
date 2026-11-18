@@ -6,11 +6,11 @@ One invocation accepts one operation, not an array or a batch. Each invocation s
 
 ## Backend operations: df-scaffold
 
-All operations support `dryRun` and `overwrite`. Except `bounded-context`, they require `context`, using a discovered context name or reserved `shared-kernel`. Names are lowercase kebab-case. The backend must be configured by the owner.
+All operations support `dryRun` and `overwrite`. Except `bounded-context`, they require `context`, using a discovered context name (a nested context by its path, e.g. `commerce/orders`) or reserved `shared-kernel`. Names are lowercase kebab-case. The backend must be configured by the owner.
 
 | Operation | Required fields beyond operation/context | Optional fields and conditions |
 | --- | --- | --- |
-| `bounded-context` | `name`; no `context` | Creates an empty context. `shared-kernel` is a reserved name. |
+| `bounded-context` | `name`; no `context` | Creates an empty context. Folders split by `/` group contexts (`commerce/orders`); a segment can't be a layer folder, a context can't be nested in another, and a grouping folder isn't a context. `shared-kernel` is a reserved name. |
 | `aggregate` | `name` | `withRepository` defaults to false. True requires `implementation`; may also use `testImplementation` and `dependencies`. These repository fields do not apply when `withRepository` is false. Bounded contexts only. |
 | `entity` | `name` | `aggregate` selects an existing aggregate in the same context; omitted means a standalone domain entity. |
 | `value-object` | `name` | Same aggregate rules as entity. |

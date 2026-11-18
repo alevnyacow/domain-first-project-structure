@@ -63,7 +63,7 @@ Technical specification of the command-line interface of `@domain-first/project-
 Notation used below:
 
 - `<rootFolder>` is the `project.rootFolder` value of the [configuration file](#configuration-file), relative to the project root.
-- `<context>` is the folder of the selected bounded context: `<rootFolder>/bounded-contexts/<name>`. In the Shared Kernel, it is `<rootFolder>/shared-kernel`.
+- `<context>` is the folder of the selected bounded context: `<rootFolder>/bounded-contexts/<name>`, where a [nested context](#new-bounded-context) has a path as its name (`commerce/orders`). In the Shared Kernel, it is `<rootFolder>/shared-kernel`.
 - `<name>` is the entered name as is, `<Name>` its class form and `<nameVar>` its variable form. See [Naming](#naming).
 - An **implementation label** is a name such as `prisma`, `in-memory`, `api` or `mock`. It names the folder and the class prefix of an implementation: `prisma` gives `infrastructure/repositories/prisma/prisma-order-repository.ts` with `PrismaOrderRepository`.
 - **With `wire`**, **with `handlers`** etc. mean that `backend.domainFirstPackages` includes `@domain-first/wire`, `@domain-first/handlers` etc.
@@ -241,7 +241,7 @@ The nearest directory containing `package.json`, found by walking up from the cu
 
 | Item                         | Shown when       | Action                                                           |
 | ---------------------------- | ---------------- | ---------------------------------------------------------------- |
-| `Bounded Context: <name>`    | One per subfolder of `<rootFolder>/bounded-contexts` | [Layer menus](#layer-menus) for that context |
+| `Bounded Context: <name>`    | One per bounded context in `<rootFolder>/bounded-contexts`, nested ones by path (`commerce/orders`) | [Layer menus](#layer-menus) for that context |
 | `Shared Kernel`               | Always           | [Layer menus](#layer-menus) for `<rootFolder>/shared-kernel`            |
 | `Scaffold new bounded context` | Always         | [New bounded context](#new-bounded-context)                      |
 
@@ -396,7 +396,7 @@ Names are entered in lowercase kebab-case: `place-order`, `payment-gateway`.
 
 Repeated hyphens are ignored in class and variable names. Names are not validated, except where stated: a name with uppercase letters or spaces ends up in paths as is.
 
-**Nested names** (pages, widgets and their moves) may contain folders split by `/` or `\`:
+**Nested names** (bounded contexts, pages, widgets and their moves) may contain folders split by `/` or `\`:
 
 | Form        | Rule                                             | `admin/panel/users` |
 | ----------- | ------------------------------------------------ | ------------------- |
@@ -416,13 +416,17 @@ Every generator below writes into `<context>`. Unless stated otherwise:
 
 ### New bounded context
 
-**Prompts**: `Name:` (required).
+**Prompts**: `Name (folders split by "/"):` (a [nested name](#naming)).
 
 **Output**
 
 | Path                                                  | Condition     | Content                                                        |
 | ----------------------------------------------------- | ------------- | -------------------------------------------------------------- |
 | `<rootFolder>/bounded-contexts/<name>/`               | Always        | Empty folder                                                   |
+
+Folders before the last segment group contexts, like the folders of pages and widgets: `commerce/orders` creates `bounded-contexts/commerce/orders/`. A folder below `bounded-contexts` is a context when it has a layer folder (`domain`, `application`, `infrastructure`, `presentation`, `wiring`) or no folders yet; any other folder groups contexts. So the name is rejected when a segment is a layer folder, when a folder before the last is already a context (`blog/comments` with a context `blog`), or when the name is a folder grouping contexts.
+
+A nested context is an ordinary bounded context named by its path, `commerce/orders`, in menus, module IDs (`commerce/orders:InvoiceQuery`), `df-graph` and lint messages. A grouping folder means nothing to the rules: `commerce/orders` and `commerce/payments` are as isolated as any two contexts. Where its name becomes code, the segments join: `CommerceOrders` (class prefix of cross-context dependencies, `CommerceOrdersErrors`, the context-root endpoint `CommerceOrdersGetEndpoint`). Error codes keep the path: `errorNamespace('commerce/orders')` gives codes such as `commerce/orders.payment.declined`, which never match those of a context `commerce-orders`. Its REST routes start with every segment, `/commerce/orders/...`, and its integration specs live in `specs/integration/commerce/orders/`.
 
 ### New Aggregate
 
@@ -497,7 +501,7 @@ Requires `@domain-first/errors` in the project: the generated code imports from 
 | `New error in namespace <namespace>` | `Error name:`      | Adds `export class <Namespace><Name><Suffix> extends <Namespace><Scope>Errors.define('<name>') {}` to `<namespace>.ts` |
 | `New namespace`                      | `Namespace name:`  | Creates `<namespace>.ts` with `<Namespace><Scope>Errors = errorNamespace('<context>').subnamespace('<namespace>')` and adds `export * from './<namespace>'` to `index.ts` |
 
-Names don't repeat the context: inside a bounded context `<Suffix>` and `<Scope>` are empty (`OutOfStock`, `PaymentDeclined`, `PaymentErrors`). In the Shared Kernel `<Suffix>` is `SharedKernelError` and `<Scope>` is `SharedKernel` (`TimeoutSharedKernelError`, `PaymentDeclinedSharedKernelError`, `PaymentSharedKernelErrors`). `<Context>` is the class form of the context folder name: `SharedKernel` in the Shared Kernel. The namespace name comes first in errors of a namespace.
+Names don't repeat the context: inside a bounded context `<Suffix>` and `<Scope>` are empty (`OutOfStock`, `PaymentDeclined`, `PaymentErrors`). In the Shared Kernel `<Suffix>` is `SharedKernelError` and `<Scope>` is `SharedKernel` (`TimeoutSharedKernelError`, `PaymentDeclinedSharedKernelError`, `PaymentSharedKernelErrors`). `<Context>` is the class form of the context name, the segments of a nested one joined (`commerce/orders` → `CommerceOrders`), and `'<context>'` the name as is (`'commerce/orders'`): `SharedKernel` and `'shared-kernel'` in the Shared Kernel. The namespace name comes first in errors of a namespace.
 
 An error extends the namespace of the file it is added to, as that file exports it (`export const X = errorNamespace(...)`), so namespace files of other names keep working. One choice is listed per `.ts` file in `domain/errors/` other than `index.ts`. Lines are added only if missing, and an existing namespace file is never replaced.
 
@@ -655,10 +659,10 @@ The context-root controller is the folder `(root)`: `presentation/rest/(root)/<p
 
 - Path parameters are named `_param_` in folder and class names, since `:` is not allowed there. The route keeps `:param`.
 - The class name joins the controller, path segments, method and `Endpoint` in class form: `orders/recent` with `get` gives `OrdersRecentGetEndpoint`. Without a controller, the context takes its place: `social-networks` with `get` gives `SocialNetworksGetEndpoint`.
-- The route is `{ method, path: ['<context>', '<controller>', ...segments] }`, and the tag is `'<context>: <controller>'`. Without a controller: `['<context>', ...segments]` and `'<context>'`.
+- The route is `{ method, path: ['<context>', '<controller>', ...segments] }`, where a nested context gives each of its segments (`['commerce', 'orders', ...]`), and the tag is `'<context>: <controller>'`. Without a controller: `['<context>', ...segments]` and `'<context>'`.
 - `/<context>/<segment>` belongs to one controller: a new controller can't be named like a static first segment of `(root)`, `(root)` can't get a path whose first static segment is a controller, and a controller can't be named like the context. Path parameters (`(root)/_id_/`) don't collide.
 - Context-root endpoints of 8.5 lived right in `presentation/rest/` (`<METHOD>.ts`, `_param_/`). In such a context, `(root)` is refused with `UPGRADE_REQUIRED` until [`df-upgrade`](#df-upgrade) moves them; controllers are not affected.
-- The OpenAPI extractor looks the endpoint file up in the controller folder (`presentation/rest/<path>/<METHOD>.ts`), then in `(root)`.
+- The OpenAPI extractor finds the context by the start of the route, nested contexts included, and looks the endpoint file up in the controller folder (`presentation/rest/<path>/<METHOD>.ts`), then in `(root)`.
 - The constructor takes `endpointGenerator: RestEndpointGeneratorPresentationService`, the [endpoint generator](#endpoint-generator) of the Shared Kernel, and `handler`, the chosen handler or `never` without one. `get handle()` calls `this.endpointGenerator(this.handler.handle, { route, tags })`, which doesn't compile on purpose: the user picks a generating getter of the service, e.g. `this.endpointGenerator.withoutGuards(...)`.
 - In projects without the generator file, the generator type is `EndpointGenerator` from `@domain-first/handlers-rest` and the wire takes no dependencies.
 
@@ -1101,7 +1105,7 @@ The config uses the `postgresql` dialect and reads `DATABASE_URL` through `doten
 }
 ```
 
-The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolder>/bounded-contexts` and `<rootFolder>/shared-kernel`, excluding specs, infrastructure, REST presentation and wiring. `specs/e2e` and `specs/integration` are excluded from tests. When `@domain-first/handlers-next` is declared, it is inlined so its `next/headers` import resolves.
+The config uses `resolve.tsconfigPaths` (Vite 8+) and V8 coverage of `<rootFolder>/bounded-contexts` and `<rootFolder>/shared-kernel`, excluding specs, infrastructure, REST presentation and wiring, nested contexts included. `specs/e2e` and `specs/integration` are excluded from tests. When `@domain-first/handlers-next` is declared, it is inlined so its `next/headers` import resolves.
 
 ### Playwright
 
@@ -1296,6 +1300,7 @@ Runtime routes and types don't change; only files move.
 | Move context-root REST endpoints to `(root)` | optional | In every context, `presentation/rest/<METHOD>.ts` and `_param_/` move to `presentation/rest/(root)/`, the wires in `wiring/presentation/rest/` to its `(root)/` with an `index.ts`. `wiring/presentation/rest/index.ts` and `<rootFolder>/presentation/rest/wires.ts` re-export `(root)` once instead of every endpoint, also when they missed its endpoints. Imports of and in the moved files are rewritten. An existing target file stops the upgrade |
 | Let the OpenAPI extractor find `(root)` | optional | The 8.5.1 lookup in `scripts/extract-open-api-data-from-endpoint.ts` is replaced by the current one |
 | Update the OpenAPI extractor by hand | manual | An extractor changed by hand, when context-root endpoints exist |
+| Let the OpenAPI extractor find endpoints of nested bounded contexts | optional | When the project has a [nested context](#new-bounded-context), the lookup of 8.6 to 8.9 in `scripts/extract-open-api-data-from-endpoint.ts`, which took the first folder of a route for the context, is replaced by the current one, which finds the context by the start of the route |
 | Let `withId` of the in-memory DB find `[id, item]` | optional | In `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts`, the `withId` of 8.9.0 and earlier, which compared the items' own `id` and missed items saved as an `[id, item]` tuple, now looks up the id saved with the item, like `save` and `deleteById`. Its unused `hasId` helper is removed. A `withId` changed by hand is left as it is |
 
 ## `df-graph`

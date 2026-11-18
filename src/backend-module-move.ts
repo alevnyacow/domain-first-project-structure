@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { crossContextImportAllowed } from './context-dependencies';
+import { splitContextSegments } from './bounded-contexts';
+import {
+    boundedContextName,
+    crossContextImportAllowed
+} from './context-dependencies';
 import { File } from './file-system';
 import { plural } from './in-memory-db';
 import {
@@ -217,7 +221,9 @@ export const integrationSpecFile = (unit: ContractUnit, label?: string) => {
     return path.join(
         projectRoot,
         integrationSpecsFolder,
-        path.basename(unit.ownerPath),
+        ...(
+            boundedContextName(unit.ownerPath) ?? path.basename(unit.ownerPath)
+        ).split('/'),
         source.slice('infrastructure/'.length).replace(/\.ts$/, '.spec.ts')
     );
 };
@@ -439,9 +445,15 @@ export const validateBackendMove = (
 
 /** Where a file belongs: a bounded context, the Shared Kernel or neither. */
 const ownerOf = (rootFolderPath: string, file: string) => {
-    const [area, context] = path.relative(rootFolderPath, file).split(path.sep);
-    if (area === 'bounded-contexts' && context) {
-        return { context, path: path.join(rootFolderPath, area, context) };
+    const [area, ...segments] = path
+        .relative(rootFolderPath, file)
+        .split(path.sep);
+    if (area === 'bounded-contexts' && segments.length) {
+        const context = splitContextSegments(segments).name;
+        return {
+            context,
+            path: path.join(rootFolderPath, area, ...context.split('/'))
+        };
     }
     if (area === 'shared-kernel') {
         return { context: undefined, path: path.join(rootFolderPath, area) };

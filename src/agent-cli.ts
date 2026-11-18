@@ -5,6 +5,7 @@ import z from 'zod';
 import { moduleId, unitId } from './agent-identifiers';
 import { type AgentCommand, requestSchemaFor } from './agent-requests';
 import { findBackendUnits, integrationSpecFile } from './backend-module-move';
+import { boundedContextNames } from './bounded-contexts';
 import { ConfigFile } from './config-file';
 import { hasNeighboringBoundedContext } from './context-dependencies';
 import {
@@ -99,13 +100,12 @@ const ownerFolders = (root: string) => {
     ]);
     return [
         { name: 'shared-kernel', folder: source.subitem(['shared-kernel']) },
-        ...source
-            .subitem(['bounded-contexts'])
-            .content.subfolderNames.sort()
-            .map((name) => ({
+        ...boundedContextNames(source.subitem(['bounded-contexts']).path).map(
+            (name) => ({
                 name,
-                folder: source.subitem(['bounded-contexts', name])
-            }))
+                folder: source.subitem(['bounded-contexts', ...name.split('/')])
+            })
+        )
     ];
 };
 const ownerFor = (context: string) => {

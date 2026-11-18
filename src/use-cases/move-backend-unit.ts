@@ -9,8 +9,10 @@ import {
     type UnitPlace,
     validateBackendMove
 } from '../backend-module-move';
+import { boundedContextNames } from '../bounded-contexts';
 import { ConfigFile } from '../config-file';
-import { discardPendingChanges, Folder } from '../file-system';
+import { boundedContextName } from '../context-dependencies';
+import { discardPendingChanges, type Folder } from '../file-system';
 import {
     confirm,
     input,
@@ -66,12 +68,12 @@ export const moveBackendUnitUseCase = async (ownerFolder: Folder) => {
     const placeName = (ownerPath: string) =>
         ownerPath === sharedKernelPath
             ? 'Shared Kernel'
-            : `Bounded Context: ${path.basename(ownerPath)}`;
-    const contexts = new Folder(rootFolderPath)
-        .subitem(['bounded-contexts'])
-        .content.subfolderNames.map((name) =>
-            path.join(rootFolderPath, 'bounded-contexts', name)
-        );
+            : `Bounded Context: ${boundedContextName(ownerPath)}`;
+    const contexts = boundedContextNames(
+        path.join(rootFolderPath, 'bounded-contexts')
+    ).map((name) =>
+        path.join(rootFolderPath, 'bounded-contexts', ...name.split('/'))
+    );
     const places = [
         unit.ownerPath,
         ...contexts,
@@ -80,7 +82,9 @@ export const moveBackendUnitUseCase = async (ownerFolder: Folder) => {
     const ownerPath = await select({
         key: 'targetContext',
         id: (owner) =>
-            owner === sharedKernelPath ? 'shared-kernel' : path.basename(owner),
+            owner === sharedKernelPath
+                ? 'shared-kernel'
+                : (boundedContextName(owner) ?? path.basename(owner)),
         message: 'Move to:',
         choices: places.map((value) => ({
             name:

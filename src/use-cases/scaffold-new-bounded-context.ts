@@ -1,23 +1,39 @@
+import path from 'node:path';
+import {
+    boundedContextsFolderName,
+    validateBoundedContextName
+} from '../bounded-contexts';
 import { ConfigFile } from '../config-file';
 import { Folder } from '../file-system';
 import { input } from '../interaction';
 import { ProjectRoot } from '../project-root';
 
+/**
+ * Folders before the name group contexts, like the folders of React
+ * pages and widgets: `sales/orders` → `bounded-contexts/sales/orders`.
+ */
 export const scaffoldNewBoundedContextUseCase = async () => {
+    const rootFolder = new Folder(new ProjectRoot().path).subitem([
+        ConfigFile.Instance.data.project.rootFolder
+    ]);
+    const contextsFolder = path.join(
+        rootFolder.path,
+        boundedContextsFolderName
+    );
+
     const name = await input({
         key: 'name',
-        message: 'Name:',
-        validate: (x) => !!x.length
+        message: 'Name (folders split by "/"):',
+        validate: (value) => validateBoundedContextName(contextsFolder, value)
     });
 
-    const { path } = new ProjectRoot();
-
-    const rootFolder = new Folder(path);
-    const folder = rootFolder.subitem([
-        ConfigFile.Instance.data.project.rootFolder,
-        'bounded-contexts',
-        name
-    ]);
-
-    folder.createIfNotExisted();
+    rootFolder
+        .subitem([
+            boundedContextsFolderName,
+            ...name
+                .split(/[\\/]/)
+                .map((segment) => segment.trim())
+                .filter((segment) => !!segment)
+        ])
+        .createIfNotExisted();
 };

@@ -1,35 +1,45 @@
-import fs from 'node:fs';
 import path from 'node:path';
+import {
+    boundedContextNames,
+    boundedContextsFolderName,
+    splitContextSegments
+} from './bounded-contexts';
 
 export const crossContextImplementation = 'cross-context';
 
-/** Context folders follow the same directory layout as the CLI context menu. */
+/**
+ * Whether another bounded context exists anywhere under `bounded-contexts`,
+ * nested ones included.
+ */
 export const hasNeighboringBoundedContext = (ownerPath: string) => {
-    const contextsPath = path.dirname(ownerPath);
-    return (
-        path.basename(contextsPath) === 'bounded-contexts' &&
-        fs.existsSync(contextsPath) &&
-        fs
-            .readdirSync(contextsPath, { withFileTypes: true })
-            .some(
-                (entry) =>
-                    entry.isDirectory() &&
-                    entry.name !== path.basename(ownerPath)
-            )
+    const location = boundedContextLocation(path.join(ownerPath, 'domain'));
+    if (!location) return false;
+    const contextsPath = path.join(location.root, boundedContextsFolderName);
+    return boundedContextNames(contextsPath).some(
+        (name) => name !== location.name
     );
 };
 
-/** A file inside a bounded context, including its project source root. */
+/**
+ * A file inside a bounded context, including its project source root.
+ * A nested context is named by its path, e.g. `sales/orders`.
+ */
 export const boundedContextLocation = (file: string) => {
     const parts = path.resolve(file).split(path.sep);
-    const index = parts.lastIndexOf('bounded-contexts');
+    const index = parts.lastIndexOf(boundedContextsFolderName);
     if (index === -1 || parts.length < index + 3) return undefined;
     return {
         root: parts.slice(0, index).join(path.sep),
-        name: parts[index + 1],
-        segments: parts.slice(index + 2)
+        ...splitContextSegments(parts.slice(index + 1))
     };
 };
+
+/**
+ * The name of the context in the folder (`sales/orders` when nested), or
+ * undefined for the Shared Kernel.
+ */
+export const boundedContextName = (folder: string) =>
+    boundedContextLocation(path.join(folder, 'domain'))?.name;
 
 /** The reserved implementation type, determined by its infrastructure folder. */
 export const isCrossContextImplementation = (file: string) => {

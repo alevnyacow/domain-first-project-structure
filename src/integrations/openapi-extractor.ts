@@ -40,11 +40,11 @@ export const legacyEndpointFileLookup = (
 `;
 
 /**
- * A controller is the first folder of the route; any other route belongs
- * to the context-root controller in `presentation/rest/(root)/`. The
- * generator keeps the two apart, so at most one of the files exists.
+ * How 8.6 to 8.9 found the endpoint file, as scaffolded: the context is the first
+ * folder of the route, so nested contexts are missed. `df-upgrade`
+ * replaces it with `endpointFileLookup`.
  */
-export const endpointFileLookup = (
+export const rootEndpointFileLookup = (
     rootFolder: string
 ) => `            const [currentBoundedContext, ...relativePath] = routeMetadata.path;
 
@@ -69,6 +69,47 @@ export const endpointFileLookup = (
                 project.getSourceFile(
                     path.join(restFolder, '(root)', ...endpointPath)
                 );
+`;
+
+/**
+ * The context is a folder path at the start of the route, nested ones
+ * included (`/sales/orders/...`). A controller is the next folder; any
+ * other route belongs to the context-root controller in
+ * `presentation/rest/(root)/`. The generator keeps them apart, so at most
+ * one of the files exists.
+ */
+export const endpointFileLookup = (
+    rootFolder: string
+) => `            // A context is the start of the route, nested ones included
+            // (/sales/orders/...). A controller is the next folder; other
+            // routes belong to the context root in presentation/rest/(root).
+            const contextsFolder = path.join(
+                ${rootFolderSegments(rootFolder, 16)}'bounded-contexts'
+            );
+            const endpointFile = Array.from(
+                { length: routeMetadata.path.length },
+                (_, index) => index + 1
+            )
+                .flatMap((contextLength) => {
+                    const restFolder = path.join(
+                        contextsFolder,
+                        ...routeMetadata.path.slice(0, contextLength),
+                        'presentation',
+                        'rest'
+                    );
+                    const endpointPath = [
+                        ...routeMetadata.path
+                            .slice(contextLength)
+                            .map(pathParameterAsName),
+                        \`\${routeMetadata.method.toUpperCase()}.ts\`
+                    ];
+                    return [
+                        path.join(restFolder, ...endpointPath),
+                        path.join(restFolder, '(root)', ...endpointPath)
+                    ];
+                })
+                .map((file) => project.getSourceFile(file))
+                .find((file) => !!file);
 `;
 
 export const openapiExtractor = (

@@ -1,5 +1,5 @@
-import fs from 'node:fs';
 import path from 'node:path';
+import { boundedContextNames, boundedContextPath } from './bounded-contexts';
 import { File } from './file-system';
 import { readAliases, resolveSpecifier } from './project-lint';
 import {
@@ -36,14 +36,7 @@ export type ProjectGraph = {
     edges: GraphEdge[];
 };
 
-const contextsOf = (contextsFolder: string) =>
-    fs.existsSync(contextsFolder)
-        ? fs
-              .readdirSync(contextsFolder, { withFileTypes: true })
-              .filter((entry) => entry.isDirectory())
-              .map((entry) => entry.name)
-              .sort()
-        : [];
+const contextsOf = boundedContextNames;
 
 /**
  * Wired modules of the Shared Kernel and every bounded context, and the
@@ -59,7 +52,7 @@ export const projectGraph = (
     const ownerPath = (owner: string) =>
         owner === sharedKernel
             ? path.join(root, sharedKernel)
-            : path.join(contextsFolder, owner);
+            : boundedContextPath(contextsFolder, owner);
 
     const byWireFile = new Map<string, GraphModule>();
     const wired: [WiredModule, GraphModule][] = [];

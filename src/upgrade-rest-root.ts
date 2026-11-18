@@ -1,10 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { boundedContextNames, boundedContextPath } from './bounded-contexts';
+import { boundedContextName } from './context-dependencies';
 import { File } from './file-system';
 import {
     endpointFileLookup,
     legacyEndpointFileLookup,
-    openapiExtractorPath
+    openapiExtractorPath,
+    rootEndpointFileLookup
 } from './integrations/openapi-extractor';
 import { codeExtension, stageModuleMove, toPosix, walk } from './module-move';
 import { ProjectRoot } from './project-root';
@@ -33,12 +36,9 @@ const contextFolders = (context: UpgradeContext) => {
         rootFolder,
         'bounded-contexts'
     );
-    return fs.existsSync(contexts)
-        ? fs
-              .readdirSync(contexts, { withFileTypes: true })
-              .filter((entry) => entry.isDirectory())
-              .map((entry) => path.join(contexts, entry.name))
-        : [];
+    return boundedContextNames(contexts).map((name) =>
+        boundedContextPath(contexts, name)
+    );
 };
 
 const legacyContexts = (context: UpgradeContext) =>
@@ -107,7 +107,9 @@ export const restRootControllerStep: UpgradeStep = {
     detect: (context) => legacyContexts(context).length > 0,
     plan: (context) =>
         legacyContexts(context).flatMap((contextFolder) => {
-            const name = path.basename(contextFolder);
+            const name =
+                boundedContextName(contextFolder) ??
+                path.basename(contextFolder);
             const { wiring } = restFolders(contextFolder);
             const { files } = rootMoves(contextFolder);
             const wired = files.some(([file]) => file.startsWith(wiring));
@@ -180,7 +182,9 @@ export const restRootControllerStep: UpgradeStep = {
             )
         );
         for (const contextFolder of contexts) {
-            const name = path.basename(contextFolder);
+            const name =
+                boundedContextName(contextFolder) ??
+                path.basename(contextFolder);
             const { wiring } = restFolders(contextFolder);
             const movedWires = legacyRootEndpoints(contextFolder).wireFiles;
             if (!movedWires.length) continue;
@@ -244,6 +248,50 @@ export const openapiExtractorRootStep: UpgradeStep = {
 };
 
 /**
+ * The extractor of 8.6 to 8.9 takes the first folder of a route for the context, so
+ * it misses the endpoints of nested contexts.
+ */
+export const openapiExtractorNestedStep: UpgradeStep = {
+    id: 'openapi-extractor-nested',
+    kind: 'optional',
+    title: 'Let the OpenAPI extractor find endpoints of nested bounded contexts',
+    detect: (context) => {
+        const rootFolder = rootFolderOf(context);
+        const file = extractorFile();
+        return (
+            !!rootFolder &&
+            file.exists &&
+            file.data.includes(rootEndpointFileLookup(rootFolder)) &&
+            contextFolders(context).some((folder) =>
+                path
+                    .relative(
+                        path.join(
+                            new ProjectRoot().path,
+                            rootFolder,
+                            'bounded-contexts'
+                        ),
+                        folder
+                    )
+                    .includes(path.sep)
+            )
+        );
+    },
+    plan: () => [
+        `${openapiExtractorPath}: the context of an endpoint is looked up by the start of its route, nested contexts included`
+    ],
+    apply: (context) => {
+        const rootFolder = rootFolderOf(context)!;
+        const file = extractorFile();
+        file.update(
+            file.data.replace(
+                rootEndpointFileLookup(rootFolder),
+                endpointFileLookup(rootFolder)
+            )
+        );
+    }
+};
+
+/**
  * An extractor changed by hand, or of an earlier version, misses the
  * context-root endpoints once they are in `(root)/`.
  */
@@ -258,6 +306,7 @@ export const openapiExtractorManualStep: UpgradeStep = {
         const data = file.data;
         return (
             !data.includes(endpointFileLookup(rootFolder)) &&
+            !data.includes(rootEndpointFileLookup(rootFolder)) &&
             !data.includes(legacyEndpointFileLookup(rootFolder)) &&
             contextFolders(context).some(
                 (folder) =>

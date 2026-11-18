@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { contextClassName } from './bounded-contexts';
 import { configuredDependencyRules } from './config-file';
 import {
     boundedContextLocation,
@@ -727,9 +728,7 @@ export const wireDependencies = (
         const context = crossContext
             ? boundedContextLocation(dependency.wireFile)
             : undefined;
-        const prefix = context
-            ? new UnknownFormatNaming(context.name).ClassName
-            : '';
+        const prefix = context ? contextClassName(context.name) : '';
         const wireName = dependencyBinding(
             wireSource,
             consumer.wireFile,

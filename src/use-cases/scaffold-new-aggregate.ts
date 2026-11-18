@@ -12,6 +12,7 @@ import { confirm, input } from '../interaction';
 import { UnknownFormatNaming } from '../unknown-format-naming';
 import {
     envBranchedWireArgument,
+    envBranchedWireImport,
     offersTestImplementation
 } from '../wire-branches';
 import { promptImplementationType } from './prompt-implementation-type';
@@ -179,7 +180,7 @@ describe('${aggregateNaming.withSpaces}', () => {
                     `wire-${aggregateNaming.fileName}-repository.ts`,
                     `
 import { wireClass } from '@domain-first/wire'
-import { envBranchedWire } from '../../../../shared-kernel/wiring/env-branched-wire'
+${envBranchedWireImport(boundedContextFolder.subitem(['wiring', 'repositories']).path)}
 ${implementationTypes
     .map((x) => new UnknownFormatNaming(x))
     .map(({ ClassName, fileName }) => {

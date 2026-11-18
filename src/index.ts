@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
+import path from 'node:path';
 import { select } from '@inquirer/prompts';
 import { runCLI } from './agent-cli';
+import { boundedContextNames } from './bounded-contexts';
 import { ConfigFile, outdatedConfigMessage } from './config-file';
 import { Folder } from './file-system';
 import { ProjectRoot } from './project-root';
@@ -49,15 +51,16 @@ const main = async () => {
 
     const rootPath = new ProjectRoot().path;
 
-    const currentBoundedContextOptions = new Folder(rootPath)
-        .subitem([
+    const currentBoundedContextOptions = boundedContextNames(
+        path.join(
+            rootPath,
             ConfigFile.Instance.data.project.rootFolder,
             'bounded-contexts'
-        ])
-        .content.subfolderNames.map((name) => ({
-            name: `Bounded Context: ${name}`,
-            action: 'Scaffold in bounded context' as const
-        }));
+        )
+    ).map((name) => ({
+        name: `Bounded Context: ${name}`,
+        action: 'Scaffold in bounded context' as const
+    }));
 
     const scaffoldNewBoundedContext = {
         name: 'Scaffold new bounded context',
@@ -91,7 +94,9 @@ const main = async () => {
                     ? [
                           ConfigFile.Instance.data.project.rootFolder,
                           'bounded-contexts',
-                          name.substring('Bounded Context: '.length)
+                          ...name
+                              .substring('Bounded Context: '.length)
+                              .split('/')
                       ]
                     : [
                           ConfigFile.Instance.data.project.rootFolder,

@@ -9,7 +9,7 @@ import {
     writePendingChanges
 } from '../file-system';
 import { addOpenapi, apiTitle } from './index';
-import { openapiExtractor } from './openapi-extractor';
+import { endpointFileLookup, openapiExtractor } from './openapi-extractor';
 
 rstest.mock('@inquirer/prompts', () => ({
     confirm: rstest.fn(),
@@ -329,32 +329,63 @@ test('the Swagger UI page asks for resolveJsonModule unless it is set', async ()
     ).not.toContain(hint);
 });
 
+/**
+ * Runs the generated lookup against the files a ts-morph project would
+ * hold, returning the endpoint file it finds.
+ */
+const lookUp = (rootFolder: string, files: string[], routePath: string[]) => {
+    const run = new Function(
+        'path',
+        'project',
+        'routeMetadata',
+        'pathParameterAsName',
+        `${endpointFileLookup(rootFolder)}\nreturn endpointFile;`
+    );
+    return run(
+        path.posix,
+        {
+            getSourceFile: (file: string) =>
+                files.includes(file) ? file : undefined
+        },
+        { method: 'get', path: routePath },
+        (segment: string) =>
+            segment.startsWith(':') ? `_${segment.slice(1)}_` : segment
+    );
+};
+
 test('resolves endpoint files under the root folder', () => {
-    expect(openapiExtractor('.')).toContain(
-        `path.join(
-                'bounded-contexts',`
-    );
-    expect(openapiExtractor('./src\\server/')).toContain(
-        `path.join(
-                'src',
-                'server',
-                'bounded-contexts',`
-    );
+    const file = 'bounded-contexts/orders/presentation/rest/items/GET.ts';
+    expect(lookUp('.', [file], ['orders', 'items'])).toBe(file);
+    expect(
+        lookUp('./src\\server/', [`src/server/${file}`], ['orders', 'items'])
+    ).toBe(`src/server/${file}`);
 });
 
 test('finds controller endpoints and those of the context root in (root)', () => {
-    expect(openapiExtractor('src')).toContain(
-        `project.getSourceFile(path.join(restFolder, ...endpointPath)) ??
-                project.getSourceFile(
-                    path.join(restFolder, '(root)', ...endpointPath)
-                );`
+    const controller =
+        'src/bounded-contexts/orders/presentation/rest/items/GET.ts';
+    const root = 'src/bounded-contexts/orders/presentation/rest/(root)/GET.ts';
+    expect(lookUp('src', [controller, root], ['orders', 'items'])).toBe(
+        controller
     );
+    expect(lookUp('src', [controller, root], ['orders'])).toBe(root);
+    expect(lookUp('src', [controller], [])).toBeUndefined();
+});
+
+test('finds endpoints of nested bounded contexts by the start of the route', () => {
+    const files = [
+        'bounded-contexts/sales/orders/presentation/rest/items/GET.ts',
+        'bounded-contexts/sales/orders/presentation/rest/(root)/GET.ts'
+    ];
+    expect(lookUp('.', files, ['sales', 'orders', 'items'])).toBe(files[0]);
+    expect(lookUp('.', files, ['sales', 'orders'])).toBe(files[1]);
+    expect(lookUp('.', files, ['sales'])).toBeUndefined();
 });
 
 test('names path parameters of endpoint folders as _id_', () => {
-    const extractor = openapiExtractor('.');
-    expect(extractor).toContain(
+    expect(openapiExtractor('.')).toContain(
         `segment.startsWith(':') ? \`_\${segment.slice(1)}_\` : segment;`
     );
-    expect(extractor).toContain('...relativePath.map(pathParameterAsName),');
+    const file = 'bounded-contexts/orders/presentation/rest/(root)/_id_/GET.ts';
+    expect(lookUp('.', [file], ['orders', ':id'])).toBe(file);
 });
