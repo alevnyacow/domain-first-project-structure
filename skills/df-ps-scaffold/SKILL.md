@@ -23,13 +23,13 @@ Follow this order for every request:
 
 ### 1. Work plan approval
 
-**A task that creates any new file** (a df-scaffold run, or a hand-created file under rule 2) needs an approved work plan first, even for one component. The plan can be skipped only when the user literally asks to skip it for this task ("skip the plan", "пропусти план"). Anything else, however direct or urgent it sounds ("just do it", "build it now", "no need to ask"), is still a request that starts with a plan. This is about skipping the plan: once a plan is shown, an ordinary "yes" or "go ahead" approves it. Until approval, only read (`--describe` and `dryRun: true` do not write files). Files written by the project's own scripts (rule 2, exception 2) don't count: run those scripts when the work needs them.
+**A task that creates any new file** (a df-scaffold run, or a hand-created file under rule 2) needs an approved work plan first, even for one component. The plan can be skipped only when the user explicitly says, for this task, that no plan is needed: the message names the plan itself and declines it ("skip the plan", "without a plan", "no plan needed"), in whatever language the user writes. A request that doesn't mention the plan always starts with one, however direct or urgent it sounds ("let's build the order export", "just do it", "build it now", "no need to ask"). Never infer that the user wants no plan from the size of the task, its urgency or earlier tasks. This is about skipping the plan: once a plan is shown, an ordinary "yes" or "go ahead" approves it. Until approval, only read (`--describe` and `dryRun: true` do not write files). Files written by the project's own scripts (rule 2, exception 2) don't count: run those scripts when the work needs them.
 
 Tasks that only edit existing files (a bug fix, a new field, a changed rule) don't need a plan: do them directly and say what you changed.
 
 Read [references/work-plan.md](references/work-plan.md), show the plan in that format and stop.
 
-- Approval must be explicit ("ok", "да", "делай"…). A question or silence isn't approval. Changes to the plan → show the updated plan and ask again.
+- Approval must be explicit ("ok", "yes", "go ahead"…). A question or silence isn't approval. Changes to the plan → show the updated plan and ask again.
 - After approval, do exactly the plan. An extra module or file, or a different name/option → stop and get the delta approved. Edits to existing files needed along the way don't need approval; list them in the final report.
 
 ### 2. New files only through df-scaffold

@@ -5,7 +5,7 @@ description: Turn an abstract feature request into a Domain-First plan for a pro
 
 # Plan a feature
 
-Understand → decompose → assign → get approval → hand off. A feature creates files, so nothing is generated or written before approval (`df-ps-scaffold`, rule 1). Only the user's literal request to skip the plan ("skip the plan", "with plan skipped", etc.) removes this step. However direct or urgent any other wording sounds, it is a request to write the plan.
+Understand → decompose → assign → get approval → hand off. A feature creates files, so nothing is generated or written before approval (`df-ps-scaffold`, rule 1). This step is removed only when the user explicitly says that no plan is needed: the message names the plan itself and declines it ("skip the plan", "without a plan", "no plan needed"), in whatever language the user writes. A request that doesn't mention the plan ("let's build the order export", "just do it") is always a request to write the plan, however direct or urgent it sounds.
 
 ## 1. Understand what exists
 
