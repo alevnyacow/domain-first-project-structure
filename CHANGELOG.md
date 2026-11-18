@@ -1,3 +1,10 @@
+## [8.10.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.10.0...v8.10.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* skip the work plan only when the user declines it explicitly ([7cc4fe9](https://github.com/alevnyacow/domain-first-project-structure/commit/7cc4fe913da180d7946da416e20dcd373be51f9b))
+
 # [8.10.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.9.2...v8.10.0) (2026-11-18)
 
 
