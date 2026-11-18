@@ -1,3 +1,10 @@
+# [8.11.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.10.1...v8.11.0) (2026-11-18)
+
+
+### Features
+
+* Svelte and SvelteKit support ([36d59d6](https://github.com/alevnyacow/domain-first-project-structure/commit/36d59d66c7a3bdf56a156d9ab2a4407c95a27ac9))
+
 ## [8.10.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.10.0...v8.10.1) (2026-11-18)
 
 
