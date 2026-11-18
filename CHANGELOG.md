@@ -1,3 +1,10 @@
+## [8.9.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.9.1...v8.9.2) (2026-11-18)
+
+
+### Bug Fixes
+
+* automatic swagger page for next ([29af662](https://github.com/alevnyacow/domain-first-project-structure/commit/29af662c723a4a1b1c4d7c3242ae381a7adb1bf6))
+
 ## [8.9.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.9.0...v8.9.1) (2026-11-15)
 
 
