@@ -1,3 +1,10 @@
+# [8.10.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.9.2...v8.10.0) (2026-11-18)
+
+
+### Features
+
+* nested bounded contexts ([f1753c9](https://github.com/alevnyacow/domain-first-project-structure/commit/f1753c9394790bc850482709cdb791d329f09a89))
+
 ## [8.9.2](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.9.1...v8.9.2) (2026-11-18)
 
 
