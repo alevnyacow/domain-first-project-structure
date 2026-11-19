@@ -144,7 +144,7 @@ test('a page used by its route is deleted together with the route', async () => 
     ).rejects.toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
 });
 
-test('widgets with separated UI get Svelte components, a reactive UI model and stories', async () => {
+test('widgets with separated UI map props with toUIProps and get stories', async () => {
     ConfigFile.update({
         frontend: {
             svelte: {
@@ -166,31 +166,32 @@ test('widgets with separated UI get Svelte components, a reactive UI model and s
             `${widget}/types.ts`,
             `${widget}/admin-orders-widget.svelte`,
             `${widget}/ui/admin-orders-widget-ui.svelte`,
-            `${widget}/ui/admin-orders-widget-ui.stories.ts`,
-            `${widget}/model/create-admin-orders-ui-model.svelte.ts`
+            `${widget}/ui/admin-orders-widget-ui.stories.ts`
         ].sort()
     );
     expect(read(`${widget}/index.ts`)).toContain(
         "export { default as AdminOrdersWidget } from './admin-orders-widget.svelte'"
     );
-    expect(read(`${widget}/admin-orders-widget.svelte`)).toContain(
-        "import { createAdminOrdersUIModel } from './model/create-admin-orders-ui-model.svelte'"
-    );
-    expect(read(`${widget}/admin-orders-widget.svelte`)).toContain(
-        'const uiModel = createAdminOrdersUIModel(props)'
-    );
-    const model = read(
-        `${widget}/model/create-admin-orders-ui-model.svelte.ts`
-    );
-    // The $props() proxy as a whole, values exposed through getters
-    expect(model).toContain(`export const createAdminOrdersUIModel = (
-    widgetProps: AdminOrdersWidgetProps,
-): AdminOrdersWidgetUIProps => {`);
-    expect(model).toContain('// get value() { return value },');
-    expect(model).not.toMatch(/\buse[A-Z]/);
-    expect(read(`${widget}/ui/admin-orders-widget-ui.stories.ts`)).toContain(
+    expect(
+        read(`${widget}/admin-orders-widget.svelte`)
+    ).toBe(`<script lang="ts">
+    import type { AdminOrdersWidgetProps, AdminOrdersWidgetUIProps } from './types'
+    import AdminOrdersWidgetUI from './ui/admin-orders-widget-ui.svelte'
+
+    let props: AdminOrdersWidgetProps = $props()
+
+    const toUIProps = (): AdminOrdersWidgetUIProps => ({})
+</script>
+
+<AdminOrdersWidgetUI {...toUIProps()} />`);
+    const story = read(`${widget}/ui/admin-orders-widget-ui.stories.ts`);
+    expect(story).toContain(
         "import type { Meta, StoryObj } from '@storybook/svelte-vite'"
     );
+    expect(story).toContain(`export const Default: Story = {
+    // fill required props of AdminOrdersWidgetUIProps
+    args: {}
+}`);
     // No route for plain Svelte pages
     const page = await executeAgentRequest('df-svelte', {
         operation: 'page',
@@ -236,36 +237,41 @@ test('moving a widget renames its files, imports and story title', async () => {
 </script>
 
 <SalesPurchasesWidget />`);
-    expect(read(`${widget}/sales-purchases-widget.svelte`)).toContain(
+    const moved = read(`${widget}/sales-purchases-widget.svelte`);
+    expect(moved).toContain(
         "import SalesPurchasesWidgetUI from './ui/sales-purchases-widget-ui.svelte'"
+    );
+    expect(moved).toContain(
+        'const toUIProps = (): SalesPurchasesWidgetUIProps => ({})'
     );
     expect(read(`${widget}/ui/sales-purchases-widget-ui.stories.ts`)).toContain(
         "title: 'Widgets/Sales/Purchases'"
     );
-    expect(
-        read(`${widget}/model/create-sales-purchases-ui-model.svelte.ts`)
-    ).toContain('export const createSalesPurchasesUIModel = (');
-    expect(read(`${widget}/sales-purchases-widget.svelte`)).toContain(
-        'const uiModel = createSalesPurchasesUIModel(props)'
-    );
 });
 
-test('headless widgets pass the reactive rest of $props() to the UI model', async () => {
-    await executeAgentRequest('df-svelte', {
+test('headless widgets map the reactive rest of $props() with toUIProps', async () => {
+    const result = await executeAgentRequest('df-svelte', {
         operation: 'widget',
         name: 'orders',
         widgetType: 'headless'
     });
     const widget = `${svelteFolder}/widgets/orders`;
-    expect(read(`${widget}/orders-widget.svelte`)).toContain(
-        `    let { UI, ...widgetProps }: OrdersWidgetProps = $props()
-    // The rest of $props() stays reactive, a copy made by hand would not
-    // svelte-ignore state_referenced_locally
-    const uiModel = createOrdersUIModel(widgetProps)`
+    expect(result.files.created.sort()).toEqual(
+        [
+            `${widget}/index.ts`,
+            `${widget}/types.ts`,
+            `${widget}/orders-widget.svelte`
+        ].sort()
     );
-    expect(read(`${widget}/model/create-orders-ui-model.svelte.ts`)).toContain(
-        "widgetProps: Omit<OrdersWidgetProps, 'UI'>,"
-    );
+    expect(read(`${widget}/orders-widget.svelte`)).toBe(`<script lang="ts">
+    import type { OrdersWidgetProps, OrdersWidgetUIProps } from './types'
+
+    let { UI, ...rest }: OrdersWidgetProps = $props()
+
+    const toUIProps = (): OrdersWidgetUIProps => ({})
+</script>
+
+<UI {...toUIProps()} />`);
 });
 
 test('UI-kit components and shared models are listed, moved and deleted', async () => {

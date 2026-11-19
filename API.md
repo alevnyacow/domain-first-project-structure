@@ -997,33 +997,36 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 | Module | Files |
 | --- | --- |
 | Page | `svelte/pages/<folders>/<file>-page.svelte`, exporting `<Name>PageProps` from `<script lang="ts" module>` and reading `$props()` |
-| Widget, `with separated ui` | `svelte/widgets/<folders>/<name>/`: `<file>-widget.svelte`, `types.ts`, `ui/<file>-widget-ui.svelte`, `model/create-<file>-ui-model.svelte.ts` (`create<Name>UIModel`), `index.ts` (`export { default as <Name>Widget }` and the props type); with `storybookFramework`, `ui/<file>-widget-ui.stories.ts` |
-| Widget, `headless` | `<file>-widget.svelte` rendering `<UI {...uiModel} />` and passing the rest of `let { UI, ...widgetProps } = $props()` to the model, `types.ts` (`UI: Component<<Name>WidgetUIProps>`), `model/create-<file>-ui-model.svelte.ts`, `index.ts` |
+| Widget, `with separated ui` | `svelte/widgets/<folders>/<name>/`: `<file>-widget.svelte`, `types.ts`, `ui/<file>-widget-ui.svelte`, `index.ts` (`export { default as <Name>Widget }` and the props type); with `storybookFramework`, `ui/<file>-widget-ui.stories.ts`. The widget renders `<<Name>WidgetUI {...toUIProps()} />` |
+| Widget, `headless` | `<file>-widget.svelte` rendering `<UI {...toUIProps()} />`, where `toUIProps` reads `rest` of `let { UI, ...rest } = $props()`, `types.ts` (`UI: Component<<Name>WidgetUIProps>`), `index.ts` |
 | Widget, `monolithic` | `<file>-widget.svelte` exporting `<Name>WidgetProps`, `index.ts` |
 | UI-kit component | `svelte/ui-kit/<file>/<file>.svelte`, `index.ts` (`export { default as <Name> }`); with `storybookFramework`, `<file>.stories.ts` |
 | Shared model | `svelte/shared/model/create-<file>.svelte.ts` with `create<Name>`, so it may use runes. A leading `create-` in the name is dropped |
 
-The UI model of a widget takes the `$props()` proxy as a whole and returns the UI props, so `<…WidgetUI {...uiModel} />` stays reactive:
+A widget maps its props to UI props with `toUIProps` in its own `<script>`; there is no separate model file. The call is in the markup, so Svelte wraps it in a derived and calls it again when props or state change; inside it, `props` and runes are at hand:
 
-```ts
-export const createOrdersUIModel = (
-    widgetProps: OrdersWidgetProps,
-): OrdersWidgetUIProps => {
-    const total = $derived(widgetProps.items.length)
-    let expanded = $state(false)
-    return {
-        get total() { return total },
-        get expanded() { return expanded },
-        toggle: () => { expanded = !expanded },
-    }
-}
+```svelte
+<script lang="ts">
+    import type { OrdersWidgetProps, OrdersWidgetUIProps } from './types'
+    import OrdersWidgetUI from './ui/orders-widget-ui.svelte'
+
+    let props: OrdersWidgetProps = $props()
+
+    let open = $state(false)
+    const toggle = () => { open = !open }
+
+    const toUIProps = (): OrdersWidgetUIProps => ({ title: props.title, open, toggle })
+</script>
+
+<OrdersWidgetUI {...toUIProps()} />
 ```
 
-- Destructuring the props in the signature (`({ items }) =>`) or copying them in `<script>` (`{ ...props }`, `{ items: props.items }`) reads them once: the UI no longer follows them.
-- Values that depend on props are `$derived` and leave the model through getters only; getters satisfy the UI props type.
-- Local state is `$state`; methods are plain functions of the returned object.
+- `toUIProps` is called in the markup only. `const ui = toUIProps()` in `<script>` reads the values once, and the compiler warns with `state_referenced_locally`.
+- Local state, methods, `$effect`, `getContext` and `createQuery` are declared in the widget's `<script>`; `toUIProps` only puts them into the object it returns:
+- Heavy computations go to `$derived`: `toUIProps` rebuilds the whole object on any change, a `$derived` only when its dependencies change.
+- `rest` of `$props()` in headless widgets stays reactive too.
 
-The widget passes `props` with `// svelte-ignore state_referenced_locally`: Svelte warns about any reference to props outside a closure, but the proxy itself never changes and the model reads it lazily.
+Stories get `// fill required props of <Name>WidgetUIProps` (`<Name>Props` for UI-kit) above `args: {}`: svelte-check flags the empty `args` once the props have a required field.
 
 Stories are CSF3 typed by `frontend.svelte.storybookFramework`: `import <Component> from './<file>.svelte'`, titles `UI-kit/<Name>` and `Widgets/<Folders>/<Name>`.
 
@@ -1363,13 +1366,15 @@ Runtime routes and types don't change; only files move.
 | Let the OpenAPI extractor find endpoints of nested bounded contexts | optional | When the project has a [nested context](#new-bounded-context), the lookup of 8.6 to 8.9 in `scripts/extract-open-api-data-from-endpoint.ts`, which took the first folder of a route for the context, is replaced by the current one, which finds the context by the start of the route |
 | Let `withId` of the in-memory DB find `[id, item]` | optional | In `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts`, the `withId` of 8.9.0 and earlier, which compared the items' own `id` and missed items saved as an `[id, item]` tuple, now looks up the id saved with the item, like `save` and `deleteById`. Its unused `hasId` helper is removed. A `withId` changed by hand is left as it is |
 
-**Steps from 8.11 (Svelte)**
+**Steps from 8.11 and 8.12 (Svelte)**
 
 | Step | Kind | Change |
 | --- | --- | --- |
 | Render the Svelte Swagger UI page with `swagger-ui-dist` | optional | `<rootFolder>/presentation/svelte/pages/swagger-page.svelte` on `swagger-ui` is regenerated on `swagger-ui-dist`, for the document it imported; with SvelteKit and the document in `static/`, by its URL |
 | Replace `swagger-ui` with `swagger-ui-dist` | manual | With `frontend.svelte` and `swagger-ui` in `package.json`: `npm uninstall swagger-ui @types/swagger-ui`, `npm install swagger-ui-dist`, `npm install --save-dev @types/swagger-ui-dist` |
-| Rename Svelte hooks to models | optional | `svelte/widgets/**/hooks/use-<file>-ui-model.svelte.ts` → `model/create-<file>-ui-model.svelte.ts`, `svelte/hooks/use-<file>.svelte.ts` → `svelte/shared/model/create-<file>.svelte.ts`; their `use<Name>` functions become `create<Name>` in them and in the files that import them, and imports follow. A model that already exists at the target is left alone |
+| Rename Svelte shared hooks to shared models | optional | `svelte/hooks/use-<file>.svelte.ts` → `svelte/shared/model/create-<file>.svelte.ts`; their `use<Name>` functions become `create<Name>` in them and in the files that import them, and imports follow. A model that already exists at the target is left alone |
+| Map Svelte widget props with `toUIProps` | optional | A UI model of 8.11 (`hooks/use-<file>-ui-model.svelte.ts`) or 8.12 (`model/create-<file>-ui-model.svelte.ts`) that only maps props, `(widgetProps) => ({ … })` or `(widgetProps) => { return { … } }` importing nothing but `../types`, moves into `toUIProps` of the widget with `widgetProps.` → `props.` (the name the widget passed); the import and the `uiModel` call go, `{...uiModel}` becomes `{...toUIProps()}`, and the model file is deleted with its empty folder |
+| Move Svelte widget UI models into `toUIProps` by hand | manual | The other UI models (state, getters, runes, other imports, used outside the widget), one note each |
 
 ## `df-graph`
 

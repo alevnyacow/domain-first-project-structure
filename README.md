@@ -276,7 +276,7 @@ With Next.js, a new page also gets its App Router route, `app/admin/panel/users/
 
 ### How to scaffold Svelte modules
 
-With `frontend.svelte` configured (Svelte or SvelteKit), run `npx df-svelte`: the same pages, widgets and UI-kit components as `df-react`, written as Svelte 5 components with runes into `presentation/svelte`. Svelte has no hooks: reusable logic is a shared model, `shared/model/create-<name>.svelte.ts`, and a widget's UI model is `model/create-<name>-ui-model.svelte.ts`, which returns getters so the UI follows the props. Components export their props types from `<script lang="ts" module>`, and stories follow `@storybook/svelte-vite` or `@storybook/sveltekit`.
+With `frontend.svelte` configured (Svelte or SvelteKit), run `npx df-svelte`: the same pages, widgets and UI-kit components as `df-react`, written as Svelte 5 components with runes into `presentation/svelte`. Svelte has no hooks: reusable logic is a shared model, `shared/model/create-<name>.svelte.ts`, and a widget maps its props to UI props with `toUIProps`, called in its markup (`<OrdersWidgetUI {...toUIProps()} />`), so the UI follows props and state. Components export their props types from `<script lang="ts" module>`, and stories follow `@storybook/svelte-vite` or `@storybook/sveltekit`.
 
 ```text
 admin/panel/users  →  pages/admin/panel/admin-panel-users-page.svelte  (AdminPanelUsersPage)

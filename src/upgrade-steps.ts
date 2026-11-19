@@ -18,7 +18,9 @@ import {
 import {
     svelteModelsStep,
     svelteSwaggerPackagesStep,
-    svelteSwaggerPageStep
+    svelteSwaggerPageStep,
+    svelteToUIPropsManualStep,
+    svelteToUIPropsStep
 } from './upgrade-svelte';
 
 type Draft = Record<string, unknown>;
@@ -202,7 +204,9 @@ export const upgradeSteps: UpgradeStep[] = [
     inMemoryDbWithIdStep,
     svelteSwaggerPageStep,
     svelteSwaggerPackagesStep,
-    svelteModelsStep
+    svelteModelsStep,
+    svelteToUIPropsStep,
+    svelteToUIPropsManualStep
 ];
 
 /** Shown after any change: skills of an earlier version describe the old CLI. */

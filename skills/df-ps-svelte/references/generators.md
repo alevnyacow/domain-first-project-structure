@@ -12,8 +12,8 @@ Notation: `…/svelte/` = `<rootFolder>/presentation/svelte/`. `n` = the entered
 
 `…/svelte/widgets/n/`:
 
-- `with separated ui` (default): `n-widget.svelte`, `types.ts`, `ui/n-widget-ui.svelte`, `model/create-n-ui-model.svelte.ts` (`createNUIModel`, returning getters); with `storybookFramework`: `ui/n-widget-ui.stories.ts` (CSF3: `title: 'Widgets/N'`, `component: NWidgetUI`, story `Default`)
-- `headless`: `n-widget.svelte` (renders `<UI {...uiModel} />`), `types.ts` (props include `UI: Component<NWidgetUIProps>`), `model/create-n-ui-model.svelte.ts`, given the rest of `let { UI, ...widgetProps } = $props()`
+- `with separated ui` (default): `n-widget.svelte`, `types.ts`, `ui/n-widget-ui.svelte`; the widget declares `const toUIProps = (): NWidgetUIProps => ({})` and renders `<NWidgetUI {...toUIProps()} />`; with `storybookFramework`: `ui/n-widget-ui.stories.ts` (CSF3: `title: 'Widgets/N'`, `component: NWidgetUI`, story `Default` with `// fill required props of NWidgetUIProps` above `args: {}`)
+- `headless`: `n-widget.svelte` (`let { UI, ...rest } = $props()`, renders `<UI {...toUIProps()} />`), `types.ts` (props include `UI: Component<NWidgetUIProps>`)
 - `monolithic`: `n-widget.svelte` (`NWidgetProps`)
 - every type: `index.ts` (`export { default as NWidget } from './n-widget.svelte'` and the props type)
 
@@ -29,7 +29,7 @@ Operation `shared-model`: `…/svelte/shared/model/create-n.svelte.ts` (`const c
 
 ## Move, rename, delete
 
-As in df-react: files, `<Name>Page` / `<Name>Widget…` / `create<Name>UIModel` / `<Name>` / `create<Name>`, story titles and every import (with or without the `.svelte` extension, relative or through `tsconfig` aliases) follow a move; a delete is refused while other files import the module. With SvelteKit, the page's own route folder files move or are deleted too when confirmed.
+As in df-react: files, `<Name>Page` / `<Name>Widget…` / `<Name>` / `create<Name>`, story titles and every import (with or without the `.svelte` extension, relative or through `tsconfig` aliases) follow a move; a delete is refused while other files import the module. With SvelteKit, the page's own route folder files move or are deleted too when confirmed.
 
 ## Story templates
 
@@ -51,6 +51,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  // fill required props of NProps
   args: {},
 };
 ```

@@ -43,16 +43,10 @@ export const frontendLogicNaming: Record<
         prefix: 'use' | 'create';
         /** Folder of shared hooks (models), under `presentation/<framework>`. */
         shared: string[];
-        /** Folder of a widget's UI model, inside the widget. */
-        widgetModel: string;
     }
 > = {
-    react: { prefix: 'use', shared: ['hooks'], widgetModel: 'hooks' },
-    svelte: {
-        prefix: 'create',
-        shared: ['shared', 'model'],
-        widgetModel: 'model'
-    }
+    react: { prefix: 'use', shared: ['hooks'] },
+    svelte: { prefix: 'create', shared: ['shared', 'model'] }
 };
 
 export type ReactModule = {
