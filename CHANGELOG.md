@@ -1,3 +1,10 @@
+# [8.13.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.12.0...v8.13.0) (2026-11-19)
+
+
+### Features
+
+* Svelte widgets map props with toUIProps ([cb13182](https://github.com/alevnyacow/domain-first-project-structure/commit/cb13182bee72d3ba9af0dded388f6f135a7bd691))
+
 # [8.12.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.11.0...v8.12.0) (2026-11-19)
 
 
