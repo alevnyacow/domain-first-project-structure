@@ -15,6 +15,7 @@ import {
     defaultDependencyRules,
     fileModuleKind
 } from './dependency-rules';
+import { frontendLogicNaming } from './react-module-move';
 import { compilerOption } from './tsconfig';
 import {
     canDependOn,
@@ -279,7 +280,12 @@ const importViolations = (
             folder,
             uiKit: path.join(folder, 'ui-kit'),
             widgets: path.join(folder, 'widgets'),
-            hooks: path.join(folder, 'hooks'),
+            // Shared hooks; Svelte has shared models instead
+            hooks: path.join(folder, ...frontendLogicNaming[framework].shared),
+            hooksLabel:
+                framework === 'svelte'
+                    ? `[presentation/svelte/shared/model] a shared model imports a bounded context, UI-kit, widget or page:`
+                    : `[presentation/react/hooks] a shared hook imports a bounded context, UI-kit, widget or page:`,
             widgetFile:
                 framework === 'svelte' ? '-widget.svelte' : '-widget.tsx'
         };
@@ -447,7 +453,7 @@ const importViolations = (
                         frontend.check,
                         inUiKit
                             ? `[${frontend.label}/ui-kit] imports a bounded context, widget or page:`
-                            : `[${frontend.label}/hooks] a shared hook imports a bounded context, UI-kit, widget or page:`,
+                            : frontend.hooksLabel,
                         imported
                     );
                 }

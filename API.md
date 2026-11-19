@@ -992,16 +992,38 @@ Code names: `<Name>Widget`, `<Name>WidgetProps`, `<Name>WidgetUIProps`, `use<Nam
 
 ## Svelte modules (`df-svelte`)
 
-`npx df-svelte` offers the operations of [`df-react`](#react-modules-df-react) for Svelte 5: `New widget`, `New page`, `New UI-kit component`, `New shared hook`, and moving, renaming and deleting each of them. It needs the configuration file and `frontend.svelte`; otherwise it prints `Svelte is not configured: run df-init --section frontend.` and exits with 1. JSON requests take the operations and fields of `df-react`; `--describe` lists modules as `svelteModules`. Modules are written to `<rootFolder>/presentation/svelte`, `svelte/` below.
+`npx df-svelte` offers the operations of [`df-react`](#react-modules-df-react) for Svelte 5: `New widget`, `New page`, `New UI-kit component`, `New shared model`, and moving, renaming and deleting each of them. Svelte has no hooks (in SvelteKit, hooks are `hooks.server.ts` and `hooks.client.ts`): reusable reactive logic is a `create…` factory in a `.svelte.ts` module, a model. It needs the configuration file and `frontend.svelte`; otherwise it prints `Svelte is not configured: run df-init --section frontend.` and exits with 1. JSON requests take the operations and fields of `df-react`, with `shared-model`, `move-shared-model` and `delete-shared-model` in place of the `shared-hook` ones; `--describe` lists modules as `svelteModules`, shared models with kind `model`. Modules are written to `<rootFolder>/presentation/svelte`, `svelte/` below.
 
 | Module | Files |
 | --- | --- |
 | Page | `svelte/pages/<folders>/<file>-page.svelte`, exporting `<Name>PageProps` from `<script lang="ts" module>` and reading `$props()` |
-| Widget, `with separated ui` | `svelte/widgets/<folders>/<name>/`: `<file>-widget.svelte`, `types.ts`, `ui/<file>-widget-ui.svelte`, `hooks/use-<file>-ui-model.svelte.ts`, `index.ts` (`export { default as <Name>Widget }` and the props type); with `storybookFramework`, `ui/<file>-widget-ui.stories.ts` |
-| Widget, `headless` | `<file>-widget.svelte` rendering `<UI {...uiModel} />`, `types.ts` (`UI: Component<<Name>WidgetUIProps>`), `hooks/use-<file>-ui-model.svelte.ts`, `index.ts` |
+| Widget, `with separated ui` | `svelte/widgets/<folders>/<name>/`: `<file>-widget.svelte`, `types.ts`, `ui/<file>-widget-ui.svelte`, `model/create-<file>-ui-model.svelte.ts` (`create<Name>UIModel`), `index.ts` (`export { default as <Name>Widget }` and the props type); with `storybookFramework`, `ui/<file>-widget-ui.stories.ts` |
+| Widget, `headless` | `<file>-widget.svelte` rendering `<UI {...uiModel} />` and passing the rest of `let { UI, ...widgetProps } = $props()` to the model, `types.ts` (`UI: Component<<Name>WidgetUIProps>`), `model/create-<file>-ui-model.svelte.ts`, `index.ts` |
 | Widget, `monolithic` | `<file>-widget.svelte` exporting `<Name>WidgetProps`, `index.ts` |
 | UI-kit component | `svelte/ui-kit/<file>/<file>.svelte`, `index.ts` (`export { default as <Name> }`); with `storybookFramework`, `<file>.stories.ts` |
-| Shared hook | `svelte/hooks/use-<file>.svelte.ts` with `use<Name>`, so it may use runes |
+| Shared model | `svelte/shared/model/create-<file>.svelte.ts` with `create<Name>`, so it may use runes. A leading `create-` in the name is dropped |
+
+The UI model of a widget takes the `$props()` proxy as a whole and returns the UI props, so `<…WidgetUI {...uiModel} />` stays reactive:
+
+```ts
+export const createOrdersUIModel = (
+    widgetProps: OrdersWidgetProps,
+): OrdersWidgetUIProps => {
+    const total = $derived(widgetProps.items.length)
+    let expanded = $state(false)
+    return {
+        get total() { return total },
+        get expanded() { return expanded },
+        toggle: () => { expanded = !expanded },
+    }
+}
+```
+
+- Destructuring the props in the signature (`({ items }) =>`) or copying them in `<script>` (`{ ...props }`, `{ items: props.items }`) reads them once: the UI no longer follows them.
+- Values that depend on props are `$derived` and leave the model through getters only; getters satisfy the UI props type.
+- Local state is `$state`; methods are plain functions of the returned object.
+
+The widget passes `props` with `// svelte-ignore state_referenced_locally`: Svelte warns about any reference to props outside a closure, but the proxy itself never changes and the model reads it lazily.
 
 Stories are CSF3 typed by `frontend.svelte.storybookFramework`: `import <Component> from './<file>.svelte'`, titles `UI-kit/<Name>` and `Widgets/<Folders>/<Name>`.
 
@@ -1178,14 +1200,14 @@ Listed with `handlers-rest`.
 | Prompts  | `Route prefix the REST handlers are served under:` (default `/api`); `OpenAPI document path:` (default `public/openapi.json` with Next.js selected in `frontend.react.framework`, `static/openapi.json` with SvelteKit in `frontend.svelte.framework`, otherwise `openapi.json`); `Fill operationId, summary and description from the endpoint logic TSDoc?` (default: Yes); with `frontend.react` or `frontend.svelte`, `Add a Swagger UI page?` (default: Yes) |
 | Files    | `scripts/generate-openapi.ts`; with TSDoc extraction, `scripts/extract-open-api-data-from-endpoint.ts`; with the Swagger UI page, `<rootFolder>/presentation/react/pages/swagger-page.tsx`, and with Next.js also its App Router route `app/swagger/page.tsx` (or `src/app/…`); with Svelte, `<rootFolder>/presentation/svelte/pages/swagger-page.svelte`, and with SvelteKit also `src/routes/swagger/+page.svelte` |
 | Scripts  | `openapi`: `tsx --env-file-if-exists=.env scripts/generate-openapi.ts`                                                        |
-| Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev), for Svelte `swagger-ui` and `@types/swagger-ui` (dev) |
-| Notes    | A reminder when `<rootFolder>/presentation/rest/index.ts` does not exist yet; with the Swagger UI page, a reminder to render it on a route (with Next.js or SvelteKit, where `/swagger` lives instead), and one to set `resolveJsonModule` when `tsconfig.json` doesn't enable it |
+| Install  | `@domain-first/handlers-rest` and `tsx` when missing; with TSDoc extraction, `ts-morph` and `@microsoft/tsdoc`; with the Swagger UI page, `swagger-ui-react` and `@types/swagger-ui-react` (dev), for Svelte `swagger-ui-dist` and `@types/swagger-ui-dist` (dev) |
+| Notes    | A reminder when `<rootFolder>/presentation/rest/index.ts` does not exist yet; with the Swagger UI page, a reminder to render it on a route (with Next.js or SvelteKit, where `/swagger` lives instead), and one to set `resolveJsonModule` when `tsconfig.json` doesn't enable it and the page imports the document |
 
 The script passes `restHandlers` from `<rootFolder>/presentation/rest` to `generateOpenAPI`. The document title is the package name in title case followed by `API`. `.env` is loaded because the wiring may read the environment.
 
 The Swagger UI page is a [page](#new-page) like any other, `SwaggerPage`. As with a scaffolded page, Next.js gets its App Router route at `/swagger`, and the page starts with `'use client'`, since Swagger UI keeps state; an existing `swagger/page.tsx` with other content is kept, with a reminder to render `SwaggerPage` there yourself. Without Next.js, it is not bound to a router. It imports `swagger-ui-react/swagger-ui.css` and the document at `OpenAPI document path:` as JSON (`with { type: 'json' }`), and renders `<SwaggerUI displayOperationId spec={spec} />`. It compiles once `npm run openapi` has written the document, with `resolveJsonModule` enabled. The CLI reads `compilerOptions.resolveJsonModule` from `tsconfig.json` through its `extends` chain (relative paths and packages; the nearest config wins) and prints a reminder when the option isn't `true`. When a config of the chain is missing or can't be read, it prints nothing. `tsconfig.json` itself is never changed.
 
-With `frontend.svelte`, the page is a Svelte [page](#svelte-modules-df-svelte), `swagger-page.svelte`. It imports `swagger-ui/dist/swagger-ui.css` and the document as JSON, and mounts Swagger UI into a `<div bind:this>` in `onMount` with a dynamic `import('swagger-ui')`, so it never runs during SvelteKit SSR. With SvelteKit it gets its route `src/routes/swagger/+page.svelte`, which renders `<SwaggerPage />`; an existing route with other content is kept, with a reminder. Without SvelteKit, it is not bound to a router.
+With `frontend.svelte`, the page is a Svelte [page](#svelte-modules-df-svelte), `swagger-page.svelte`. It uses `swagger-ui-dist`, whose bundle has React inside: `swagger-ui` renders with the project's `react-dom`, and with React 19 (which Storybook may bring) it fails with `TypeError: o is not a function`. The page imports `swagger-ui-dist/swagger-ui.css` and mounts `SwaggerUIBundle` into a `<div bind:this>` in `onMount` with a dynamic `import('swagger-ui-dist/swagger-ui-bundle.js')`, so it never runs during SvelteKit SSR; the package's main entry needs Node's `path`. With SvelteKit and the document in `static/`, the page passes its URL (`static/openapi.json` → `url: '/openapi.json'`), so a regenerated document shows on reload and `resolveJsonModule` isn't needed; otherwise it imports the document as JSON. With SvelteKit it gets its route `src/routes/swagger/+page.svelte`, which renders `<SwaggerPage />`; an existing route with other content is kept, with a reminder. Without SvelteKit, it is not bound to a router.
 
 With TSDoc extraction, each endpoint's metadata is filled from the class passed as `this.handler` (the first argument of the generator call):
 
@@ -1199,7 +1221,7 @@ Metadata set explicitly on an endpoint takes precedence.
 
 ### Orval (API client)
 
-Listed with `handlers-rest`. Generates a typed API client and, with `frontend.react`, React Query hooks, or with `frontend.svelte`, Svelte Query hooks. Each target lives in its own data layer folder next to its config:
+Listed with `handlers-rest`. Generates a typed API client and, with `frontend.react`, React Query hooks, or with `frontend.svelte`, Svelte Query (`createQuery`, `createMutation`). Each target lives in its own data layer folder next to its config:
 
 | Target              | Folder                                     |
 | ------------------- | ------------------------------------------ |
@@ -1209,7 +1231,7 @@ Listed with `handlers-rest`. Generates a typed API client and, with `frontend.re
 
 | Item         | Value                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `frontend.react` (`frontend.svelte`), `Generate:` with `React Query hooks` (`Svelte Query hooks`, checked) and `Typed API client`, at least one. Without a frontend section, only the typed API client is generated |
+| Prompts      | `OpenAPI document path:`; the default is read from `scripts/generate-openapi.ts`. With `frontend.react` (`frontend.svelte`), `Generate:` with `React Query hooks` (`Svelte Query (createQuery)`, checked) and `Typed API client`, at least one. Without a frontend section, only the typed API client is generated |
 | Files        | In each target folder: `orval.config.ts`; `api-client/mutator.ts` if missing. For hooks, `query-provider.tsx` (`query-provider.svelte`) if missing. Svelte Query hooks also get `orval.package.json`, which declares `@tanstack/svelte-query` 6 for Orval. With both targets, the hooks use the typed client's mutator and get no own. SvelteKit hooks: `src/routes/+layout.svelte` wrapping every page in `QueryProvider` when the layout doesn't exist; an existing layout without `QueryProvider` is kept, with a note to wrap `{@render children()}` |
 | Scripts      | `client:orval`: `orval --config "<folder>/orval.config.ts"` for each target, joined with `&&`                   |
 | `.gitignore` | `<folder>/orval/` for each target                                                                               |
@@ -1295,7 +1317,7 @@ npx df-lint [rootFolder]
 | Layers (`layers`)          | Domain importing other layers; application importing infrastructure, presentation or wiring; infrastructure importing application modules other than ports and command/query contracts (and permitted neighboring handlers), or presentation or wiring; presentation importing infrastructure. Between two module files, only imports of infrastructure are checked this way. Specs are not checked |
 | Dependency rules (`dependencies`) | A module file importing a kind its [dependency rules](#dependency-rules) don't allow (an implementation importing its own contract is fine), and a wired dependency they don't allow. Specs are not checked |
 | React (`react`)            | Pages and widgets importing a context other than `import type` from `presentation/rest`; UI-kit importing contexts, widgets or pages; shared hooks importing contexts, UI-kit, widgets or pages; a widget importing another widget |
-| Svelte (`svelte`)          | The rules of `react` for `presentation/svelte`, including imports in `.svelte` files |
+| Svelte (`svelte`)          | The rules of `react` for `presentation/svelte`, including imports in `.svelte` files; shared models in `shared/model/` take the place of shared hooks |
 | Clock (`clock`)            | `new Date()` or `Date.now()` in domain or application (use the clock port)                                |
 | Config (`config`)          | `process.env`, `process['env']` or `import.meta.env` in domain or application (use the config port)        |
 
@@ -1340,6 +1362,14 @@ Runtime routes and types don't change; only files move.
 | Update the OpenAPI extractor by hand | manual | An extractor changed by hand, when context-root endpoints exist |
 | Let the OpenAPI extractor find endpoints of nested bounded contexts | optional | When the project has a [nested context](#new-bounded-context), the lookup of 8.6 to 8.9 in `scripts/extract-open-api-data-from-endpoint.ts`, which took the first folder of a route for the context, is replaced by the current one, which finds the context by the start of the route |
 | Let `withId` of the in-memory DB find `[id, item]` | optional | In `<rootFolder>/shared-kernel/infrastructure/services/in-memory-db-infrastructure-service.ts`, the `withId` of 8.9.0 and earlier, which compared the items' own `id` and missed items saved as an `[id, item]` tuple, now looks up the id saved with the item, like `save` and `deleteById`. Its unused `hasId` helper is removed. A `withId` changed by hand is left as it is |
+
+**Steps from 8.11 (Svelte)**
+
+| Step | Kind | Change |
+| --- | --- | --- |
+| Render the Svelte Swagger UI page with `swagger-ui-dist` | optional | `<rootFolder>/presentation/svelte/pages/swagger-page.svelte` on `swagger-ui` is regenerated on `swagger-ui-dist`, for the document it imported; with SvelteKit and the document in `static/`, by its URL |
+| Replace `swagger-ui` with `swagger-ui-dist` | manual | With `frontend.svelte` and `swagger-ui` in `package.json`: `npm uninstall swagger-ui @types/swagger-ui`, `npm install swagger-ui-dist`, `npm install --save-dev @types/swagger-ui-dist` |
+| Rename Svelte hooks to models | optional | `svelte/widgets/**/hooks/use-<file>-ui-model.svelte.ts` → `model/create-<file>-ui-model.svelte.ts`, `svelte/hooks/use-<file>.svelte.ts` → `svelte/shared/model/create-<file>.svelte.ts`; their `use<Name>` functions become `create<Name>` in them and in the files that import them, and imports follow. A model that already exists at the target is left alone |
 
 ## `df-graph`
 

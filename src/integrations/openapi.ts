@@ -68,27 +68,58 @@ export const swaggerPage = (
     return withNext ? `'use client'\n\n${page}` : page;
 };
 
+/** SvelteKit serves `static/` at the site root. */
+const svelteKitStaticFolder = 'static/';
+
 /**
- * A Svelte page rendering the OpenAPI document with Swagger UI. Swagger UI
- * needs the browser, so it is loaded on mount and never runs during SSR.
+ * The URL SvelteKit serves the document at, when it is in `static/`:
+ * `static/docs/openapi.json` → `/docs/openapi.json`.
  */
-export const svelteSwaggerPage = (rootFolder: string, outputPath: string) =>
+export const svelteKitStaticUrl = (outputPath: string) =>
+    outputPath.startsWith(svelteKitStaticFolder)
+        ? `/${outputPath.slice(svelteKitStaticFolder.length)}`
+        : undefined;
+
+/**
+ * A Svelte page rendering the OpenAPI document with Swagger UI. It uses
+ * the self-contained bundle of `swagger-ui-dist`, with its own React
+ * inside: `swagger-ui` takes React from the project, where Storybook may
+ * bring React 19 without the `createRoot` it calls. The bundle needs the
+ * browser, so it is loaded on mount and never runs during SSR. A document
+ * served from SvelteKit's `static/` is fetched by its `url`, so a
+ * regenerated one shows on reload and no JSON import is needed.
+ */
+export const svelteSwaggerPage = (
+    rootFolder: string,
+    outputPath: string,
+    url?: string
+) =>
     `
 <script lang="ts" module>
     export type SwaggerPageProps = {}
 </script>
 
 <script lang="ts">
-    import 'swagger-ui/dist/swagger-ui.css'
-    import { onMount } from 'svelte'
-    import spec from '${specImportOf(swaggerPagePath(rootFolder, 'svelte'), outputPath)}'
+    import 'swagger-ui-dist/swagger-ui.css'
+    import type { SwaggerUIBundle as SwaggerUIBundleType } from 'swagger-ui-dist'
+    import { onMount } from 'svelte'${
+        url
+            ? ''
+            : `
+    import spec from '${specImportOf(swaggerPagePath(rootFolder, 'svelte'), outputPath)}'`
+    }
 
     let props: SwaggerPageProps = $props()
     let container: HTMLDivElement
 
     onMount(async () => {
-        const { default: SwaggerUI } = await import('swagger-ui')
-        SwaggerUI({ domNode: container, spec, displayOperationId: true })
+        // Self-contained bundle: React is bundled inside, no react deps in the project
+        const { default: SwaggerUIBundle } = (await import(
+            // @ts-expect-error -- swagger-ui-dist ships no types for this entry point
+            'swagger-ui-dist/swagger-ui-bundle.js'
+        )) as { default: SwaggerUIBundleType }
+
+        SwaggerUIBundle({ domNode: container, ${url ? `url: '${url}'` : 'spec'}, displayOperationId: true })
     })
 </script>
 
@@ -101,7 +132,7 @@ const swaggerPackages: Record<
     { dependency: string; types: string }
 > = {
     react: { dependency: 'swagger-ui-react', types: '@types/swagger-ui-react' },
-    svelte: { dependency: 'swagger-ui', types: '@types/swagger-ui' }
+    svelte: { dependency: 'swagger-ui-dist', types: '@types/swagger-ui-dist' }
 };
 
 export const openapiScripts = {
@@ -248,6 +279,11 @@ export const addOpenapi = async (): Promise<string[]> => {
               ? `${svelteKitRoutesFolder(root)}/swagger/+page.svelte`
               : undefined;
     let routeHint: string | undefined;
+    /** SvelteKit serves a document in `static/`: the page fetches it. */
+    const specUrl =
+        framework === 'svelte' && usesSvelteKit()
+            ? svelteKitStaticUrl(splitPath(outputPath).join('/'))
+            : undefined;
     if (withSwaggerPage) {
         const pagePath = path.join(
             root,
@@ -256,7 +292,11 @@ export const addOpenapi = async (): Promise<string[]> => {
         const pageFile = new File(pagePath);
         const page =
             framework === 'svelte'
-                ? svelteSwaggerPage(rootFolder, splitPath(outputPath).join('/'))
+                ? svelteSwaggerPage(
+                      rootFolder,
+                      splitPath(outputPath).join('/'),
+                      specUrl
+                  )
                 : swaggerPage(
                       rootFolder,
                       splitPath(outputPath).join('/'),
@@ -276,12 +316,17 @@ export const addOpenapi = async (): Promise<string[]> => {
     const packages = swaggerPackages[framework ?? 'react'];
 
     /**
-     * The page imports the document as JSON. An unreadable config gives
-     * no hint, since its value is unknown.
+     * The page imports the document as JSON, unless SvelteKit serves it
+     * from `static/`. An unreadable config gives no hint, since its value
+     * is unknown.
      */
-    const resolveJsonModule = withSwaggerPage
-        ? compilerOption(path.join(root, 'tsconfig.json'), 'resolveJsonModule')
-        : true;
+    const resolveJsonModule =
+        withSwaggerPage && !specUrl
+            ? compilerOption(
+                  path.join(root, 'tsconfig.json'),
+                  'resolveJsonModule'
+              )
+            : true;
 
     const hasRestHandlers = new File(
         path.join(root, rootFolder, 'presentation', 'rest', 'index.ts')

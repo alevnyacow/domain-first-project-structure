@@ -31,8 +31,8 @@ import { ProjectRoot } from './project-root';
 import {
     type FrontendFramework,
     findReactModules,
-    type ReactModuleKind,
-    reactKindTitles
+    frontendKindTitles,
+    type ReactModuleKind
 } from './react-module-move';
 import { restControllers } from './rest-layout';
 import { savePendingChanges } from './save-pending-changes';
@@ -136,7 +136,8 @@ const frontendModules = (
             kind,
             framework
         ).map((module) => ({
-            kind,
+            // Svelte has shared models where React has shared hooks
+            kind: framework === 'svelte' && kind === 'hook' ? 'model' : kind,
             name: module.name,
             file: path.relative(root, module.path).split(path.sep).join('/')
         }))
@@ -522,7 +523,7 @@ const executeFrontend = async (
               ? 'widget'
               : operation.endsWith('-ui-kit-component')
                 ? 'ui-kit'
-                : operation.endsWith('-shared-hook')
+                : /-shared-(hook|model)$/.test(operation)
                   ? 'hook'
                   : undefined;
     const kind = /^(move|delete)-/.test(request.operation)
@@ -531,7 +532,7 @@ const executeFrontend = async (
     if (kind && !findReactModules(folder.path, kind, framework).length)
         throw new RequestError(
             'TARGET_NOT_FOUND',
-            `No ${frameworkTitles[framework].title} ${reactKindTitles[kind][1]} here.`
+            `No ${frameworkTitles[framework].title} ${frontendKindTitles(framework)[kind][1]} here.`
         );
     return frontendOperations(folder, framework)[request.operation]();
 };

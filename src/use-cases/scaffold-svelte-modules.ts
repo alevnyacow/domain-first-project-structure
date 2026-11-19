@@ -48,6 +48,33 @@ export const Default: Story = {
 }
 `.trim();
 
+/**
+ * The UI model of a widget: props → UI props, reactive through getters.
+ */
+export const svelteUIModelContent = (ClassName: string, propsType: string) =>
+    `
+import type { ${ClassName}WidgetProps, ${ClassName}WidgetUIProps } from '../types'
+
+/**
+ * - widgetProps is the $props() proxy as a whole: destructuring it in the
+ *   signature (({ a }) =>) or copying it ({ ...props }) loses reactivity
+ * - values depending on props: $derived, exposed through getters only
+ * - local state: $state; methods: plain functions of the returned object
+ * - getters satisfy ${ClassName}WidgetUIProps
+ */
+export const create${ClassName}UIModel = (
+    widgetProps: ${propsType},
+): ${ClassName}WidgetUIProps => {
+    // derived values go here
+    // const value = $derived(widgetProps.value)
+
+    return {
+        // expose values via getters to keep reactivity:
+        // get value() { return value },
+    }
+}
+`.trim();
+
 const storybookFramework = () =>
     ConfigFile.Instance.data.frontend?.svelte?.storybookFramework;
 
@@ -148,7 +175,7 @@ export const scaffoldSvelteWidget = async (
     const storyTitle = ['Widgets', ...classNameSegments].join('/');
     const widgetFileName = `${fileName}-widget`;
     const uiFileName = `${fileName}-widget-ui`;
-    const uiModelFileName = `use-${fileName}-ui-model`;
+    const uiModelFileName = `create-${fileName}-ui-model`;
 
     if (widgetType === 'monolithic') {
         folder.createFile(
@@ -189,10 +216,12 @@ export type ${ClassName}WidgetUIProps = { }
 <script lang="ts">
     import type { ${ClassName}WidgetProps } from './types'
     import ${ClassName}WidgetUI from './ui/${uiFileName}.svelte'
-    import { use${ClassName}UIModel } from './hooks/${uiModelFileName}.svelte'
+    import { create${ClassName}UIModel } from './model/${uiModelFileName}.svelte'
 
     let props: ${ClassName}WidgetProps = $props()
-    const uiModel = use${ClassName}UIModel(props)
+    // The $props() proxy stays reactive: the model reads it in $derived and getters
+    // svelte-ignore state_referenced_locally
+    const uiModel = create${ClassName}UIModel(props)
 </script>
 
 <${ClassName}WidgetUI {...uiModel} />
@@ -225,16 +254,12 @@ export type ${ClassName}WidgetUIProps = { }
                 );
         }
 
-        folder.subitem(['hooks']).createFile(
-            `${uiModelFileName}.svelte.ts`,
-            `
-import type { ${ClassName}WidgetProps, ${ClassName}WidgetUIProps } from '../types'
-
-export const use${ClassName}UIModel = (widgetProps: ${ClassName}WidgetProps): ${ClassName}WidgetUIProps => {
-    return {}
-}
-            `.trim()
-        );
+        folder
+            .subitem(['model'])
+            .createFile(
+                `${uiModelFileName}.svelte.ts`,
+                svelteUIModelContent(ClassName, `${ClassName}WidgetProps`)
+            );
         return;
     }
 
@@ -256,26 +281,27 @@ export type ${ClassName}WidgetProps = {
         `
 <script lang="ts">
     import type { ${ClassName}WidgetProps } from './types'
-    import { use${ClassName}UIModel } from './hooks/${uiModelFileName}.svelte'
+    import { create${ClassName}UIModel } from './model/${uiModelFileName}.svelte'
 
     let { UI, ...widgetProps }: ${ClassName}WidgetProps = $props()
-    const uiModel = use${ClassName}UIModel(widgetProps)
+    // The rest of $props() stays reactive, a copy made by hand would not
+    // svelte-ignore state_referenced_locally
+    const uiModel = create${ClassName}UIModel(widgetProps)
 </script>
 
 <UI {...uiModel} />
         `.trim()
     );
 
-    folder.subitem(['hooks']).createFile(
-        `${uiModelFileName}.svelte.ts`,
-        `
-import type { ${ClassName}WidgetProps, ${ClassName}WidgetUIProps } from '../types'
-
-export const use${ClassName}UIModel = (widgetProps: Omit<${ClassName}WidgetProps, 'UI'>): ${ClassName}WidgetUIProps => {
-    return {}
-}
-        `.trim()
-    );
+    folder
+        .subitem(['model'])
+        .createFile(
+            `${uiModelFileName}.svelte.ts`,
+            svelteUIModelContent(
+                ClassName,
+                `Omit<${ClassName}WidgetProps, 'UI'>`
+            )
+        );
 };
 
 export const scaffoldSvelteUIKitComponent = async (
@@ -317,23 +343,24 @@ export type { ${ClassName}Props } from './${fileName}.svelte'
 };
 
 /**
- * A shared hook is a `.svelte.ts` module, so it may use runes.
+ * A shared model is a `.svelte.ts` factory, so it may use runes. Svelte
+ * has no hooks: in SvelteKit they are `hooks.server.ts`/`hooks.client.ts`.
  */
-export const scaffoldSvelteSharedHook = async (
+export const scaffoldSvelteSharedModel = async (
     presentationSvelteFolder: Folder
 ) => {
     const name = await input({
         key: 'name',
-        message: 'Name without "use" (e.g. debounce): '
+        message: 'Name without "create" (e.g. debounce): '
     });
     const { ClassName, fileName } = new UnknownFormatNaming(
-        name.trim().replace(/^use-/, '')
+        name.trim().replace(/^create-/, '')
     );
 
-    presentationSvelteFolder.subitem(['hooks']).createFile(
-        `use-${fileName}.svelte.ts`,
+    presentationSvelteFolder.subitem(['shared', 'model']).createFile(
+        `create-${fileName}.svelte.ts`,
         `
-export const use${ClassName} = () => {
+export const create${ClassName} = () => {
     return {}
 }
         `.trim()

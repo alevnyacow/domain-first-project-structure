@@ -144,7 +144,7 @@ test('a page used by its route is deleted together with the route', async () => 
     ).rejects.toMatchObject({ code: 'DELETE_NOT_ALLOWED' });
 });
 
-test('widgets with separated UI get Svelte components, a runes hook and stories', async () => {
+test('widgets with separated UI get Svelte components, a reactive UI model and stories', async () => {
     ConfigFile.update({
         frontend: {
             svelte: {
@@ -167,15 +167,27 @@ test('widgets with separated UI get Svelte components, a runes hook and stories'
             `${widget}/admin-orders-widget.svelte`,
             `${widget}/ui/admin-orders-widget-ui.svelte`,
             `${widget}/ui/admin-orders-widget-ui.stories.ts`,
-            `${widget}/hooks/use-admin-orders-ui-model.svelte.ts`
+            `${widget}/model/create-admin-orders-ui-model.svelte.ts`
         ].sort()
     );
     expect(read(`${widget}/index.ts`)).toContain(
         "export { default as AdminOrdersWidget } from './admin-orders-widget.svelte'"
     );
     expect(read(`${widget}/admin-orders-widget.svelte`)).toContain(
-        "import { useAdminOrdersUIModel } from './hooks/use-admin-orders-ui-model.svelte'"
+        "import { createAdminOrdersUIModel } from './model/create-admin-orders-ui-model.svelte'"
     );
+    expect(read(`${widget}/admin-orders-widget.svelte`)).toContain(
+        'const uiModel = createAdminOrdersUIModel(props)'
+    );
+    const model = read(
+        `${widget}/model/create-admin-orders-ui-model.svelte.ts`
+    );
+    // The $props() proxy as a whole, values exposed through getters
+    expect(model).toContain(`export const createAdminOrdersUIModel = (
+    widgetProps: AdminOrdersWidgetProps,
+): AdminOrdersWidgetUIProps => {`);
+    expect(model).toContain('// get value() { return value },');
+    expect(model).not.toMatch(/\buse[A-Z]/);
     expect(read(`${widget}/ui/admin-orders-widget-ui.stories.ts`)).toContain(
         "import type { Meta, StoryObj } from '@storybook/svelte-vite'"
     );
@@ -231,25 +243,46 @@ test('moving a widget renames its files, imports and story title', async () => {
         "title: 'Widgets/Sales/Purchases'"
     );
     expect(
-        exists(`${widget}/hooks/use-sales-purchases-ui-model.svelte.ts`)
-    ).toBe(true);
+        read(`${widget}/model/create-sales-purchases-ui-model.svelte.ts`)
+    ).toContain('export const createSalesPurchasesUIModel = (');
+    expect(read(`${widget}/sales-purchases-widget.svelte`)).toContain(
+        'const uiModel = createSalesPurchasesUIModel(props)'
+    );
 });
 
-test('UI-kit components and shared hooks are listed, moved and deleted', async () => {
+test('headless widgets pass the reactive rest of $props() to the UI model', async () => {
+    await executeAgentRequest('df-svelte', {
+        operation: 'widget',
+        name: 'orders',
+        widgetType: 'headless'
+    });
+    const widget = `${svelteFolder}/widgets/orders`;
+    expect(read(`${widget}/orders-widget.svelte`)).toContain(
+        `    let { UI, ...widgetProps }: OrdersWidgetProps = $props()
+    // The rest of $props() stays reactive, a copy made by hand would not
+    // svelte-ignore state_referenced_locally
+    const uiModel = createOrdersUIModel(widgetProps)`
+    );
+    expect(read(`${widget}/model/create-orders-ui-model.svelte.ts`)).toContain(
+        "widgetProps: Omit<OrdersWidgetProps, 'UI'>,"
+    );
+});
+
+test('UI-kit components and shared models are listed, moved and deleted', async () => {
     await executeAgentRequest('df-svelte', {
         operation: 'ui-kit-component',
         name: 'button'
     });
     await executeAgentRequest('df-svelte', {
-        operation: 'shared-hook',
-        name: 'debounce'
+        operation: 'shared-model',
+        name: 'create-debounce'
     });
     expect(read(`${svelteFolder}/ui-kit/button/index.ts`)).toContain(
         "export { default as Button } from './button.svelte'"
     );
-    expect(read(`${svelteFolder}/hooks/use-debounce.svelte.ts`)).toContain(
-        'export const useDebounce = () =>'
-    );
+    expect(
+        read(`${svelteFolder}/shared/model/create-debounce.svelte.ts`)
+    ).toContain('export const createDebounce = () =>');
     expect(
         (describeAgentCommand('df-svelte').project as any).svelteModules
     ).toEqual([
@@ -259,19 +292,31 @@ test('UI-kit components and shared hooks are listed, moved and deleted', async (
             file: `${svelteFolder}/ui-kit/button`
         },
         {
-            kind: 'hook',
+            kind: 'model',
             name: 'debounce',
-            file: `${svelteFolder}/hooks/use-debounce.svelte.ts`
+            file: `${svelteFolder}/shared/model/create-debounce.svelte.ts`
         }
     ]);
     await executeAgentRequest('df-svelte', {
-        operation: 'move-shared-hook',
+        operation: 'move-shared-model',
         module: 'debounce',
         name: 'throttle'
     });
-    expect(read(`${svelteFolder}/hooks/use-throttle.svelte.ts`)).toContain(
-        'export const useThrottle = () =>'
-    );
+    expect(
+        read(`${svelteFolder}/shared/model/create-throttle.svelte.ts`)
+    ).toContain('export const createThrottle = () =>');
+    // React operation names are not Svelte ones
+    await expect(
+        executeAgentRequest('df-svelte', {
+            operation: 'shared-hook',
+            name: 'debounce'
+        })
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    await executeAgentRequest('df-svelte', {
+        operation: 'delete-shared-model',
+        module: 'throttle'
+    });
+    expect(exists(`${svelteFolder}/shared`)).toBe(false);
     await executeAgentRequest('df-svelte', {
         operation: 'delete-ui-kit-component',
         module: 'button'
@@ -313,13 +358,18 @@ test('df-lint applies the frontend rules to Svelte modules', async () => {
     import { OrdersWidget } from '../../widgets/orders'
 </script>`
     );
+    write(
+        `${svelteFolder}/shared/model/create-cart.svelte.ts`,
+        "import { OrdersWidget } from '../../widgets/orders'"
+    );
     const rules = lintProject(project, 'src/lib').map(
         (violation) => violation.rule
     );
     expect(rules).toEqual(
         expect.arrayContaining([
             '[presentation/svelte/widgets] a widget imports another widget:',
-            '[presentation/svelte/ui-kit] imports a bounded context, widget or page:'
+            '[presentation/svelte/ui-kit] imports a bounded context, widget or page:',
+            '[presentation/svelte/shared/model] a shared model imports a bounded context, UI-kit, widget or page:'
         ])
     );
 });

@@ -12,8 +12,8 @@ Notation: `…/svelte/` = `<rootFolder>/presentation/svelte/`. `n` = the entered
 
 `…/svelte/widgets/n/`:
 
-- `with separated ui` (default): `n-widget.svelte`, `types.ts`, `ui/n-widget-ui.svelte`, `hooks/use-n-ui-model.svelte.ts`; with `storybookFramework`: `ui/n-widget-ui.stories.ts` (CSF3: `title: 'Widgets/N'`, `component: NWidgetUI`, story `Default`)
-- `headless`: `n-widget.svelte` (renders `<UI {...uiModel} />`), `types.ts` (props include `UI: Component<NWidgetUIProps>`), `hooks/use-n-ui-model.svelte.ts`
+- `with separated ui` (default): `n-widget.svelte`, `types.ts`, `ui/n-widget-ui.svelte`, `model/create-n-ui-model.svelte.ts` (`createNUIModel`, returning getters); with `storybookFramework`: `ui/n-widget-ui.stories.ts` (CSF3: `title: 'Widgets/N'`, `component: NWidgetUI`, story `Default`)
+- `headless`: `n-widget.svelte` (renders `<UI {...uiModel} />`), `types.ts` (props include `UI: Component<NWidgetUIProps>`), `model/create-n-ui-model.svelte.ts`, given the rest of `let { UI, ...widgetProps } = $props()`
 - `monolithic`: `n-widget.svelte` (`NWidgetProps`)
 - every type: `index.ts` (`export { default as NWidget } from './n-widget.svelte'` and the props type)
 
@@ -23,13 +23,13 @@ Nested names work as in df-react: `admin/panel/users` → `…/widgets/admin/pan
 
 `…/svelte/ui-kit/n/`: `n.svelte` (`NProps`), `index.ts` (`export { default as N } from './n.svelte'` and `NProps`), with `storybookFramework`: `n.stories.ts` (`title: 'UI-kit/N'`).
 
-## New shared hook
+## New shared model
 
-`…/svelte/hooks/use-n.svelte.ts` (`const useN = () => …`), so it may use runes. A leading `use-` in the name is dropped.
+Operation `shared-model`: `…/svelte/shared/model/create-n.svelte.ts` (`const createN = () => …`), so it may use runes. A leading `create-` in the name is dropped. Svelte has no hooks: in SvelteKit they are `hooks.server.ts`/`hooks.client.ts`.
 
 ## Move, rename, delete
 
-As in df-react: files, `<Name>Page` / `<Name>Widget…` / `use<Name>UIModel` / `<Name>` / `use<Name>`, story titles and every import (with or without the `.svelte` extension, relative or through `tsconfig` aliases) follow a move; a delete is refused while other files import the module. With SvelteKit, the page's own route folder files move or are deleted too when confirmed.
+As in df-react: files, `<Name>Page` / `<Name>Widget…` / `create<Name>UIModel` / `<Name>` / `create<Name>`, story titles and every import (with or without the `.svelte` extension, relative or through `tsconfig` aliases) follow a move; a delete is refused while other files import the module. With SvelteKit, the page's own route folder files move or are deleted too when confirmed.
 
 ## Story templates
 

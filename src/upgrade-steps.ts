@@ -15,6 +15,11 @@ import {
     openapiExtractorRootStep,
     restRootControllerStep
 } from './upgrade-rest-root';
+import {
+    svelteModelsStep,
+    svelteSwaggerPackagesStep,
+    svelteSwaggerPageStep
+} from './upgrade-svelte';
 
 type Draft = Record<string, unknown>;
 
@@ -194,7 +199,10 @@ export const upgradeSteps: UpgradeStep[] = [
     openapiExtractorRootStep,
     openapiExtractorNestedStep,
     openapiExtractorManualStep,
-    inMemoryDbWithIdStep
+    inMemoryDbWithIdStep,
+    svelteSwaggerPageStep,
+    svelteSwaggerPackagesStep,
+    svelteModelsStep
 ];
 
 /** Shown after any change: skills of an earlier version describe the old CLI. */

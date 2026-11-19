@@ -294,7 +294,7 @@ export const addOrval = async (): Promise<string[]> => {
                   {
                       name:
                           framework === 'svelte'
-                              ? 'Svelte Query hooks'
+                              ? 'Svelte Query (createQuery)'
                               : 'React Query hooks',
                       value: 'hooks',
                       checked: true

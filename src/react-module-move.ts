@@ -31,6 +31,30 @@ export const frontendExtensions: Record<
     svelte: { component: '.svelte', hook: '.svelte.ts' }
 };
 
+/**
+ * Naming of reusable logic: React hooks (`hooks/use-n.ts`, `useN`) and
+ * Svelte 5 models (`shared/model/create-n.svelte.ts`, `createN`). In
+ * SvelteKit "hooks" are `hooks.server.ts`, so Svelte has no hooks.
+ */
+export const frontendLogicNaming: Record<
+    FrontendFramework,
+    {
+        /** Function name prefix: `useN`, `createN`. */
+        prefix: 'use' | 'create';
+        /** Folder of shared hooks (models), under `presentation/<framework>`. */
+        shared: string[];
+        /** Folder of a widget's UI model, inside the widget. */
+        widgetModel: string;
+    }
+> = {
+    react: { prefix: 'use', shared: ['hooks'], widgetModel: 'hooks' },
+    svelte: {
+        prefix: 'create',
+        shared: ['shared', 'model'],
+        widgetModel: 'model'
+    }
+};
+
 export type ReactModule = {
     kind: ReactModuleKind;
     /** Name, nested for pages and widgets, e.g. `admin/users`. */
@@ -64,6 +88,7 @@ const kindLayouts = (
     framework: FrontendFramework
 ): Record<ReactModuleKind, ReactKindLayout> => {
     const { component, hook } = frontendExtensions[framework];
+    const { prefix, shared } = frontendLogicNaming[framework];
     return {
         page: {
             folder: 'pages',
@@ -78,7 +103,7 @@ const kindLayouts = (
                     ...folders,
                     `${fileName}-page${component}`
                 ),
-            classPrefix: '(use)?',
+            classPrefix: `(${prefix})?`,
             classSuffix: 'Page'
         },
         widget: {
@@ -87,7 +112,7 @@ const kindLayouts = (
             inFolder: true,
             target: (reactFolder, { folders, folderName }) =>
                 path.join(reactFolder, 'widgets', ...folders, folderName),
-            classPrefix: '(use)?',
+            classPrefix: `(${prefix})?`,
             classSuffix: 'Widget|UIModel',
             storyTitle: (segments) => ['Widgets', ...segments].join('/')
         },
@@ -102,20 +127,25 @@ const kindLayouts = (
             storyTitle: (segments) => `UI-kit/${segments.join('')}`
         },
         hook: {
-            folder: 'hooks',
+            folder: shared.join('/'),
             nested: false,
             inFolder: false,
             ownFile: (fileBase) =>
-                new RegExp(`^use-${escapeRegExp(fileBase)}(?:\\.|$)`),
+                new RegExp(`^${prefix}-${escapeRegExp(fileBase)}(?:\\.|$)`),
             target: (reactFolder, { fileName }) =>
-                path.join(reactFolder, 'hooks', `use-${fileName}${hook}`),
-            classPrefix: '(use)',
+                path.join(
+                    reactFolder,
+                    ...shared,
+                    `${prefix}-${fileName}${hook}`
+                ),
+            classPrefix: `(${prefix})`,
             classSuffix: '(?![\\w$])'
         }
     };
 };
 
 export const reactKindLayouts = kindLayouts('react');
+/** Svelte: shared models in `shared/model/create-n.svelte.ts`. */
 export const svelteKindLayouts = kindLayouts('svelte');
 export const frontendKindLayouts = (framework: FrontendFramework) =>
     framework === 'svelte' ? svelteKindLayouts : reactKindLayouts;
@@ -127,10 +157,30 @@ export const reactKindTitles: Record<ReactModuleKind, [string, string]> = {
     'ui-kit': ['UI-kit component', 'UI-kit components'],
     hook: ['Shared hook', 'shared hooks']
 };
+const svelteKindTitles: Record<ReactModuleKind, [string, string]> = {
+    ...reactKindTitles,
+    hook: ['Shared model', 'shared models']
+};
+export const frontendKindTitles = (framework: FrontendFramework) =>
+    framework === 'svelte' ? svelteKindTitles : reactKindTitles;
 
-/** A hook's name is entered without `use-`, as its generator takes it. */
-export const reactModuleName = (kind: ReactModuleKind, rawName: string) =>
-    kind === 'hook' ? rawName.trim().replace(/^use-/, '') : rawName;
+/**
+ * A shared hook's (model's) name is entered without `use-` (`create-`), as
+ * its generator takes it.
+ */
+export const reactModuleName = (
+    kind: ReactModuleKind,
+    rawName: string,
+    framework: FrontendFramework = 'react'
+) =>
+    kind === 'hook'
+        ? rawName
+              .trim()
+              .replace(
+                  new RegExp(`^${frontendLogicNaming[framework].prefix}-`),
+                  ''
+              )
+        : rawName;
 
 /**
  * Files made before names used the whole path (`admin/users-page.tsx`)
@@ -210,19 +260,21 @@ const findHooks = (
     reactFolder: string,
     framework: FrontendFramework
 ): ReactModule[] => {
-    const root = path.join(reactFolder, 'hooks');
+    const { prefix, shared } = frontendLogicNaming[framework];
+    const root = path.join(reactFolder, ...shared);
     if (!fs.existsSync(root)) return [];
     const extension = hookFile[framework];
+    const ownPrefix = new RegExp(`^${prefix}-`);
     return fs
         .readdirSync(root)
         .filter(
             (file) =>
-                /^use-/.test(file) &&
+                ownPrefix.test(file) &&
                 extension.test(file) &&
                 !/\.(spec|test)\./.test(file)
         )
         .map((file) => {
-            const name = file.replace(/^use-/, '').replace(extension, '');
+            const name = file.replace(ownPrefix, '').replace(extension, '');
             const content = fs.readFileSync(path.join(root, file), 'utf8');
             return {
                 kind: 'hook' as const,
@@ -231,7 +283,9 @@ const findHooks = (
                 fileBase: name,
                 ClassName:
                     content.match(
-                        /export\s+(?:const|function)\s+use(\w+)\b/
+                        new RegExp(
+                            `export\\s+(?:const|function)\\s+${prefix}(\\w+)\\b`
+                        )
                     )?.[1] ?? new NestedName(name).ClassName
             };
         });
@@ -308,7 +362,7 @@ const targetPath = (
 ) => {
     return frontendKindLayouts(framework)[module.kind].target(
         reactFolder,
-        new NestedName(reactModuleName(module.kind, rawName))
+        new NestedName(reactModuleName(module.kind, rawName, framework))
     );
 };
 
@@ -320,8 +374,11 @@ export const validateMove = (
 ) => {
     const nameError = NestedName.validate(rawName);
     if (nameError !== true) return nameError;
-    if (!reactKindLayouts[module.kind].nested && /[\\/]/.test(rawName))
-        return 'UI-kit components and shared hooks have no folders: enter a name without "/"';
+    if (
+        !frontendKindLayouts(framework)[module.kind].nested &&
+        /[\\/]/.test(rawName)
+    )
+        return `UI-kit components and ${frontendKindTitles(framework).hook[1]} have no folders: enter a name without "/"`;
 
     const target = targetPath(reactFolder, module, rawName, framework);
     if (target !== module.path && fs.existsSync(target)) {
@@ -373,13 +430,18 @@ export const moveReactModule = (
     framework: FrontendFramework = 'react'
 ): MovePlan => {
     const layout = frontendKindLayouts(framework)[module.kind];
-    const newName = new NestedName(reactModuleName(module.kind, rawName));
+    const newName = new NestedName(
+        reactModuleName(module.kind, rawName, framework)
+    );
+    const { prefix } = frontendLogicNaming[framework];
     const target = targetPath(reactFolder, module, rawName, framework);
     const newClassName = newName.ClassName;
     const renameFile = (name: string) =>
         name.replace(
-            new RegExp(`^(use-)?${escapeRegExp(module.fileBase)}(?=[-.]|$)`),
-            (_, use = '') => `${use}${newName.fileName}`
+            new RegExp(
+                `^(${prefix}-)?${escapeRegExp(module.fileBase)}(?=[-.]|$)`
+            ),
+            (_, own = '') => `${own}${newName.fileName}`
         );
 
     const oldFolder = layout.inFolder ? module.path : path.dirname(module.path);

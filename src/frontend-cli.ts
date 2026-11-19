@@ -27,7 +27,7 @@ Needs frontend.react in domain-first.project-structure.config.json.`,
         help: `Usage: df-svelte
 
 Scaffolds Svelte 5 modules of a Domain-First project: pages, widgets, UI-kit
-components and shared hooks (.svelte.ts), and moves, renames or deletes
+components and shared models (create… in .svelte.ts), and moves, renames or deletes
 them. With SvelteKit, pages get their routes in src/routes.
 Needs frontend.svelte in domain-first.project-structure.config.json.`,
         notConfigured:
@@ -77,7 +77,10 @@ Options:
         ]);
         const operation = await select({
             message: 'Module: ',
-            choices: frontendMenu.map(([name, value]) => ({ name, value }))
+            choices: frontendMenu(framework).map(([name, value]) => ({
+                name,
+                value
+            }))
         });
         await frontendOperations(folder, framework)[operation]();
         await savePendingChanges();

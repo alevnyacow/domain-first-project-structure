@@ -154,8 +154,14 @@ export const scaffoldRequestSchema = z.discriminatedUnion('operation', [
         aggregate: name.optional()
     })
 ]);
-/** Requests of df-react and df-svelte; `router` names their page router. */
-const frontendRequestSchema = (router: string) =>
+/**
+ * Requests of df-react and df-svelte; `router` names their page router,
+ * `shared` the operation of shared hooks (models).
+ */
+const frontendRequestSchema = (
+    router: string,
+    shared: 'shared-hook' | 'shared-model'
+) =>
     z.discriminatedUnion('operation', [
         operation('page', { ...common, name: nestedName }),
         operation('widget', {
@@ -166,7 +172,7 @@ const frontendRequestSchema = (router: string) =>
                 .optional()
         }),
         operation('ui-kit-component', { ...common, name }),
-        operation('shared-hook', { ...common, name }),
+        operation(shared, { ...common, name }),
         operation('move-page', {
             ...common,
             module: nestedName,
@@ -190,17 +196,23 @@ const frontendRequestSchema = (router: string) =>
         }),
         operation('delete-widget', { ...common, module: nestedName }),
         operation('move-ui-kit-component', { ...common, module: name, name }),
-        operation('move-shared-hook', { ...common, module: name, name }),
+        operation(`move-${shared}`, { ...common, module: name, name }),
         operation('delete-ui-kit-component', { ...common, module: name }),
-        operation('delete-shared-hook', { ...common, module: name }),
+        operation(`delete-${shared}`, { ...common, module: name }),
         operation('move-widget', {
             ...common,
             module: nestedName,
             name: nestedName
         })
     ]);
-export const reactRequestSchema = frontendRequestSchema('Next.js');
-export const svelteRequestSchema = frontendRequestSchema('SvelteKit');
+export const reactRequestSchema = frontendRequestSchema(
+    'Next.js',
+    'shared-hook'
+);
+export const svelteRequestSchema = frontendRequestSchema(
+    'SvelteKit',
+    'shared-model'
+);
 const relativePath = z
     .string()
     .regex(/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/)

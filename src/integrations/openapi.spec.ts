@@ -315,7 +315,7 @@ const useSvelte = (project: string, framework: 'svelte' | 'sveltekit') =>
         })
     );
 
-test('with SvelteKit, the Svelte Swagger UI page gets its route and the document goes to static/', async () => {
+test('with SvelteKit, the Svelte Swagger UI page gets its route and fetches the document from static/', async () => {
     const { project } = setup(
         'src/lib',
         {
@@ -353,16 +353,21 @@ test('with SvelteKit, the Svelte Swagger UI page gets its route and the document
 </script>
 
 <script lang="ts">
-    import 'swagger-ui/dist/swagger-ui.css'
+    import 'swagger-ui-dist/swagger-ui.css'
+    import type { SwaggerUIBundle as SwaggerUIBundleType } from 'swagger-ui-dist'
     import { onMount } from 'svelte'
-    import spec from '../../../../../static/openapi.json'
 
     let props: SwaggerPageProps = $props()
     let container: HTMLDivElement
 
     onMount(async () => {
-        const { default: SwaggerUI } = await import('swagger-ui')
-        SwaggerUI({ domNode: container, spec, displayOperationId: true })
+        // Self-contained bundle: React is bundled inside, no react deps in the project
+        const { default: SwaggerUIBundle } = (await import(
+            // @ts-expect-error -- swagger-ui-dist ships no types for this entry point
+            'swagger-ui-dist/swagger-ui-bundle.js'
+        )) as { default: SwaggerUIBundleType }
+
+        SwaggerUIBundle({ domNode: container, url: '/openapi.json', displayOperationId: true })
     })
 </script>
 
@@ -377,8 +382,12 @@ test('with SvelteKit, the Svelte Swagger UI page gets its route and the document
 </script>
 
 <SwaggerPage />`);
-    expect(steps).toContain('npm install swagger-ui');
-    expect(steps).toContain('npm install --save-dev @types/swagger-ui');
+    expect(steps).toContain('npm install swagger-ui-dist');
+    expect(steps).toContain('npm install --save-dev @types/swagger-ui-dist');
+    // The document is fetched, not imported
+    expect(steps.some((step) => step.includes('resolveJsonModule'))).toBe(
+        false
+    );
     expect(steps).toContain(
         '/swagger shows static/openapi.json once it is generated — the route is src/routes/swagger/+page.svelte'
     );
@@ -392,9 +401,9 @@ test('with plain Svelte, the Swagger UI page is not bound to a router', async ()
             name: 'demo',
             dependencies: {
                 '@domain-first/handlers-rest': '*',
-                'swagger-ui': '*'
+                'swagger-ui-dist': '*'
             },
-            devDependencies: { tsx: '*', '@types/swagger-ui': '*' }
+            devDependencies: { tsx: '*', '@types/swagger-ui-dist': '*' }
         },
         ['/api', 'openapi.json']
     );
@@ -404,8 +413,20 @@ test('with plain Svelte, the Swagger UI page is not bound to a router', async ()
     const steps = await addOpenapi();
     writePendingChanges();
 
+    const page = fs.readFileSync(
+        path.join(
+            project,
+            'src/lib/presentation/svelte/pages/swagger-page.svelte'
+        ),
+        'utf8'
+    );
+    expect(page).toContain("import spec from '../../../../../openapi.json'");
+    expect(page).toContain(
+        'SwaggerUIBundle({ domNode: container, spec, displayOperationId: true })'
+    );
+    expect(page).not.toMatch(/['"]swagger-ui['"]/);
     expect(fs.existsSync(path.join(project, 'src/routes'))).toBe(false);
-    expect(steps).not.toContain('npm install swagger-ui');
+    expect(steps).not.toContain('npm install swagger-ui-dist');
     expect(steps).toContain(
         'SwaggerPage from src/lib/presentation/svelte/pages/swagger-page.svelte shows openapi.json once it is generated — render it on a route of your app'
     );
