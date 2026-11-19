@@ -1,3 +1,10 @@
+# [8.12.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.11.0...v8.12.0) (2026-11-19)
+
+
+### Features
+
+* Svelte models and swagger-ui-dist Swagger page ([e4f3535](https://github.com/alevnyacow/domain-first-project-structure/commit/e4f35353391263617d53af08a9adb1ea96d8d85d))
+
 # [8.11.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.10.1...v8.11.0) (2026-11-18)
 
 
