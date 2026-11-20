@@ -1,3 +1,10 @@
+## [8.13.1](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.13.0...v8.13.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* Drizzle database passes the schema so db.query works ([f1cebd2](https://github.com/alevnyacow/domain-first-project-structure/commit/f1cebd27ca738b33cc569712b7ee3d3832b340ee))
+
 # [8.13.0](https://github.com/alevnyacow/domain-first-project-structure/compare/v8.12.0...v8.13.0) (2026-11-19)
 
 
