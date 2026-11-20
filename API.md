@@ -1141,7 +1141,7 @@ With `frontend.svelte`, the integration is listed as `Storybook (Svelte + Vite)`
 | `drizzle:generate` | Generate a SQL migration in `migrations/` from changes in `schema.ts` |
 | `drizzle:migrate`  | Apply generated migrations to the database in `DATABASE_URL`   |
 
-The config uses the `postgresql` dialect and reads `DATABASE_URL` through `dotenv`. Its `schema` and `out` paths are relative to the project root, where package scripts run. `DrizzleInfrastructureService` exposes `db`, a `drizzle-orm/node-postgres` database over a `pg` pool, and reuses the pool across development hot reloads. Import tables from `schema.ts` in implementations: `this.drizzleInfrastructureService.db.select().from(orders)`. An existing `schema.ts` is never replaced. A `drizzle.config.ts` (`.js`, `.json`) in the project root is an existing setup: the integration stops without changes, move it separately.
+The config uses the `postgresql` dialect and reads `DATABASE_URL` through `dotenv`. Its `schema` and `out` paths are relative to the project root, where package scripts run. `DrizzleInfrastructureService` exposes `db`, a `drizzle-orm/node-postgres` database over a `pg` pool created with the tables of `schema.ts`, so relational queries work through `db.query`, and reuses the pool across development hot reloads. Import tables from `schema.ts` in implementations: `this.drizzleInfrastructureService.db.select().from(orders)` or `this.drizzleInfrastructureService.db.query.orders.findFirst()`. An existing `schema.ts` is never replaced. A `drizzle.config.ts` (`.js`, `.json`) in the project root is an existing setup: the integration stops without changes, move it separately.
 
 ### Vitest
 

@@ -41,7 +41,7 @@ Types only (no storage change, e.g. after pulling someone's contract change): `n
 
 ## Drizzle
 
-Config: `shared-kernel/infrastructure/drizzle/drizzle.config.ts`. Source: `shared-kernel/infrastructure/drizzle/schema.ts` (edit by hand, tables with `drizzle-orm/pg-core`). Output: `migrations/` next to it (SQL files and `meta/`, from `drizzle:generate`). The database is created in `shared-kernel/infrastructure/services/drizzle-infrastructure-service.ts`; implementations import tables from `schema.ts`.
+Config: `shared-kernel/infrastructure/drizzle/drizzle.config.ts`. Source: `shared-kernel/infrastructure/drizzle/schema.ts` (edit by hand, tables with `drizzle-orm/pg-core`). Output: `migrations/` next to it (SQL files and `meta/`, from `drizzle:generate`). The database is created in `shared-kernel/infrastructure/services/drizzle-infrastructure-service.ts` with the schema passed in, so `db.query.<table>` works for every table exported from `schema.ts`; implementations import tables from `schema.ts`.
 
 | Script             | Does                                                         | Who runs it       |
 | ------------------ | ------------------------------------------------------------ | ----------------- |

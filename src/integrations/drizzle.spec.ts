@@ -79,6 +79,15 @@ test('adds config, schema, optional service and wiring with deferred writes', as
             'utf8'
         )
     ).toContain('readonly db = drizzleDatabase');
+    const service = fs.readFileSync(
+        path.join(
+            shared,
+            'infrastructure/services/drizzle-infrastructure-service.ts'
+        ),
+        'utf8'
+    );
+    expect(service).toContain("import * as schema from '../drizzle/schema';");
+    expect(service).toContain('        schema\n    });');
     expect(
         fs.readFileSync(
             path.join(

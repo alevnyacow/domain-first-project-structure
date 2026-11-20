@@ -59,10 +59,13 @@ export {};
 
 const drizzleService = `import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import * as schema from '../drizzle/schema';
 
+// The schema enables relational queries through db.query.
 const createDatabase = () =>
     drizzle({
-        client: new Pool({ connectionString: process.env.DATABASE_URL })
+        client: new Pool({ connectionString: process.env.DATABASE_URL }),
+        schema
     });
 
 type DrizzleDatabase = ReturnType<typeof createDatabase>;
